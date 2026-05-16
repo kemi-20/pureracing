@@ -32,7 +32,13 @@ fun HomeScreen(padding: PaddingValues, vm: HomeViewModel = hiltViewModel()) {
     ) { inner ->
         when (val s = schedule) {
             is UiState.Loading -> Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
-            is UiState.Error -> Box(Modifier.fillMaxSize(), Alignment.Center) { Text(s.message) }
+            is UiState.Error -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(s.message, color = MaterialTheme.colorScheme.error)
+                    Spacer(Modifier.height(16.dp))
+                    Button(onClick = { vm.loadSeasons() }) { Text("重试") }
+                }
+            }
             is UiState.Success -> LazyColumn(
                 contentPadding = PaddingValues(
                     top = inner.calculateTopPadding() + 8.dp,

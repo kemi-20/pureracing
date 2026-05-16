@@ -30,14 +30,20 @@ class HomeViewModel @Inject constructor(private val repo: RacingRepository) : Vi
         _seasons.value = UiState.Loading
         runCatching { repo.getSeasons() }
             .onSuccess { _seasons.value = if (it.code == 200) UiState.Success(it.data ?: emptyList()) else UiState.Error(it.msg) }
-            .onFailure { _seasons.value = UiState.Error(it.message ?: "未知错误") }
+            .onFailure {
+                it.printStackTrace()
+                _seasons.value = UiState.Error(it.message ?: "未知错误")
+            }
     }
 
     fun loadSchedule(seasonId: Int) = viewModelScope.launch {
         _schedule.value = UiState.Loading
         runCatching { repo.getSchedule(seasonId) }
             .onSuccess { _schedule.value = if (it.code == 200) UiState.Success(it.data ?: emptyList()) else UiState.Error(it.msg) }
-            .onFailure { _schedule.value = UiState.Error(it.message ?: "未知错误") }
+            .onFailure {
+                it.printStackTrace()
+                _schedule.value = UiState.Error(it.message ?: "未知错误")
+            }
     }
 }
 

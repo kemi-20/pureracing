@@ -1,5 +1,7 @@
 package com.pureracing.app.ui.screens.home
 
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,11 +20,20 @@ import com.pureracing.app.viewmodel.UiState
 fun HomeScreen(padding: PaddingValues, vm: HomeViewModel = hiltViewModel()) {
     val seasons by vm.seasons.collectAsState()
     val schedule by vm.schedule.collectAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(seasons) {
         if (seasons is UiState.Success) {
             val list = (seasons as UiState.Success).data
             if (list.isNotEmpty()) vm.loadSchedule(list.first().id)
+        } else if (seasons is UiState.Error) {
+            Toast.makeText(context, "获取赛季失败: ${(seasons as UiState.Error).message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    LaunchedEffect(schedule) {
+        if (schedule is UiState.Error) {
+            Toast.makeText(context, "获取赛程失败: ${(schedule as UiState.Error).message}", Toast.LENGTH_LONG).show()
         }
     }
 

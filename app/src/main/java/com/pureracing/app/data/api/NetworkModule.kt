@@ -31,11 +31,23 @@ object NetworkModule {
     fun provideOkHttpClient(@ApplicationContext context: Context): OkHttpClient =
         OkHttpClient.Builder()
             .addInterceptor(Interceptor { chain ->
-                val token = runBlocking { context.dataStore.data.first()[TOKEN_KEY] }
-                val req = if (token != null)
-                    chain.request().newBuilder().addHeader("Authorization", "Bearer $token").build()
-                else chain.request()
-                chain.proceed(req)
+                val request = chain.request()
+                // Capture original URL and append api/v1 or just api/ based on path
+                val url = request.url.toString()
+
+                // Construct our best guess at the API path
+                // Original Retrofit URL will be like: https://api.romielf.com/season
+                val newUrlString = url.replace("api.romielf.com/", "api.romielf.com/api/")
+
+                val newRequest = request.newBuilder()
+                    .url(newUrlString)
+                    .apply {
+                        val token = runBlocking { context.dataStore.data.first()[TOKEN_KEY] }
+                        if (token != null) addHeader("Authorization", "Bearer $token")
+                    }
+                    .build()
+
+                chain.proceed(newRequest)
             })
             .addInterceptor(HttpLoggingInterceptor { Log.d("OkHttp", it) }.apply {
                 level = HttpLoggingInterceptor.Level.BODY
@@ -46,7 +58,7 @@ object NetworkModule {
     @Singleton
     fun provideRetrofit(client: OkHttpClient): Retrofit =
         Retrofit.Builder()
-            .baseUrl("https://api.romielf.com/api/")
+            .baseUrl("https://api.romielf.com/")
             .client(client)
             .addConverterFactory(GsonConverterFactory.create(GsonBuilder().setLenient().create()))
             .build()

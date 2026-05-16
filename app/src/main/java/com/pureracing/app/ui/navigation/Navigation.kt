@@ -8,7 +8,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
-import com.pureracing.app.ui.screens.auth.LoginScreen
 import com.pureracing.app.ui.screens.chat.ChatScreen
 import com.pureracing.app.ui.screens.driver.DriverScreen
 import com.pureracing.app.ui.screens.home.HomeScreen
@@ -30,7 +29,6 @@ val bottomNavItems = listOf(Screen.Home, Screen.Race, Screen.Driver, Screen.Trac
 fun AppNavHost() {
     val navController = rememberNavController()
     NavHost(navController, startDestination = "main") {
-        composable("login") { LoginScreen(onLoginSuccess = { navController.navigate("main") { popUpTo("login") { inclusive = true } } }) }
         composable("main") { MainScreen() }
     }
 }

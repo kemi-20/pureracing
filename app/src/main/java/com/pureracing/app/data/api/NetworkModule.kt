@@ -1,15 +1,9 @@
 package com.pureracing.app.data.api
 
-import android.content.Context
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import android.util.Log
 import com.google.gson.GsonBuilder
 import okhttp3.Interceptor
@@ -19,34 +13,21 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
 
-val Context.dataStore by preferencesDataStore(name = "auth")
-val TOKEN_KEY = stringPreferencesKey("token")
-
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(@ApplicationContext context: Context): OkHttpClient =
+    fun provideOkHttpClient(): OkHttpClient =
         OkHttpClient.Builder()
             .addInterceptor(Interceptor { chain ->
                 val request = chain.request()
-                // Capture original URL and append api/v1 or just api/ based on path
                 val url = request.url.toString()
-
-                // Construct our best guess at the API path
-                // Original Retrofit URL will be like: https://api.romielf.com/season
                 val newUrlString = url.replace("api.romielf.com/", "api.romielf.com/api/")
-
                 val newRequest = request.newBuilder()
                     .url(newUrlString)
-                    .apply {
-                        val token = runBlocking { context.dataStore.data.first()[TOKEN_KEY] }
-                        if (token != null) addHeader("Authorization", "Bearer $token")
-                    }
                     .build()
-
                 chain.proceed(newRequest)
             })
             .addInterceptor(HttpLoggingInterceptor { Log.d("OkHttp", it) }.apply {

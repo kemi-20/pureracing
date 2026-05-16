@@ -88,15 +88,3 @@ class NewsViewModel @Inject constructor(private val repo: RacingRepository) : Vi
     }
 }
 
-@HiltViewModel
-class AuthViewModel @Inject constructor(private val repo: RacingRepository) : ViewModel() {
-    private val _loginState = MutableStateFlow<UiState<LoginData>?>(null)
-    val loginState = _loginState.asStateFlow()
-
-    fun login(phone: String, password: String) = viewModelScope.launch {
-        _loginState.value = UiState.Loading
-        runCatching { repo.login(phone, password) }
-            .onSuccess { _loginState.value = if (it.code == 200 && it.data != null) UiState.Success(it.data) else UiState.Error(it.msg) }
-            .onFailure { _loginState.value = UiState.Error(it.message ?: "登录失败") }
-    }
-}

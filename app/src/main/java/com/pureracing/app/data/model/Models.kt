@@ -14,13 +14,6 @@ data class PagedData<T>(
     val page: Int
 )
 
-// 认证
-data class LoginRequest(val phone: String, val password: String)
-data class SetPasswordRequest(val phone: String, val code: String, val password: String)
-data class UpdatePasswordRequest(@SerializedName("old_pwd") val oldPwd: String, @SerializedName("new_pwd") val newPwd: String)
-data class LoginData(val token: String, val user: User)
-data class User(val id: Int, val nickname: String, val avatar: String)
-
 // 赛季
 data class Season(val id: Int, val name: String, val year: Int)
 data class SeasonDetail(val id: Int, val name: String, val year: Int, val rounds: Int)

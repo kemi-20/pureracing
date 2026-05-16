@@ -5,16 +5,6 @@ import retrofit2.http.*
 
 interface RacingApiService {
 
-    // 认证
-    @POST("login/phone_account_login")
-    suspend fun login(@Body body: LoginRequest): ApiResponse<LoginData>
-
-    @POST("login/set_password")
-    suspend fun setPassword(@Body body: SetPasswordRequest): ApiResponse<Unit>
-
-    @POST("update-pwd")
-    suspend fun updatePassword(@Body body: UpdatePasswordRequest): ApiResponse<Unit>
-
     // 赛季
     @GET("season")
     suspend fun getSeasons(): ApiResponse<List<Season>>

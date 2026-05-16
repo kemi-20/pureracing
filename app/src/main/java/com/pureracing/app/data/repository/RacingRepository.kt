@@ -8,7 +8,6 @@ import javax.inject.Singleton
 @Singleton
 class RacingRepository @Inject constructor(private val api: RacingApiService) {
 
-    suspend fun login(phone: String, password: String) = api.login(LoginRequest(phone, password))
     suspend fun getSeasons() = api.getSeasons()
     suspend fun getSchedule(seasonId: Int) = api.getSchedule(seasonId)
     suspend fun getRaceDetail(raceId: Int) = api.getRaceDetail(raceId)

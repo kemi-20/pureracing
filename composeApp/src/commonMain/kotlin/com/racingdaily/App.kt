@@ -7,6 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -38,17 +39,25 @@ fun App(api: ApiService) {
             DetailScreen(articleId, { showDetail = false }, api)
         } else {
             Scaffold(
-                bottomBar = { NavigationBar(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f), tonalElevation = 0.dp) {
-                    NavItem(Screen.HOME, "News", "📰", currentScreen) { currentScreen = Screen.HOME }
-                    NavItem(Screen.RACE, "Race", "🏁", currentScreen) { currentScreen = Screen.RACE }
-                    NavItem(Screen.RANKINGS, "Rank", "🏆", currentScreen) { currentScreen = Screen.RANKINGS }
-                    NavItem(Screen.MORE, "More", "⋮", currentScreen) { currentScreen = Screen.MORE }
-                } }
+                bottomBar = {
+                    Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f), tonalElevation = 2.dp) {
+                        Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                            listOf(Screen.HOME to "📰\nNews", Screen.RACE to "🏁\nRace", Screen.RANKINGS to "🏆\nRank", Screen.MORE to "⋮\nMore").forEach { (s, t) ->
+                                val sel = currentScreen == s
+                                TextButton({ currentScreen = s }) {
+                                    Text(t, fontSize = 11.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                        fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (sel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                }
             ) { padding ->
                 Box(Modifier.padding(padding)) {
                     when (currentScreen) {
                         Screen.HOME -> HomeScreen({ articleId = it; showDetail = true }, api)
-                        Screen.RACE -> RaceScreen({ gp, ses -> }, { trackId -> }, api)
+                        Screen.RACE -> RaceScreen({ _, _ -> }, { _ -> }, api)
                         Screen.RANKINGS -> RankingScreen(api)
                         Screen.MORE -> MoreScreen({ cat, id -> champCategory = cat; champId = id; showChamp = true }, api)
                     }
@@ -56,17 +65,6 @@ fun App(api: ApiService) {
             }
         }
     }
-}
-
-@Composable
-fun NavItem(screen: Screen, label: String, icon: String, current: Screen, onClick: () -> Unit) {
-    val sel = current == screen
-    NavigationBarItem(
-        selected = sel,
-        onClick = onClick,
-        icon = { Text(icon, fontSize = 20.sp) },
-        label = { Text(label, fontSize = 11.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal, color = if (sel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
-    )
 }
 
 @Composable

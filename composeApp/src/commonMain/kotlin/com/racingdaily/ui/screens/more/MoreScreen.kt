@@ -10,17 +10,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.racingdaily.data.model.ChampSubstation
+import ChampSub
+import ChampSubstation
 import com.racingdaily.data.remote.ApiService
 import kotlinx.coroutines.launch
 
-data class ChampData(val subs: List<com.racingdaily.data.model.ChampSub> = emptyList())
+data class ChampData(val subs: List<ChampSub> = emptyList())
 
 @Composable
 fun MoreScreen(onChampClick: (String, Int) -> Unit, api: ApiService) {
-    var customSubs by remember { mutableStateOf<List<com.racingdaily.data.model.ChampSub>>(emptyList()) }
-    var motogpSubs by remember { mutableStateOf<List<com.racingdaily.data.model.ChampSub>>(emptyList()) }
-    var tcrSubs by remember { mutableStateOf<List<com.racingdaily.data.model.ChampSub>>(emptyList()) }
+    var customSubs by remember { mutableStateOf<List<ChampSub>>(emptyList()) }
+    var motogpSubs by remember { mutableStateOf<List<ChampSub>>(emptyList()) }
+    var tcrSubs by remember { mutableStateOf<List<ChampSub>>(emptyList()) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         scope.launch { runCatching { api.getCustomSubstation().tmp }.onSuccess { customSubs = it } }

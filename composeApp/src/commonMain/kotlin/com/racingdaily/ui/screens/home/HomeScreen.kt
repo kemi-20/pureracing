@@ -12,9 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,7 +31,6 @@ fun HomeScreen(onArticleClick: (Int) -> Unit, api: ApiService) {
     val scope = rememberCoroutineScope()
 
     fun load() { scope.launch { loading = true; runCatching { api.getNewsList(selectedTabId) }.onSuccess { news = it.list }; loading = false } }
-
     LaunchedEffect(Unit) { scope.launch { api.getNavTabs().navbar.let { tabs = it; load() } } }
     LaunchedEffect(selectedTabId) { load() }
 
@@ -47,10 +44,26 @@ fun HomeScreen(onArticleClick: (Int) -> Unit, api: ApiService) {
         }
         if (loading) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
         else LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 8.dp)) {
-            items(news) { item -> ElevatedCard(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { onArticleClick(item.id) }, shape = RoundedCornerShape(14.dp), colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-                Column { item.covers.firstOrNull()?.path_url?.let { AsyncImage(it, null, Modifier.fillMaxWidth().height(160.dp), contentScale = ContentScale.Crop) }
-                    Column(Modifier.padding(12.dp)) { Text(item.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) { Text("${item.total_read} reads", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant); item.tags.firstOrNull()?.let { SuggestionChip({}, { Text(it.name, fontSize = 10.sp, color = MaterialTheme.colorScheme.primary) }) } } } } }
+            items(news) { item ->
+                ElevatedCard(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { onArticleClick(item.id) },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Column {
+                        item.covers.firstOrNull()?.path_url?.let { url ->
+                            AsyncImage(url, null, Modifier.fillMaxWidth().height(160.dp), contentScale = ContentScale.Crop)
+                        }
+                        Column(Modifier.padding(12.dp)) {
+                            Text(item.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                            Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("${item.total_read} reads", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                item.tags.firstOrNull()?.let { SuggestionChip({}, { Text(it.name, fontSize = 10.sp, color = MaterialTheme.colorScheme.primary) }) }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

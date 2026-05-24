@@ -1,13 +1,21 @@
 package com.racingdaily.ui.screens.detail
 
-import android.content.Intent
-import android.net.Uri
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.viewinterop.AndroidView
 
 @Composable
-actual fun rememberOpenUrl(): (String) -> Unit {
-    val ctx = LocalContext.current
-    return remember { { url -> ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }) } }
+actual fun HtmlView(html: String) {
+    AndroidView(
+        factory = { ctx -> WebView(ctx).apply {
+            webViewClient = WebViewClient()
+            settings.javaScriptEnabled = false
+            settings.loadWithOverviewMode = true
+            settings.useWideViewPort = true
+            loadDataWithBaseURL("https://news.romielf.com/", html, "text/html", "UTF-8", null)
+        } },
+        modifier = Modifier.fillMaxSize()
+    )
 }

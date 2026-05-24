@@ -47,12 +47,15 @@ fun App() {
             Scaffold(
                 modifier = Modifier.fillMaxSize(),
             ) { innerPadding ->
-                Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .haze(hazeState)
+                ) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(top = innerPadding.calculateTopPadding()) // 仅 padding top，底栏不占位
-                            .haze(hazeState)
                     ) {
                         NavHost(
                             navController = navController,

@@ -50,8 +50,12 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.ktor.client.cio)
                 implementation(libs.kotlinx.coroutines.swing)
-                implementation(libs.javafx.web)
-                implementation(libs.javafx.swing)
+                implementation("org.openjfx:javafx-web:23.0.2:win")
+                implementation("org.openjfx:javafx-swing:23.0.2:win")
+                implementation("org.openjfx:javafx-base:23.0.2:win")
+                implementation("org.openjfx:javafx-graphics:23.0.2:win")
+                implementation("org.openjfx:javafx-controls:23.0.2:win")
+                implementation("org.openjfx:javafx-media:23.0.2:win")
             }
         }
     }

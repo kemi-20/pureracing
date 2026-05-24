@@ -6,6 +6,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -13,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
@@ -38,10 +40,8 @@ import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
-import com.kyant.shapes.Capsule
 import com.racingdaily.ui.components.util.DampedDragAnimation
 import com.racingdaily.ui.components.util.InteractiveHighlight
-import com.racingdaily.ui.navigation.Routes
 import com.racingdaily.ui.theme.*
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
@@ -53,101 +53,60 @@ import kotlin.math.sign
 internal val LocalLiquidBottomTabScale =
     staticCompositionLocalOf { { 1f } }
 
+private val CapsuleShape = RoundedCornerShape(50)
+
 @Composable
 actual fun GlassBottomBar(
     currentRoute: String?,
     onTabSelected: (String) -> Unit
 ) {
-    val backdrop = LocalLayerBackdrop.current ?: run {
-        // Fallback if backdrop is not available in the composition tree
-        FallbackBottomBar(currentRoute, onTabSelected)
-        return
-    }
+    // Create own backdrop for the bottom bar container
+    val backdrop = rememberLayerBackdrop()
 
     val selectedIndex = BottomTabs.indexOfFirst { it.route == currentRoute }.coerceAtLeast(0)
 
-    LiquidBottomTabs(
-        selectedTabIndex = { selectedIndex },
-        onTabSelected = { index ->
-            if (index in BottomTabs.indices) {
-                onTabSelected(BottomTabs[index].route)
-            }
-        },
-        backdrop = backdrop,
-        tabsCount = BottomTabs.size,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        BottomTabs.forEach { tab ->
-            LiquidBottomTab(
-                onClick = { onTabSelected(tab.route) }
-            ) {
-                val selected = currentRoute == tab.route
-                Icon(
-                    tab.icon,
-                    contentDescription = tab.label,
-                    tint = if (selected) AccentRed else TextSecondary,
-                    modifier = Modifier.size(22.dp)
-                )
-                Text(
-                    tab.label,
-                    fontSize = 10.sp,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (selected) AccentRed else TextSecondary
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun FallbackBottomBar(
-    currentRoute: String?,
-    onTabSelected: (String) -> Unit
-) {
+    // Capture the content behind the bottom bar
     Box(
-        modifier = Modifier
+        Modifier
             .fillMaxWidth()
+            .layerBackdrop(backdrop)
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .height(64.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        LiquidBottomTabs(
+            selectedTabIndex = { selectedIndex },
+            onTabSelected = { index ->
+                if (index in BottomTabs.indices) {
+                    onTabSelected(BottomTabs[index].route)
+                }
+            },
+            backdrop = backdrop,
+            tabsCount = BottomTabs.size,
+            modifier = Modifier.fillMaxWidth()
         ) {
             BottomTabs.forEach { tab ->
-                val selected = currentRoute == tab.route
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .weight(1f)
-                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
-                        .clickable { onTabSelected(tab.route) },
-                    contentAlignment = Alignment.Center
+                LiquidBottomTab(
+                    onClick = { onTabSelected(tab.route) }
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            tab.icon,
-                            contentDescription = tab.label,
-                            tint = if (selected) AccentRed else TextSecondary,
-                            modifier = Modifier.size(22.dp)
-                        )
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            tab.label,
-                            fontSize = 10.sp,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (selected) AccentRed else TextSecondary
-                        )
-                    }
+                    val selected = currentRoute == tab.route
+                    Icon(
+                        tab.icon,
+                        contentDescription = tab.label,
+                        tint = if (selected) AccentRed else TextSecondary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Text(
+                        tab.label,
+                        fontSize = 10.sp,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (selected) AccentRed else TextSecondary
+                    )
                 }
             }
         }
     }
 }
 
-// ===== Liquid Bottom Tabs (copied from Kyant0/AndroidLiquidGlass) =====
+// ===== Liquid Bottom Tabs =====
 
 @Composable
 fun LiquidBottomTabs(
@@ -206,10 +165,7 @@ fun LiquidBottomTabs(
                     currentIndex = targetIndex
                     animateToValue(targetIndex.toFloat())
                     animationScope.launch {
-                        offsetAnimation.animateTo(
-                            0f,
-                            spring(1f, 300f, 0.5f)
-                        )
+                        offsetAnimation.animateTo(0f, spring(1f, 300f, 0.5f))
                     }
                 },
                 onDrag = { _, dragAmount ->
@@ -225,9 +181,7 @@ fun LiquidBottomTabs(
         }
         LaunchedEffect(selectedTabIndex) {
             snapshotFlow { selectedTabIndex() }
-                .collectLatest { index ->
-                    currentIndex = index
-                }
+                .collectLatest { index -> currentIndex = index }
         }
         LaunchedEffect(dampedDragAnimation) {
             snapshotFlow { currentIndex }
@@ -241,7 +195,7 @@ fun LiquidBottomTabs(
         val interactiveHighlight = remember(animationScope) {
             InteractiveHighlight(
                 animationScope = animationScope,
-                position = { size, offset ->
+                position = { size, _ ->
                     Offset(
                         if (isLtr) (dampedDragAnimation.value + 0.5f) * tabWidth + panelOffset
                         else size.width - (dampedDragAnimation.value + 0.5f) * tabWidth + panelOffset,
@@ -254,12 +208,10 @@ fun LiquidBottomTabs(
         // Main backdrop row
         Row(
             Modifier
-                .graphicsLayer {
-                    translationX = panelOffset
-                }
+                .graphicsLayer { translationX = panelOffset }
                 .drawBackdrop(
                     backdrop = backdrop,
-                    shape = { Capsule() },
+                    shape = { CapsuleShape },
                     effects = {
                         vibrancy()
                         blur(8f.dp.toPx())
@@ -281,7 +233,7 @@ fun LiquidBottomTabs(
             content = content
         )
 
-        // Invisible row for accent color overlay
+        // Accent color overlay row
         CompositionLocalProvider(
             LocalLiquidBottomTabScale provides {
                 lerp(1f, 1.2f, dampedDragAnimation.pressProgress)
@@ -292,24 +244,18 @@ fun LiquidBottomTabs(
                     .clearAndSetSemantics {}
                     .alpha(0f)
                     .layerBackdrop(tabsBackdrop)
-                    .graphicsLayer {
-                        translationX = panelOffset
-                    }
+                    .graphicsLayer { translationX = panelOffset }
                     .drawBackdrop(
                         backdrop = backdrop,
-                        shape = { Capsule() },
+                        shape = { CapsuleShape },
                         effects = {
                             val progress = dampedDragAnimation.pressProgress
                             vibrancy()
                             blur(8f.dp.toPx())
-                            lens(
-                                24f.dp.toPx() * progress,
-                                24f.dp.toPx() * progress
-                            )
+                            lens(24f.dp.toPx() * progress, 24f.dp.toPx() * progress)
                         },
                         highlight = {
-                            val progress = dampedDragAnimation.pressProgress
-                            Highlight.Default.copy(alpha = progress)
+                            Highlight.Default.copy(alpha = dampedDragAnimation.pressProgress)
                         },
                         onDrawSurface = { drawRect(containerColor) }
                     )
@@ -336,7 +282,7 @@ fun LiquidBottomTabs(
                 .then(dampedDragAnimation.modifier)
                 .drawBackdrop(
                     backdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop),
-                    shape = { Capsule() },
+                    shape = { CapsuleShape },
                     effects = {
                         val progress = dampedDragAnimation.pressProgress
                         lens(
@@ -346,18 +292,15 @@ fun LiquidBottomTabs(
                         )
                     },
                     highlight = {
-                        val progress = dampedDragAnimation.pressProgress
-                        Highlight.Default.copy(alpha = progress)
+                        Highlight.Default.copy(alpha = dampedDragAnimation.pressProgress)
                     },
                     shadow = {
-                        val progress = dampedDragAnimation.pressProgress
-                        Shadow(alpha = progress)
+                        Shadow(alpha = dampedDragAnimation.pressProgress)
                     },
                     innerShadow = {
-                        val progress = dampedDragAnimation.pressProgress
                         InnerShadow(
-                            radius = 8f.dp * progress,
-                            alpha = progress
+                            radius = 8f.dp * dampedDragAnimation.pressProgress,
+                            alpha = dampedDragAnimation.pressProgress
                         )
                     },
                     layerBlock = {
@@ -392,7 +335,7 @@ fun RowScope.LiquidBottomTab(
     val scale = LocalLiquidBottomTabScale.current
     Column(
         modifier
-            .clip(Capsule())
+            .clip(CapsuleShape)
             .clickable(
                 interactionSource = null,
                 indication = null,
@@ -402,9 +345,9 @@ fun RowScope.LiquidBottomTab(
             .fillMaxHeight()
             .weight(1f)
             .graphicsLayer {
-                val scale = scale()
-                scaleX = scale
-                scaleY = scale
+                val s = scale()
+                scaleX = s
+                scaleY = s
             },
         verticalArrangement = Arrangement.spacedBy(2f.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,

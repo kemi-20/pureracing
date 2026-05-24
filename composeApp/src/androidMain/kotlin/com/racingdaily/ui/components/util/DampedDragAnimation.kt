@@ -3,6 +3,7 @@ package com.racingdaily.ui.components.util
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.MutatorMutex
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -51,7 +52,6 @@ class DampedDragAnimation(
         Animatable(initialScale, 0.001f)
 
     private val mutatorMutex = MutatorMutex()
-
     private val velocityTracker = VelocityTracker()
 
     val value: Float get() = valueAnimation.value
@@ -63,7 +63,7 @@ class DampedDragAnimation(
     val velocity: Float get() = velocityAnimation.value
 
     val modifier: Modifier = Modifier.pointerInput(Unit) {
-        inspectDragGestures(
+        detectDragGestures(
             onDragStart = { down ->
                 onDragStarted(down.position)
                 press()
@@ -134,19 +134,4 @@ class DampedDragAnimation(
         val targetVelocity = velocityTracker.calculateVelocity().x / (valueRange.endInclusive - valueRange.start)
         animationScope.launch { velocityAnimation.animateTo(targetVelocity, velocityAnimationSpec) }
     }
-}
-
-// Pointer input helper for drag gesture detection
-private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.inspectDragGestures(
-    onDragStart: (down: androidx.compose.ui.input.pointer.PointerInputChange) -> Unit,
-    onDragEnd: () -> Unit,
-    onDragCancel: () -> Unit,
-    onDrag: (change: androidx.compose.ui.input.pointer.PointerInputChange, dragAmount: Offset) -> Unit
-) {
-    androidx.compose.foundation.gestures.detectDragGestures(
-        onDragStart = onDragStart,
-        onDragEnd = onDragEnd,
-        onDragCancel = onDragCancel,
-        onDrag = onDrag
-    )
 }

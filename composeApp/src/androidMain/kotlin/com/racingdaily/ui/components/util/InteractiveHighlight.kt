@@ -3,6 +3,7 @@ package com.racingdaily.ui.components.util
 import android.graphics.RuntimeShader
 import android.os.Build
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.TwoWayConverter
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -13,7 +14,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ShaderBrush
-import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -24,7 +24,9 @@ class InteractiveHighlight(
 ) {
 
     private val pressProgress = Animatable(0f)
-    private val animationPos = Animatable(Offset.Zero)
+
+    private var animX = 0f
+    private var animY = 0f
 
     private val highlightShader = """
         uniform float2 uResolution;
@@ -45,7 +47,7 @@ class InteractiveHighlight(
                 drawContent()
                 val shader = RuntimeShader(highlightShader).apply {
                     setFloatUniform("uResolution", size.width, size.height)
-                    setFloatUniform("uPosition", animationPos.value.x, animationPos.value.y)
+                    setFloatUniform("uPosition", animX, animY)
                     setFloatUniform("uProgress", pressProgress.value)
                 }
                 drawRect(brush = ShaderBrush(shader))

@@ -65,7 +65,7 @@ class DampedDragAnimation(
     val modifier: Modifier = Modifier.pointerInput(Unit) {
         detectDragGestures(
             onDragStart = { down ->
-                onDragStarted(down.position)
+                onDragStarted(down)
                 press()
             },
             onDragEnd = {

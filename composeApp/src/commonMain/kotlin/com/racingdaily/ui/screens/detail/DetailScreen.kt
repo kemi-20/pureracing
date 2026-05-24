@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -74,7 +72,7 @@ fun VideoPlaceholder(videoUrl: String) {
         color = Color.Black.copy(alpha = 0.3f)
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Icon(Icons.Filled.PlayArrow, "Play video", tint = Color.White, modifier = Modifier.size(48.dp))
+            Text("▶", color = Color.White, fontSize = 36.sp)
             Text("Tap to play", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp, modifier = Modifier.align(Alignment.BottomCenter).padding(8.dp))
         }
     }

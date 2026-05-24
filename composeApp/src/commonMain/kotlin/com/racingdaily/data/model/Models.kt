@@ -11,8 +11,11 @@ import kotlinx.serialization.Serializable
 @Serializable data class Cover(val path_url: String = "", val path: String = "")
 @Serializable data class Tag(val id: Int = 0, val name: String = "")
 @Serializable data class NewsListData(val list: List<NewsItem> = emptyList(), val next_page: Int = 0)
-@Serializable data class NewsDetail(val id: Int = 0, val title: String = "", val content: String = "",
-    val total_read: Int = 0, val covers: List<Cover> = emptyList(), val tags: List<Tag> = emptyList())
+@Serializable data class NewsDetail(val details: ArticleDetail = ArticleDetail())
+@Serializable data class ArticleDetail(val id: Int = 0, val title: String = "", val content: String = "",
+    val total_read: Int = 0, val author: String = "", val user_name: String = "", val source_link: String = "",
+    val temotime: String = "", val iteam: List<kotlinx.serialization.json.JsonObject> = emptyList(),
+    val tag: List<String> = emptyList(), val conten: String = "")
 @Serializable data class NavTab(val id: Int = 0, val name: String = "")
 @Serializable data class Navitv2Data(val navbar: List<NavTab> = emptyList())
 

@@ -29,11 +29,46 @@ fun DetailScreen(articleId: Int, onBack: () -> Unit, api: ApiService) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) { TextButton(onBack) { Text("< Back", color = MaterialTheme.colorScheme.secondary, fontSize = 14.sp) } }
         if (loading) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-        else article?.let { a -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            Text(a.title, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp)); Text("${a.total_read} reads", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            a.covers.firstOrNull()?.let { Spacer(Modifier.height(12.dp)); AsyncImage(it.path_url, null, Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)), contentScale = ContentScale.FillWidth) }
-            Spacer(Modifier.height(16.dp)); Text(a.content, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, lineHeight = 24.sp); Spacer(Modifier.height(32.dp))
-        } }
+        else article?.details?.let { a ->
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+                Text(a.title, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("${a.total_read} reads", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (a.user_name.isNotEmpty()) Text(a.user_name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                    if (a.temotime.isNotEmpty()) Text(a.temotime, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+
+                // Extract and show images from HTML content
+                val images = extractImages(a.content)
+                val text = stripHtml(a.content)
+
+                if (images.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    images.take(3).forEach { url ->
+                        AsyncImage(url, null, Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).padding(vertical = 4.dp), contentScale = ContentScale.FillWidth)
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                Text(text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, lineHeight = 24.sp)
+                Spacer(Modifier.height(32.dp))
+            }
+        }
     }
+}
+
+fun extractImages(html: String): List<String> {
+    val regex = Regex("""<img[^>]+src="([^"]+)"""")
+    return regex.findAll(html).map { it.groupValues[1] }.toList()
+}
+
+fun stripHtml(html: String): String {
+    return html.replace(Regex("<[^>]+>"), "")
+        .replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .trim()
 }

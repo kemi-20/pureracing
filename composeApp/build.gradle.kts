@@ -50,7 +50,7 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.ktor.client.cio)
                 implementation(libs.kotlinx.coroutines.swing)
-                implementation("org.eclipse.platform:org.eclipse.swt.win32.win32.x86_64:3.127.0")
+                implementation("org.eclipse.platform:org.eclipse.swt.win32.win32.x86_64:3.127.0") { isTransitive = false }
             }
         }
     }

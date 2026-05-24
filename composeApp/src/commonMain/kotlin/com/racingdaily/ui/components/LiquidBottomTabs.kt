@@ -47,7 +47,7 @@ import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
-import com.kyant.shapes.Capsule
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.racingdaily.ui.components.util.DampedDragAnimation
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
@@ -132,7 +132,7 @@ fun LiquidBottomTabs(
                 .graphicsLayer { translationX = panelOffset }
                 .drawBackdrop(
                     backdrop = backdrop,
-                    shape = { Capsule() },
+                    shape = { RoundedCornerShape(50) },
                     effects = {
                         vibrancy()
                         blur(8f.dp.toPx())
@@ -165,7 +165,7 @@ fun LiquidBottomTabs(
                     .graphicsLayer { translationX = panelOffset }
                     .drawBackdrop(
                         backdrop = backdrop,
-                        shape = { Capsule() },
+                        shape = { RoundedCornerShape(50) },
                         effects = {
                             val progress = dampedDragAnimation.pressProgress
                             vibrancy()
@@ -197,7 +197,7 @@ fun LiquidBottomTabs(
                 .then(dampedDragAnimation.modifier)
                 .drawBackdrop(
                     backdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop),
-                    shape = { Capsule() },
+                    shape = { RoundedCornerShape(50) },
                     effects = {
                         val progress = dampedDragAnimation.pressProgress
                         lens(10f.dp.toPx() * progress, 14f.dp.toPx() * progress, chromaticAberration = true)

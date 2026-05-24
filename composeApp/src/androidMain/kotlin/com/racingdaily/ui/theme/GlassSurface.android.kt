@@ -13,6 +13,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.hazeChild
 import dev.chrisbanes.haze.HazeStyle
+import com.kyant.backdrop.*
+import com.kyant.backdrop.backdrops.*
 
 @Composable
 actual fun GlassSurface(
@@ -46,5 +48,22 @@ actual fun GlassSurface(
                 .border(1.dp, Color.White.copy(alpha = borderAlpha), shape),
             content = content
         )
+    }
+}
+
+val LocalLayerBackdrop = androidx.compose.runtime.staticCompositionLocalOf<LayerBackdrop?> { null }
+
+@Composable
+actual fun BackdropWrapper(
+    modifier: Modifier,
+    content: @Composable () -> Unit
+) {
+    val backdrop = rememberLayerBackdrop()
+    androidx.compose.runtime.CompositionLocalProvider(LocalLayerBackdrop provides backdrop) {
+        Box(
+            modifier = modifier.layerBackdrop(backdrop)
+        ) {
+            content()
+        }
     }
 }

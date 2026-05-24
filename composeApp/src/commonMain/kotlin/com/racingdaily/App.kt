@@ -27,8 +27,8 @@ import com.racingdaily.ui.screens.rankings.RankingScreen
 import com.racingdaily.ui.screens.track.TrackScreen
 import com.racingdaily.ui.theme.RacingDailyTheme
 import com.racingdaily.ui.theme.LocalHazeState
+import com.racingdaily.ui.theme.BackdropWrapper
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.haze
 
 @Composable
 fun App() {
@@ -48,11 +48,10 @@ fun App() {
                 modifier = Modifier.fillMaxSize(),
             ) { innerPadding ->
                 Box(modifier = Modifier.fillMaxSize()) {
-                    Box(
+                    BackdropWrapper(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(top = innerPadding.calculateTopPadding()) // 仅 padding top，底栏不占位
-                            .haze(hazeState)
+                            .padding(top = innerPadding.calculateTopPadding())
                     ) {
                         NavHost(
                             navController = navController,

@@ -20,3 +20,9 @@ expect fun GlassSurface(
     backgroundAlpha: Float,
     content: @Composable BoxScope.() -> Unit
 )
+
+@Composable
+expect fun BackdropWrapper(
+    modifier: Modifier,
+    content: @Composable () -> Unit
+)

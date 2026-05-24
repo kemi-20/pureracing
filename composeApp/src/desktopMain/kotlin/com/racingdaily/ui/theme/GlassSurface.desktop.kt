@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.haze
 import dev.chrisbanes.haze.hazeChild
 import dev.chrisbanes.haze.HazeStyle
 
@@ -46,5 +47,20 @@ actual fun GlassSurface(
                 .border(1.dp, Color.White.copy(alpha = borderAlpha), shape),
             content = content
         )
+    }
+}
+
+@Composable
+actual fun BackdropWrapper(
+    modifier: Modifier,
+    content: @Composable () -> Unit
+) {
+    val hazeState = LocalHazeState.current
+    Box(
+        modifier = modifier.then(
+            if (hazeState != null) Modifier.haze(state = hazeState) else Modifier
+        )
+    ) {
+        content()
     }
 }

@@ -1,19 +1,20 @@
 package com.racingdaily.ui.screens.detail
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -56,6 +57,7 @@ fun HtmlContent(html: String) {
         blocks.forEach { block ->
             when (block) {
                 is HtmlBlock.Image -> AsyncImage(block.src, null, Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).padding(vertical = 4.dp), contentScale = ContentScale.FillWidth)
+                is HtmlBlock.Video -> VideoPlaceholder(block.src)
                 is HtmlBlock.Text -> Text(block.text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, lineHeight = 24.sp)
                 is HtmlBlock.Bold -> Text(block.text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, lineHeight = 24.sp, fontWeight = FontWeight.Bold)
                 is HtmlBlock.Italic -> Text(block.text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, lineHeight = 24.sp, fontStyle = FontStyle.Italic)
@@ -64,8 +66,23 @@ fun HtmlContent(html: String) {
     }
 }
 
+@Composable
+fun VideoPlaceholder(videoUrl: String) {
+    val open = rememberOpenUrl()
+    Surface(
+        Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(8.dp)).clickable { open(videoUrl) },
+        color = Color.Black.copy(alpha = 0.3f)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(Icons.Filled.PlayArrow, "Play video", tint = Color.White, modifier = Modifier.size(48.dp))
+            Text("Tap to play", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp, modifier = Modifier.align(Alignment.BottomCenter).padding(8.dp))
+        }
+    }
+}
+
 sealed class HtmlBlock {
     data class Image(val src: String) : HtmlBlock()
+    data class Video(val src: String) : HtmlBlock()
     data class Text(val text: String) : HtmlBlock()
     data class Bold(val text: String) : HtmlBlock()
     data class Italic(val text: String) : HtmlBlock()
@@ -73,10 +90,19 @@ sealed class HtmlBlock {
 
 fun parseHtmlBlocks(html: String): List<HtmlBlock> {
     val blocks = mutableListOf<HtmlBlock>()
-    // First extract images
     var remaining = html
+
+    // Extract videos first (before img since video may contain source)
+    val videoRegex = Regex("""<source\s+src="([^"]+)"[^>]*>""")
+    val videoMatches = videoRegex.findAll(remaining).map { it.groupValues[1] }.toList()
+    remaining = Regex("""<video[^>]*>.*?</video>""", RegexOption.IGNORE_CASE).replace(remaining) { m ->
+        val idx = videoMatches.indexOfFirst { m.value.contains(it) }
+        if (idx >= 0) "{{VIDEO}}" else ""
+    }
+
+    // Extract images
     val imgRegex = Regex("""<img[^>]+src="([^"]+)"[^>]*>""")
-    val imgMatches = imgRegex.findAll(remaining).toList()
+    val imgMatches = imgRegex.findAll(remaining).map { it.groupValues[1] }.toList()
     remaining = imgRegex.replace(remaining, "{{IMG}}")
 
     // Replace block tags with newlines
@@ -97,73 +123,31 @@ fun parseHtmlBlocks(html: String): List<HtmlBlock> {
     remaining = remaining.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<")
         .replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'")
 
-    // Split by newlines and process
-    val paragraphs = remaining.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
-    var imgIndex = 0
-    paragraphs.forEach { para ->
-        val parts = para.split("{{IMG}}")
-        parts.forEachIndexed { i, part ->
-            if (i > 0 && imgIndex < imgMatches.size) {
-                blocks.add(HtmlBlock.Image(imgMatches[imgIndex].groupValues[1]))
-                imgIndex++
-            }
-            if (part.isNotBlank()) {
-                // Process bold/italic markers
-                parseInlineMarkers(part, blocks)
-            }
+    // Process placeholders in order
+    var vidIdx = 0; var imgIdx = 0
+    val pattern = Regex("""\{\{VIDEO\}\}|\{\{IMG\}\}""")
+    var lastEnd = 0
+    pattern.findAll(remaining).forEach { match ->
+        if (match.range.first > lastEnd) {
+            val text = remaining.substring(lastEnd, match.range.first).trim()
+            if (text.isNotEmpty()) blocks.add(HtmlBlock.Text(text))
         }
-        // Any remaining images for this paragraph
-        while (imgIndex < imgMatches.size && para.count { it == '{' } == 0) {
-            blocks.add(HtmlBlock.Image(imgMatches[imgIndex].groupValues[1]))
-            imgIndex++
+        when (match.value) {
+            "{{VIDEO}}" -> { if (vidIdx < videoMatches.size) { blocks.add(HtmlBlock.Video(videoMatches[vidIdx])); vidIdx++ } }
+            "{{IMG}}" -> { if (imgIdx < imgMatches.size) { blocks.add(HtmlBlock.Image(imgMatches[imgIdx])); imgIdx++ } }
         }
+        lastEnd = match.range.last + 1
     }
-    // Add any images that weren't in paragraphs
-    while (imgIndex < imgMatches.size) {
-        blocks.add(HtmlBlock.Image(imgMatches[imgIndex].groupValues[1]))
-        imgIndex++
+    if (lastEnd < remaining.length) {
+        val text = remaining.substring(lastEnd).trim()
+        if (text.isNotEmpty()) blocks.add(HtmlBlock.Text(text))
     }
-    return blocks.ifEmpty { listOf(HtmlBlock.Text(stripAllTags(html))) }
+    // Add any remaining media
+    while (vidIdx < videoMatches.size) { blocks.add(HtmlBlock.Video(videoMatches[vidIdx])); vidIdx++ }
+    while (imgIdx < imgMatches.size) { blocks.add(HtmlBlock.Image(imgMatches[imgIdx])); imgIdx++ }
+
+    return blocks.ifEmpty { listOf(HtmlBlock.Text(remaining.trim())) }
 }
 
-fun parseInlineMarkers(text: String, blocks: MutableList<HtmlBlock>) {
-    var remaining = text
-    while (remaining.isNotEmpty()) {
-        val boldStart = remaining.indexOf("{{B}}")
-        val italicStart = remaining.indexOf("{{I}}")
-        val nextMarker = listOf(boldStart, italicStart).filter { it >= 0 }.minOrNull()
-
-        if (nextMarker == null) {
-            blocks.add(HtmlBlock.Text(remaining))
-            break
-        }
-
-        if (nextMarker > 0) {
-            blocks.add(HtmlBlock.Text(remaining.substring(0, nextMarker)))
-        }
-
-        if (nextMarker == boldStart) {
-            val end = remaining.indexOf("{{/B}}", nextMarker + 5)
-            if (end >= 0) {
-                blocks.add(HtmlBlock.Bold(remaining.substring(nextMarker + 5, end)))
-                remaining = remaining.substring(end + 6)
-            } else {
-                remaining = remaining.substring(nextMarker + 5)
-            }
-        } else if (nextMarker == italicStart) {
-            val end = remaining.indexOf("{{/I}}", nextMarker + 5)
-            if (end >= 0) {
-                blocks.add(HtmlBlock.Italic(remaining.substring(nextMarker + 5, end)))
-                remaining = remaining.substring(end + 6)
-            } else {
-                remaining = remaining.substring(nextMarker + 5)
-            }
-        }
-    }
-}
-
-fun stripAllTags(html: String): String {
-    return html.replace(Regex("<[^>]+>"), "")
-        .replace("&nbsp;", " ").replace("&amp;", "&")
-        .replace("&lt;", "<").replace("&gt;", ">").trim()
-}
+@Composable
+expect fun rememberOpenUrl(): (String) -> Unit

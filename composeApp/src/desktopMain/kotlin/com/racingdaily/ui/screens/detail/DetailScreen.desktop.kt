@@ -11,14 +11,14 @@ import javafx.scene.web.WebView
 import javax.swing.SwingUtilities
 
 @Composable
-actual fun HtmlView(html: String) {
+actual fun HtmlView(url: String) {
     val jfxPanel = remember { JFXPanel() }
 
-    DisposableEffect(html) {
+    DisposableEffect(url) {
         SwingUtilities.invokeLater {
             Platform.runLater {
                 val wv = WebView()
-                wv.engine.loadContent(html)
+                wv.engine.load(url)
                 jfxPanel.scene = Scene(wv)
             }
         }

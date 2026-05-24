@@ -8,7 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 
 @Composable
-actual fun HtmlView(html: String) {
+actual fun HtmlView(url: String) {
     AndroidView(
         factory = { ctx -> WebView(ctx).apply {
             webViewClient = WebViewClient()
@@ -16,7 +16,7 @@ actual fun HtmlView(html: String) {
             settings.mediaPlaybackRequiresUserGesture = false
             settings.loadWithOverviewMode = true
             settings.useWideViewPort = true
-            loadDataWithBaseURL("https://news.romielf.com/", html, "text/html", "UTF-8", null)
+            loadUrl(url)
         } },
         modifier = Modifier.fillMaxSize()
     )

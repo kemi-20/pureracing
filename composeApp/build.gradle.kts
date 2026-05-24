@@ -67,7 +67,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.racingdaily.client"
+        applicationId = "com.racingdaily.pureracing"
         minSdk = 24
         targetSdk = 36
         versionCode = 1

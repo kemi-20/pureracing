@@ -1,6 +1,6 @@
 1<?xml version="1.0" encoding="utf-8"?>
 2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-3    package="com.racingdaily.client"
+3    package="com.racingdaily.pureracing"
 4    android:versionCode="1"
 5    android:versionName="1.0.0" >
 6
@@ -17,12 +17,12 @@
 13
 14    <permission
 14-->[androidx.core:core:1.16.0] C:\Users\Y\.gradle\caches\8.13\transforms\04d2eaf1b56e901aab470b7e24ca46c0\transformed\core-1.16.0\AndroidManifest.xml:22:5-24:47
-15        android:name="com.racingdaily.client.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+15        android:name="com.racingdaily.pureracing.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
 15-->[androidx.core:core:1.16.0] C:\Users\Y\.gradle\caches\8.13\transforms\04d2eaf1b56e901aab470b7e24ca46c0\transformed\core-1.16.0\AndroidManifest.xml:23:9-81
 16        android:protectionLevel="signature" />
 16-->[androidx.core:core:1.16.0] C:\Users\Y\.gradle\caches\8.13\transforms\04d2eaf1b56e901aab470b7e24ca46c0\transformed\core-1.16.0\AndroidManifest.xml:24:9-44
 17
-18    <uses-permission android:name="com.racingdaily.client.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+18    <uses-permission android:name="com.racingdaily.pureracing.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
 18-->[androidx.core:core:1.16.0] C:\Users\Y\.gradle\caches\8.13\transforms\04d2eaf1b56e901aab470b7e24ca46c0\transformed\core-1.16.0\AndroidManifest.xml:26:5-97
 18-->[androidx.core:core:1.16.0] C:\Users\Y\.gradle\caches\8.13\transforms\04d2eaf1b56e901aab470b7e24ca46c0\transformed\core-1.16.0\AndroidManifest.xml:26:22-94
 19
@@ -64,7 +64,7 @@
 39-->[org.jetbrains.compose.components:components-resources-android:1.11.0] C:\Users\Y\.gradle\caches\8.13\transforms\22cf45c4c0fac5fe5643e6df249a2a5d\transformed\library-release\AndroidManifest.xml:8:9-13:20
 40            android:name="org.jetbrains.compose.resources.AndroidContextProvider"
 40-->[org.jetbrains.compose.components:components-resources-android:1.11.0] C:\Users\Y\.gradle\caches\8.13\transforms\22cf45c4c0fac5fe5643e6df249a2a5d\transformed\library-release\AndroidManifest.xml:9:13-82
-41            android:authorities="com.racingdaily.client.resources.AndroidContextProvider"
+41            android:authorities="com.racingdaily.pureracing.resources.AndroidContextProvider"
 41-->[org.jetbrains.compose.components:components-resources-android:1.11.0] C:\Users\Y\.gradle\caches\8.13\transforms\22cf45c4c0fac5fe5643e6df249a2a5d\transformed\library-release\AndroidManifest.xml:10:13-84
 42            android:enabled="true"
 42-->[org.jetbrains.compose.components:components-resources-android:1.11.0] C:\Users\Y\.gradle\caches\8.13\transforms\22cf45c4c0fac5fe5643e6df249a2a5d\transformed\library-release\AndroidManifest.xml:11:13-35
@@ -89,7 +89,7 @@
 53-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Y\.gradle\caches\8.13\transforms\d21b33a30c354891c65464007f7f855d\transformed\emoji2-1.4.0\AndroidManifest.xml:24:9-32:20
 54            android:name="androidx.startup.InitializationProvider"
 54-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Y\.gradle\caches\8.13\transforms\d21b33a30c354891c65464007f7f855d\transformed\emoji2-1.4.0\AndroidManifest.xml:25:13-67
-55            android:authorities="com.racingdaily.client.androidx-startup"
+55            android:authorities="com.racingdaily.pureracing.androidx-startup"
 55-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Y\.gradle\caches\8.13\transforms\d21b33a30c354891c65464007f7f855d\transformed\emoji2-1.4.0\AndroidManifest.xml:26:13-68
 56            android:exported="false" >
 56-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Y\.gradle\caches\8.13\transforms\d21b33a30c354891c65464007f7f855d\transformed\emoji2-1.4.0\AndroidManifest.xml:27:13-37

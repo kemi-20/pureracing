@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.racingdaily.client"
+    package="com.racingdaily.pureracing"
     android:versionCode="1"
     android:versionName="1.0.0" >
 
@@ -12,10 +12,10 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <permission
-        android:name="com.racingdaily.client.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+        android:name="com.racingdaily.pureracing.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
         android:protectionLevel="signature" />
 
-    <uses-permission android:name="com.racingdaily.client.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+    <uses-permission android:name="com.racingdaily.pureracing.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
 
     <application
         android:allowBackup="true"
@@ -38,7 +38,7 @@
 
         <provider
             android:name="org.jetbrains.compose.resources.AndroidContextProvider"
-            android:authorities="com.racingdaily.client.resources.AndroidContextProvider"
+            android:authorities="com.racingdaily.pureracing.resources.AndroidContextProvider"
             android:enabled="true"
             android:exported="false" >
         </provider>
@@ -52,7 +52,7 @@
 
         <provider
             android:name="androidx.startup.InitializationProvider"
-            android:authorities="com.racingdaily.client.androidx-startup"
+            android:authorities="com.racingdaily.pureracing.androidx-startup"
             android:exported="false" >
             <meta-data
                 android:name="androidx.emoji2.text.EmojiCompatInitializer"

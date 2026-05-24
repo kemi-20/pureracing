@@ -355,7 +355,7 @@ ADDED from [androidx.core:core:1.16.0] C:\Users\Y\.gradle\caches\8.13\transforms
 		ADDED from [androidx.core:core:1.16.0] C:\Users\Y\.gradle\caches\8.13\transforms\04d2eaf1b56e901aab470b7e24ca46c0\transformed\core-1.16.0\AndroidManifest.xml:24:9-44
 	android:name
 		ADDED from [androidx.core:core:1.16.0] C:\Users\Y\.gradle\caches\8.13\transforms\04d2eaf1b56e901aab470b7e24ca46c0\transformed\core-1.16.0\AndroidManifest.xml:23:9-81
-permission#com.racingdaily.client.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+permission#com.racingdaily.pureracing.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
 ADDED from [androidx.core:core:1.16.0] C:\Users\Y\.gradle\caches\8.13\transforms\04d2eaf1b56e901aab470b7e24ca46c0\transformed\core-1.16.0\AndroidManifest.xml:22:5-24:47
 	android:protectionLevel
 		ADDED from [androidx.core:core:1.16.0] C:\Users\Y\.gradle\caches\8.13\transforms\04d2eaf1b56e901aab470b7e24ca46c0\transformed\core-1.16.0\AndroidManifest.xml:24:9-44
@@ -365,7 +365,7 @@ uses-permission#${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
 ADDED from [androidx.core:core:1.16.0] C:\Users\Y\.gradle\caches\8.13\transforms\04d2eaf1b56e901aab470b7e24ca46c0\transformed\core-1.16.0\AndroidManifest.xml:26:5-97
 	android:name
 		ADDED from [androidx.core:core:1.16.0] C:\Users\Y\.gradle\caches\8.13\transforms\04d2eaf1b56e901aab470b7e24ca46c0\transformed\core-1.16.0\AndroidManifest.xml:26:22-94
-uses-permission#com.racingdaily.client.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+uses-permission#com.racingdaily.pureracing.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
 ADDED from [androidx.core:core:1.16.0] C:\Users\Y\.gradle\caches\8.13\transforms\04d2eaf1b56e901aab470b7e24ca46c0\transformed\core-1.16.0\AndroidManifest.xml:26:5-97
 	android:name
 		ADDED from [androidx.core:core:1.16.0] C:\Users\Y\.gradle\caches\8.13\transforms\04d2eaf1b56e901aab470b7e24ca46c0\transformed\core-1.16.0\AndroidManifest.xml:26:22-94

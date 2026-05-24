@@ -1,5 +1,6 @@
 [versions]
 kotlin = "2.3.10"
+javafx = "23.0.2"
 agp = "8.7.3"
 compose-multiplatform = "1.11.0"
 ktor = "3.0.3"
@@ -52,6 +53,10 @@ koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", ver
 # Backdrop Liquid Glass (Multiplatform)
 backdrop = { module = "io.github.kyant0:backdrop", version.ref = "backdrop" }
 shapes = { module = "io.github.kyant0:shapes", version.ref = "shapes" }
+
+# JavaFX (Desktop WebView)
+javafx-web = { module = "org.openjfx:javafx-web", version.ref = "javafx" }
+javafx-swing = { module = "org.openjfx:javafx-swing", version.ref = "javafx" }
 
 # Haze (Blur effect for Android + Desktop)
 haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }

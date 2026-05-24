@@ -50,6 +50,8 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.ktor.client.cio)
                 implementation(libs.kotlinx.coroutines.swing)
+                implementation(libs.javafx.web)
+                implementation(libs.javafx.swing)
             }
         }
     }

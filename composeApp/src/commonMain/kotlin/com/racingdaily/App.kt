@@ -36,7 +36,7 @@ fun App(api: ApiService) {
         if (showChamp) {
             ChampScreen(champCategory, champId, { showChamp = false }, api)
         } else if (showDetail) {
-            DetailScreen(articleId, { showDetail = false }, api)
+            DetailScreen(articleId, { showDetail = false })
         } else {
             Scaffold(
                 bottomBar = {

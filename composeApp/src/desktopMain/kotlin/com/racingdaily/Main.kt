@@ -4,13 +4,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import javafx.application.Platform
 
-fun main() {
-    Platform.startup(Runnable {})
-    application {
-        Window(onCloseRequest = ::exitApplication, title = "RacingDaily", state = rememberWindowState(width = 480.dp, height = 900.dp)) {
-            RacingDailyClient()
-        }
+fun main() = application {
+    Window(onCloseRequest = ::exitApplication, title = "RacingDaily", state = rememberWindowState(width = 480.dp, height = 900.dp)) {
+        RacingDailyClient()
     }
 }

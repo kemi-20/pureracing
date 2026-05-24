@@ -19,10 +19,8 @@ jobs:
           distribution: 'microsoft'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.13'
       - name: Build Desktop distributable
-        run: gradle :composeApp:createDistributable --stacktrace
+        run: .\gradlew.bat :composeApp:createDistributable --stacktrace
       - name: Upload Desktop distributable
         uses: actions/upload-artifact@v4
         with:
@@ -42,10 +40,8 @@ jobs:
           distribution: 'microsoft'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.13'
       - name: Build Android Debug APK
-        run: gradle :composeApp:assembleDebug --stacktrace
+        run: ./gradlew :composeApp:assembleDebug --stacktrace
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:

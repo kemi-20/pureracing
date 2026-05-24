@@ -20,7 +20,6 @@ import coil3.compose.AsyncImage
 import com.racingdaily.data.model.NavTab
 import com.racingdaily.data.model.NewsItem
 import com.racingdaily.data.remote.ApiService
-import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(onArticleClick: (Int) -> Unit, api: ApiService) {
@@ -28,11 +27,23 @@ fun HomeScreen(onArticleClick: (Int) -> Unit, api: ApiService) {
     var selectedTabId by remember { mutableIntStateOf(1) }
     var news by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
-    val scope = rememberCoroutineScope()
+    var error by remember { mutableStateOf<String?>(null) }
+    var reloadKey by remember { mutableIntStateOf(0) }
 
-    fun load() { scope.launch { loading = true; runCatching { api.getNewsList(selectedTabId) }.onSuccess { news = it.list }; loading = false } }
-    LaunchedEffect(Unit) { scope.launch { api.getNavTabs().navbar.let { tabs = it; load() } } }
-    LaunchedEffect(selectedTabId) { load() }
+    LaunchedEffect(reloadKey) {
+        runCatching { api.getNavTabs().navbar }
+            .onSuccess { tabs = it }
+            .onFailure { error = it.message ?: "Unable to load tabs" }
+    }
+
+    LaunchedEffect(selectedTabId, reloadKey) {
+        loading = true
+        error = null
+        runCatching { api.getNewsList(selectedTabId) }
+            .onSuccess { news = it.list }
+            .onFailure { error = it.message ?: "Unable to load news" }
+        loading = false
+    }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Text("RacingDaily", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(16.dp, 12.dp, 16.dp, 4.dp))
@@ -43,6 +54,13 @@ fun HomeScreen(onArticleClick: (Int) -> Unit, api: ApiService) {
             }
         }
         if (loading) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
+        else if (error != null) Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(error.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(12.dp))
+                Button({ reloadKey++ }) { Text("Retry") }
+            }
+        }
         else LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 8.dp)) {
             items(news) { item ->
                 ElevatedCard(

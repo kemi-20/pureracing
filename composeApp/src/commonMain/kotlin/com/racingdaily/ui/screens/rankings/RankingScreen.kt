@@ -22,7 +22,6 @@ import coil3.compose.AsyncImage
 import com.racingdaily.data.model.RankingData
 import com.racingdaily.data.model.RankingOption
 import com.racingdaily.data.remote.ApiService
-import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 
 @Composable
@@ -33,11 +32,35 @@ fun RankingScreen(api: ApiService) {
     var data by remember { mutableStateOf<RankingData?>(null) }
     var loading by remember { mutableStateOf(true) }
     var selectedSubTab by remember { mutableStateOf("") }
-    val scope = rememberCoroutineScope()
+    var error by remember { mutableStateOf<String?>(null) }
+    var reloadKey by remember { mutableIntStateOf(0) }
 
-    fun load() { val s = selectedSeason ?: return; scope.launch { loading = true; runCatching { if (isDriver) api.getDriverRanking(s.chp_id, s.id) else api.getTeamRanking(s.chp_id, s.id) }.onSuccess { data = it; if (selectedSubTab.isEmpty() && it.list.isNotEmpty()) selectedSubTab = it.list.first().tab_key }; loading = false } }
-    LaunchedEffect(Unit) { scope.launch { api.getRankingNav().list.firstOrNull()?.options?.let { seasons = it; selectedSeason = it.firstOrNull(); load() } } }
-    LaunchedEffect(selectedSeason, isDriver) { load() }
+    LaunchedEffect(reloadKey) {
+        loading = true
+        error = null
+        runCatching { api.getRankingNav().list.firstOrNull()?.options.orEmpty() }
+            .onSuccess {
+                seasons = it
+                selectedSeason = it.firstOrNull { option -> option.id == 2026 } ?: it.firstOrNull()
+            }
+            .onFailure { error = it.message ?: "Unable to load seasons" }
+        if (selectedSeason == null) loading = false
+    }
+
+    LaunchedEffect(selectedSeason, isDriver, reloadKey) {
+        val season = selectedSeason ?: return@LaunchedEffect
+        loading = true
+        error = null
+        runCatching {
+            if (isDriver) api.getDriverRanking(season.chp_id, season.id) else api.getTeamRanking(season.chp_id, season.id)
+        }.onSuccess {
+            data = it
+            selectedSubTab = it.list.firstOrNull()?.tab_key.orEmpty()
+        }.onFailure {
+            error = it.message ?: "Unable to load rankings"
+        }
+        loading = false
+    }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Text("Rankings", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(16.dp, 16.dp, 16.dp, 8.dp))
@@ -52,6 +75,13 @@ fun RankingScreen(api: ApiService) {
             }
         }
         if (loading) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
+        else if (error != null) Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(error.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(12.dp))
+                Button({ reloadKey++ }) { Text("Retry") }
+            }
+        }
     }
 }
 

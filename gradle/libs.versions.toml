@@ -5,14 +5,8 @@ compose-multiplatform = "1.11.0"
 ktor = "3.0.3"
 kotlinx-serialization = "1.7.3"
 kotlinx-coroutines = "1.9.0"
-lifecycle = "2.8.4"
-navigation = "2.9.2"
 activity-compose = "1.9.3"
-coil = "3.0.4"
-koin = "4.0.0"
-backdrop = "2.0.0-alpha03"
-shapes = "1.1.0"
-haze = "0.7.3"
+coil = "3.4.0"
 
 [libraries]
 # Ktor Client
@@ -30,31 +24,12 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
 
-# Lifecycle ViewModel (Compose Multiplatform)
-lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
-
-# Navigation Compose
-navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigation" }
-androidx-core-bundle = { module = "org.jetbrains.androidx.core:core-bundle", version = "1.0.1" }
-
 # Android Activity
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
 
 # Image Loading
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
-
-# DI
-koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
-koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
-koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", version.ref = "koin" }
-
-# Backdrop Liquid Glass (Multiplatform)
-backdrop = { module = "io.github.kyant0:backdrop", version.ref = "backdrop" }
-shapes = { module = "io.github.kyant0:shapes", version.ref = "shapes" }
-
-# Haze (Blur effect for Android + Desktop)
-haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

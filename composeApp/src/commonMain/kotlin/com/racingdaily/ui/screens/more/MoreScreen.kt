@@ -11,9 +11,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.racingdaily.data.model.ChampSub
-import com.racingdaily.data.model.ChampSubstation
 import com.racingdaily.data.remote.ApiService
-import kotlinx.coroutines.launch
 
 data class ChampData(val subs: List<ChampSub> = emptyList())
 
@@ -22,15 +20,31 @@ fun MoreScreen(onChampClick: (String, Int) -> Unit, api: ApiService) {
     var customSubs by remember { mutableStateOf<List<ChampSub>>(emptyList()) }
     var motogpSubs by remember { mutableStateOf<List<ChampSub>>(emptyList()) }
     var tcrSubs by remember { mutableStateOf<List<ChampSub>>(emptyList()) }
-    val scope = rememberCoroutineScope()
-    LaunchedEffect(Unit) {
-        scope.launch { runCatching { api.getCustomSubstation().tmp }.onSuccess { customSubs = it } }
-        scope.launch { runCatching { api.getMotogpSubstation().tmp }.onSuccess { motogpSubs = it } }
-        scope.launch { runCatching { api.getTcrSubstation().tmp }.onSuccess { tcrSubs = it } }
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var reloadKey by remember { mutableIntStateOf(0) }
+    LaunchedEffect(reloadKey) {
+        loading = true
+        error = null
+        runCatching { api.getCustomSubstation().tmp }.onSuccess { customSubs = it }.onFailure { error = it.message }
+        runCatching { api.getMotogpSubstation().tmp }.onSuccess { motogpSubs = it }.onFailure { error = error ?: it.message }
+        runCatching { api.getTcrSubstation().tmp }.onSuccess { tcrSubs = it }.onFailure { error = error ?: it.message }
+        loading = false
     }
 
     LazyColumn(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item { Text("More", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground); Spacer(Modifier.height(12.dp)) }
+        if (loading) {
+            item { Box(Modifier.fillMaxWidth().height(180.dp), contentAlignment = androidx.compose.ui.Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) } }
+        } else if (error != null && customSubs.isEmpty() && motogpSubs.isEmpty() && tcrSubs.isEmpty()) {
+            item {
+                Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(12.dp))
+                    Button({ reloadKey++ }) { Text("Retry") }
+                }
+            }
+        }
         item { Text("Championships", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold) }
         item { ChampCard("Custom Championship", customSubs) { sub -> onChampClick("custom", sub.custom_id) } }
         item { ChampCard("MotoGP", motogpSubs) { sub -> onChampClick("motogp", sub.motogp_id) } }

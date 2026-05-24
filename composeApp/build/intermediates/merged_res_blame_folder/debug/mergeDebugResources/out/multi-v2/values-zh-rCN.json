@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.racingdaily.client.composeApp-mergeDebugResources-43:/values-zh-rCN/values-zh-rCN.xml",
+            "outputFile": "com.racingdaily.client.composeApp-mergeDebugResources-44:/values-zh-rCN/values-zh-rCN.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\Y\\.gradle\\caches\\8.13\\transforms\\73ff701f3b6a1ddc699636f4249dd924\\transformed\\ui\\res\\values-zh-rCN\\values-zh-rCN.xml",
+                    "source": "C:\\Users\\Y\\.gradle\\caches\\8.13\\transforms\\633fb57a91ee5e9994884d580e6966c5\\transformed\\ui\\res\\values-zh-rCN\\values-zh-rCN.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
@@ -21,7 +21,7 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\Y\\.gradle\\caches\\8.13\\transforms\\04d2eaf1b56e901aab470b7e24ca46c0\\transformed\\core-1.16.0\\res\\values-zh-rCN\\values-zh-rCN.xml",
+                    "source": "C:\\Users\\Y\\.gradle\\caches\\8.13\\transforms\\2caa516c3fcfe898c143f4b5f3e2c635\\transformed\\core-1.16.0\\res\\values-zh-rCN\\values-zh-rCN.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9",
                         "startColumns": "4,4,4,4,4,4,4,4",
@@ -38,7 +38,7 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\Y\\.gradle\\caches\\8.13\\transforms\\6f77db06729fd2bc3eb878151a3a7b34\\transformed\\material3\\res\\values-zh-rCN\\values-zh-rCN.xml",
+                    "source": "C:\\Users\\Y\\.gradle\\caches\\8.13\\transforms\\3e2ba55b051f619ffe82f4cc0021dee7\\transformed\\material3\\res\\values-zh-rCN\\values-zh-rCN.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
@@ -55,7 +55,7 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\Y\\.gradle\\caches\\8.13\\transforms\\c7ad1cdff617f22768d938b847bb18a1\\transformed\\foundation\\res\\values-zh-rCN\\values-zh-rCN.xml",
+                    "source": "C:\\Users\\Y\\.gradle\\caches\\8.13\\transforms\\90ff42a6ec380382c20672d03568966a\\transformed\\foundation\\res\\values-zh-rCN\\values-zh-rCN.xml",
                     "from": {
                         "startLines": "2,3,4",
                         "startColumns": "4,4,4",

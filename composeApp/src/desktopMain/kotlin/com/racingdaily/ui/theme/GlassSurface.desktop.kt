@@ -11,6 +11,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.hazeChild
+import dev.chrisbanes.haze.HazeStyle
 
 @Composable
 actual fun GlassSurface(
@@ -21,11 +23,28 @@ actual fun GlassSurface(
     backgroundAlpha: Float,
     content: @Composable BoxScope.() -> Unit
 ) {
-    Box(
-        modifier = modifier
-            .clip(shape)
-            .background(Color.White.copy(alpha = backgroundAlpha))
-            .border(1.dp, Color.White.copy(alpha = borderAlpha), shape),
-        content = content
-    )
+    val hazeState = LocalHazeState.current
+    if (hazeState != null) {
+        Box(
+            modifier = modifier
+                .hazeChild(
+                    state = hazeState,
+                    shape = shape,
+                    style = HazeStyle(
+                        tint = Color.White.copy(alpha = backgroundAlpha),
+                        blurRadius = blurRadius
+                    )
+                )
+                .border(1.dp, Color.White.copy(alpha = borderAlpha), shape),
+            content = content
+        )
+    } else {
+        Box(
+            modifier = modifier
+                .clip(shape)
+                .background(Color.White.copy(alpha = backgroundAlpha))
+                .border(1.dp, Color.White.copy(alpha = borderAlpha), shape),
+            content = content
+        )
+    }
 }

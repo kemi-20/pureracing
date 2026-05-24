@@ -26,7 +26,7 @@ fun MoreScreen(navController: NavHostController, viewModel: MoreViewModel = koin
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(Background),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 80.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item {

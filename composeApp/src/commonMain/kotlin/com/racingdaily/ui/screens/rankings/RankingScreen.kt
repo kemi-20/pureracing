@@ -107,7 +107,7 @@ fun RankingDataView(data: com.racingdaily.data.model.RankingData?) {
     var selectedTab by remember { mutableStateOf(data.list.firstOrNull()?.tab_key ?: "") }
 
     LazyColumn(
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 80.dp)
     ) {
         // Sub-tabs
         item {

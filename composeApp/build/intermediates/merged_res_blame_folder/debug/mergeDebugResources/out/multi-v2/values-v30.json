@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "com.racingdaily.client.composeApp-mergeDebugResources-43:/values-v30/values-v30.xml",
+            "outputFile": "com.racingdaily.client.composeApp-mergeDebugResources-44:/values-v30/values-v30.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\Y\\.gradle\\caches\\8.13\\transforms\\6f77db06729fd2bc3eb878151a3a7b34\\transformed\\material3\\res\\values-v30\\values-v30.xml",
+                    "source": "C:\\Users\\Y\\.gradle\\caches\\8.13\\transforms\\3e2ba55b051f619ffe82f4cc0021dee7\\transformed\\material3\\res\\values-v30\\values-v30.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",

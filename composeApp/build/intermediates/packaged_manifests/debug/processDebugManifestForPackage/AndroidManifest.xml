@@ -26,7 +26,7 @@
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.NoActionBar" >
         <activity
-            android:name="com.racingdaily.client.MainActivity"
+            android:name="com.racingdaily.MainActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize" >
             <intent-filter>

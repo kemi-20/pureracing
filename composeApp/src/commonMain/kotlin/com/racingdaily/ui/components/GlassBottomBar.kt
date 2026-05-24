@@ -40,12 +40,14 @@ fun GlassBottomBar(
     currentRoute: String?,
     onTabSelected: (String) -> Unit
 ) {
-    Box(
+    GlassSurface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp)
-            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-            .background(Color.White.copy(alpha = 0.08f))
+            .height(64.dp),
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        blurRadius = 20.dp,
+        borderAlpha = 0.12f,
+        backgroundAlpha = 0.08f
     ) {
         Row(
             modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),

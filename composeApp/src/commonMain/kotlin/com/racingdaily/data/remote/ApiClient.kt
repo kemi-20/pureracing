@@ -28,3 +28,21 @@ fun createHttpClient(): HttpClient = HttpClient {
         header("Accept", "application/json")
     }
 }
+
+fun createCoilHttpClient(): HttpClient = HttpClient {
+    install(ContentNegotiation) {
+        json(Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+            prettyPrint = false
+            coerceInputValues = true
+        })
+    }
+    install(Logging) {
+        level = LogLevel.NONE
+    }
+    defaultRequest {
+        header("User-Agent", "RacingDaily/1.2.9")
+        header("Referer", "https://oss.static.romielf.com")
+    }
+}

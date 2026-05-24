@@ -45,7 +45,7 @@ data class NewsTag(
 
 @Serializable
 data class NewsListData(
-    val navigation: kotlinx.serialization.json.JsonObject? = null,
+    val navigation: kotlinx.serialization.json.JsonElement? = null,
     val list: List<NewsItem> = emptyList(),
     val next_page: Int = 0
 )
@@ -77,8 +77,8 @@ data class NavTab(
 @Serializable
 data class Navitv2Data(
     val navbar: List<NavTab> = emptyList(),
-    val status: kotlinx.serialization.json.JsonObject? = null,
-    val state: kotlinx.serialization.json.JsonObject? = null,
+    val status: kotlinx.serialization.json.JsonElement? = null,
+    val state: kotlinx.serialization.json.JsonElement? = null,
     val edition: String = ""
 )
 
@@ -132,7 +132,7 @@ data class LiveSource(
     val live_commentary: List<String> = emptyList(),
     val live_status: Int = 0,
     val live_ispay: Int = 0,
-    val live_url: kotlinx.serialization.json.JsonPrimitive? = null
+    val live_url: kotlinx.serialization.json.JsonElement? = null
 )
 
 @Serializable

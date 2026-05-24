@@ -11,6 +11,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.savedstate.read
 import com.racingdaily.ui.components.GlassBottomBar
 import com.racingdaily.ui.navigation.Routes
 import com.racingdaily.ui.screens.home.HomeScreen
@@ -70,21 +71,21 @@ fun App() {
                     MoreScreen(navController = navController)
                 }
                 composable("${Routes.NewsDetail}/{articleId}") { backStackEntry ->
-                    val articleId = backStackEntry.arguments?.getString("articleId")?.toIntOrNull() ?: 0
+                    val articleId = backStackEntry.arguments?.read { getString("articleId") }?.toIntOrNull() ?: 0
                     NewsDetailScreen(navController = navController, articleId = articleId)
                 }
                 composable("${Routes.SessionDetail}/{gpId}/{sessionId}") { backStackEntry ->
-                    val gpId = backStackEntry.arguments?.getString("gpId")?.toIntOrNull() ?: 0
-                    val sessionId = backStackEntry.arguments?.getString("sessionId")?.toIntOrNull() ?: 0
+                    val gpId = backStackEntry.arguments?.read { getString("gpId") }?.toIntOrNull() ?: 0
+                    val sessionId = backStackEntry.arguments?.read { getString("sessionId") }?.toIntOrNull() ?: 0
                     SessionDetailScreen(navController = navController, gpId = gpId, sessionId = sessionId)
                 }
                 composable("${Routes.TrackDetail}/{trackId}") { backStackEntry ->
-                    val trackId = backStackEntry.arguments?.getString("trackId")?.toIntOrNull() ?: 0
+                    val trackId = backStackEntry.arguments?.read { getString("trackId") }?.toIntOrNull() ?: 0
                     TrackScreen(navController = navController, trackId = trackId)
                 }
                 composable("${Routes.ChampionshipDriver}/{category}/{id}") { backStackEntry ->
-                    val category = backStackEntry.arguments?.getString("category") ?: "custom"
-                    val id = backStackEntry.arguments?.getString("id")?.toIntOrNull() ?: 0
+                    val category = backStackEntry.arguments?.read { getString("category") } ?: "custom"
+                    val id = backStackEntry.arguments?.read { getString("id") }?.toIntOrNull() ?: 0
                     RankingScreen(navController = navController, category = category, championshipId = id)
                 }
             }

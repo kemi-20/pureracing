@@ -2,6 +2,7 @@ package com.racingdaily
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -47,12 +48,12 @@ fun App() {
             Scaffold(
                 modifier = Modifier.fillMaxSize(),
             ) { innerPadding ->
-                Box(modifier = Modifier.fillMaxSize()) {
-                    BackdropWrapper(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = innerPadding.calculateTopPadding())
-                    ) {
+                BackdropWrapper(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = innerPadding.calculateTopPadding())
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
                         NavHost(
                             navController = navController,
                             startDestination = Routes.Home
@@ -88,26 +89,27 @@ fun App() {
                                 RankingScreen(navController = navController, category = category, championshipId = id)
                             }
                         }
-                    }
 
-                    if (showBottomBar) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(bottom = innerPadding.calculateBottomPadding())
-                        ) {
-                            GlassBottomBar(
-                                currentRoute = currentDestination?.route,
-                                onTabSelected = { route ->
-                                    navController.navigate(route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
+                        if (showBottomBar) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .fillMaxWidth()
+                                    .padding(bottom = innerPadding.calculateBottomPadding())
+                            ) {
+                                GlassBottomBar(
+                                    currentRoute = currentDestination?.route,
+                                    onTabSelected = { route ->
+                                        navController.navigate(route) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
                                         }
-                                        launchSingleTop = true
-                                        restoreState = true
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
                     }
                 }

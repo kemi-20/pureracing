@@ -64,8 +64,13 @@ actual fun GlassBottomBar(
     currentRoute: String?,
     onTabSelected: (String) -> Unit
 ) {
-    // Use the backdrop already provided by BackdropWrapper
-    val backdrop = LocalLayerBackdrop.current ?: return
+    // Use the backdrop already provided by BackdropWrapper. If it's missing
+    // (e.g. BackdropWrapper hasn't composed yet, or this bar is used outside
+    // of it), fall back to a self-owned layer so we never crash and never
+    // disappear silently. Always invoke rememberLayerBackdrop so the slot
+    // table stays consistent across recompositions.
+    val fallbackBackdrop = rememberLayerBackdrop()
+    val backdrop = LocalLayerBackdrop.current ?: fallbackBackdrop
 
     val selectedIndex = BottomTabs.indexOfFirst { it.route == currentRoute }.coerceAtLeast(0)
 
@@ -130,14 +135,17 @@ fun LiquidBottomTabs(
         contentAlignment = Alignment.CenterStart
     ) {
         val density = LocalDensity.current
+        // Guard against unmeasured/unconstrained widths to avoid NaN / Infinity
+        // in the gesture and animation math below.
+        val safeMaxWidth = constraints.maxWidth.coerceAtLeast(1)
         val tabWidth = with(density) {
-            (constraints.maxWidth.toFloat() - 8f.dp.toPx()) / tabsCount
+            ((safeMaxWidth.toFloat() - 8f.dp.toPx()) / tabsCount).coerceAtLeast(1f)
         }
 
         val offsetAnimation = remember { Animatable(0f) }
         val panelOffset by remember(density) {
             derivedStateOf {
-                val fraction = (offsetAnimation.value / constraints.maxWidth).fastCoerceIn(-1f, 1f)
+                val fraction = (offsetAnimation.value / safeMaxWidth).fastCoerceIn(-1f, 1f)
                 with(density) {
                     4f.dp.toPx() * fraction.sign * androidx.compose.animation.core.EaseOut.transform(abs(fraction))
                 }

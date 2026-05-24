@@ -1,12 +1,13 @@
 [versions]
-kotlin = "2.1.10"
+kotlin = "2.3.10"
 agp = "8.7.3"
-compose-multiplatform = "1.7.1"
+compose-multiplatform = "1.11.0"
 ktor = "3.0.3"
 kotlinx-serialization = "1.7.3"
 kotlinx-coroutines = "1.9.0"
 lifecycle = "2.8.4"
 navigation = "2.8.0-alpha10"
+activity-compose = "1.9.3"
 coil = "3.0.4"
 koin = "4.0.0"
 backdrop = "1.0.6"
@@ -15,7 +16,7 @@ backdrop = "1.0.6"
 # Ktor Client
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
-ktor-client-winhttp = { module = "io.ktor:ktor-client-winhttp", version.ref = "ktor" }
+ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
@@ -32,6 +33,9 @@ lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifec
 # Navigation Compose
 navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigation" }
 
+# Android Activity
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
+
 # Image Loading
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
@@ -39,6 +43,7 @@ coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.r
 # DI
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
+koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", version.ref = "koin" }
 
 # Backdrop Liquid Glass (Android only)
 backdrop = { module = "io.github.kyant0:backdrop", version.ref = "backdrop" }

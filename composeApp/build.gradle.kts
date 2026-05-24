@@ -1,3 +1,4 @@
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -8,14 +9,6 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
 }
 
-repositories {
-    google()
-    mavenCentral()
-    maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-}
-
-val includeDesktop = System.getProperty("os.name").lowercase().contains("windows")
-
 kotlin {
     androidTarget {
         compilerOptions {
@@ -23,18 +16,13 @@ kotlin {
         }
     }
 
-    if (includeDesktop) {
-        mingwX64("desktop") {
-            binaries {
-                executable {
-                    entryPoint = "com.racingdaily.MainKt"
-                }
-            }
+    jvm("desktop") {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
         }
     }
 
     sourceSets {
-
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)
@@ -42,6 +30,8 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.animation)
+            implementation(libs.lifecycle.viewmodel.compose)
+            implementation(libs.navigation.compose)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.ktor.client.core)
@@ -50,19 +40,21 @@ kotlin {
             implementation(libs.ktor.client.logging)
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
+            implementation(libs.koin.compose.viewmodel)
             implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor3)
         }
 
         androidMain.dependencies {
+            implementation(libs.androidx.activity.compose)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.backdrop)
         }
 
-        if (includeDesktop) {
-            val desktopMain by getting {
-                dependencies {
-                    implementation(libs.ktor.client.winhttp)
-                }
+        val desktopMain by getting {
+            dependencies {
+                implementation(compose.desktop.currentOs)
+                implementation(libs.ktor.client.cio)
             }
         }
     }
@@ -92,10 +84,13 @@ android {
     }
 }
 
-if (includeDesktop) {
-    compose.desktop {
-        application {
-            mainClass = "com.racingdaily.MainKt"
+compose.desktop {
+    application {
+        mainClass = "com.racingdaily.MainKt"
+        nativeDistributions {
+            targetFormats(TargetFormat.Exe)
+            packageName = "RacingDaily"
+            packageVersion = "1.0.0"
         }
     }
 }

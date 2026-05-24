@@ -80,7 +80,6 @@ fun GlassBottomBar(
     }
 }
 
-@Composable
 fun rememberNewsIcon(): ImageVector = ImageVector.Builder(
     name = "News", defaultWidth = 24.0.dp, defaultHeight = 24.0.dp,
     viewportWidth = 24f, viewportHeight = 24f
@@ -111,7 +110,6 @@ fun rememberNewsIcon(): ImageVector = ImageVector.Builder(
     }
 }.build()
 
-@Composable
 fun rememberRaceIcon(): ImageVector = ImageVector.Builder(
     name = "Race", defaultWidth = 24.0.dp, defaultHeight = 24.0.dp,
     viewportWidth = 24f, viewportHeight = 24f
@@ -137,7 +135,6 @@ fun rememberRaceIcon(): ImageVector = ImageVector.Builder(
     }
 }.build()
 
-@Composable
 fun rememberRankIcon(): ImageVector = ImageVector.Builder(
     name = "Rank", defaultWidth = 24.0.dp, defaultHeight = 24.0.dp,
     viewportWidth = 24f, viewportHeight = 24f
@@ -164,7 +161,6 @@ fun rememberRankIcon(): ImageVector = ImageVector.Builder(
     }
 }.build()
 
-@Composable
 fun rememberMoreIcon(): ImageVector = ImageVector.Builder(
     name = "More", defaultWidth = 24.0.dp, defaultHeight = 24.0.dp,
     viewportWidth = 24f, viewportHeight = 24f

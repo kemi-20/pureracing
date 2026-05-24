@@ -41,7 +41,7 @@ fun DetailScreen(articleId: Int, onBack: () -> Unit, api: ApiService) {
 
                 // Extract and show images from HTML content
                 val images = extractImages(a.content)
-                val text = stripHtml(a.content)
+                val text = parseHtml(a.content)
 
                 if (images.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
@@ -59,16 +59,19 @@ fun DetailScreen(articleId: Int, onBack: () -> Unit, api: ApiService) {
 }
 
 fun extractImages(html: String): List<String> {
-    val regex = Regex("""<img[^>]+src="([^"]+)"""")
-    return regex.findAll(html).map { it.groupValues[1] }.toList()
+    return Regex("""<img[^>]+src="([^"]+)"""").findAll(html).map { it.groupValues[1] }.toList()
 }
 
-fun stripHtml(html: String): String {
-    return html.replace(Regex("<[^>]+>"), "")
-        .replace("&nbsp;", " ")
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .trim()
+fun parseHtml(html: String): String {
+    var result = html
+    // Replace block elements with newlines
+    result = result.replace(Regex("</?(p|div|h[1-6]|li|tr|br)[^>]*>", RegexOption.IGNORE_CASE), "\n")
+    // Remove remaining tags
+    result = result.replace(Regex("<[^>]+>"), "")
+    // Decode entities
+    result = result.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<")
+        .replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'")
+    // Collapse multiple blank lines
+    result = result.replace(Regex("\n{3,}"), "\n\n").trim()
+    return result
 }

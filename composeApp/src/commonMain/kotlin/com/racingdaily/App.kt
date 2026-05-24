@@ -6,11 +6,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathFillType
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,10 +39,10 @@ fun App(api: ApiService) {
         } else {
             Scaffold(
                 bottomBar = { NavigationBar(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f), tonalElevation = 0.dp) {
-                    NavItem(Screen.HOME, "News", rememberNewsIcon(), currentScreen) { currentScreen = Screen.HOME }
-                    NavItem(Screen.RACE, "Race", rememberRaceIcon(), currentScreen) { currentScreen = Screen.RACE }
-                    NavItem(Screen.RANKINGS, "Rank", rememberRankIcon(), currentScreen) { currentScreen = Screen.RANKINGS }
-                    NavItem(Screen.MORE, "More", rememberMoreIcon(), currentScreen) { currentScreen = Screen.MORE }
+                    NavItem(Screen.HOME, "News", "📰", currentScreen) { currentScreen = Screen.HOME }
+                    NavItem(Screen.RACE, "Race", "🏁", currentScreen) { currentScreen = Screen.RACE }
+                    NavItem(Screen.RANKINGS, "Rank", "🏆", currentScreen) { currentScreen = Screen.RANKINGS }
+                    NavItem(Screen.MORE, "More", "⋮", currentScreen) { currentScreen = Screen.MORE }
                 } }
             ) { padding ->
                 Box(Modifier.padding(padding)) {
@@ -64,9 +59,14 @@ fun App(api: ApiService) {
 }
 
 @Composable
-fun NavItem(screen: Screen, label: String, icon: ImageVector, current: Screen, onClick: () -> Unit) {
+fun NavItem(screen: Screen, label: String, icon: String, current: Screen, onClick: () -> Unit) {
     val sel = current == screen
-    NavigationBarItem(sel, onClick, icon = { Icon(icon, label, tint = if (sel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }, label = { Text(label, fontSize = 11.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal, color = if (sel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) })
+    NavigationBarItem(
+        selected = sel,
+        onClick = onClick,
+        icon = { Text(icon, fontSize = 20.sp) },
+        label = { Text(label, fontSize = 11.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal, color = if (sel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
+    )
 }
 
 @Composable
@@ -94,10 +94,3 @@ fun ChampScreen(category: String, id: Int, onBack: () -> Unit, api: ApiService) 
         }
     }
 }
-
-fun rememberNewsIcon() = vectorIcon("News") { moveTo(4f, 4f); lineTo(4f, 20f); lineTo(20f, 20f); lineTo(20f, 4f); lineTo(4f, 4f); close(); moveTo(6f, 6f); lineTo(18f, 6f); lineTo(18f, 18f); lineTo(6f, 18f); close(); moveTo(8f, 10f); lineTo(16f, 10f); lineTo(16f, 8f); lineTo(8f, 8f); close(); moveTo(8f, 14f); lineTo(14f, 14f); lineTo(14f, 12f); lineTo(8f, 12f); close() }
-fun rememberRaceIcon() = vectorIcon("Race") { moveTo(12f, 2f); curveTo(6.48f, 2f, 2f, 6.48f, 2f, 12f); curveTo(2f, 17.52f, 6.48f, 22f, 12f, 22f); curveTo(17.52f, 22f, 22f, 17.52f, 22f, 12f); curveTo(22f, 6.48f, 17.52f, 2f, 12f, 2f); close(); moveTo(12f, 20f); curveTo(7.59f, 20f, 4f, 16.41f, 4f, 12f); curveTo(4f, 7.59f, 7.59f, 4f, 12f, 4f); curveTo(16.41f, 4f, 20f, 7.59f, 20f, 12f); curveTo(20f, 16.41f, 16.41f, 20f, 12f, 20f); close(); moveTo(12f, 6f); lineTo(9f, 17f); lineTo(15f, 12f); lineTo(12f, 6f); close() }
-fun rememberRankIcon() = vectorIcon("Rank") { moveTo(6f, 10f); lineTo(6f, 20f); lineTo(10f, 20f); lineTo(10f, 10f); lineTo(6f, 10f); close(); moveTo(10f, 4f); lineTo(10f, 20f); lineTo(14f, 20f); lineTo(14f, 4f); lineTo(10f, 4f); close(); moveTo(14f, 8f); lineTo(14f, 20f); lineTo(18f, 20f); lineTo(18f, 8f); lineTo(14f, 8f); close() }
-fun rememberMoreIcon() = vectorIcon("More") { moveTo(12f, 8f); curveTo(13.1f, 8f, 14f, 7.1f, 14f, 6f); curveTo(14f, 4.9f, 13.1f, 4f, 12f, 4f); curveTo(10.9f, 4f, 10f, 4.9f, 10f, 6f); curveTo(10f, 7.1f, 10.9f, 8f, 12f, 8f); close(); moveTo(12f, 14f); curveTo(13.1f, 14f, 14f, 13.1f, 14f, 12f); curveTo(14f, 10.9f, 13.1f, 10f, 12f, 10f); curveTo(10.9f, 10f, 10f, 10.9f, 10f, 12f); curveTo(10f, 13.1f, 10.9f, 14f, 12f, 14f); close(); moveTo(12f, 20f); curveTo(13.1f, 20f, 14f, 19.1f, 14f, 18f); curveTo(14f, 16.9f, 13.1f, 16f, 12f, 16f); curveTo(10.9f, 16f, 10f, 16.9f, 10f, 18f); curveTo(10f, 19.1f, 10.9f, 20f, 12f, 20f); close() }
-
-fun vectorIcon(name: String, block: androidx.compose.ui.graphics.vector.ImageVector.Builder.() -> Unit) = ImageVector.Builder(name, 24.0.dp, 24.0.dp, 24f, 24f).apply { path(fill = SolidColor(Color.White), pathFillType = PathFillType.NonZero, block = block) }.build()

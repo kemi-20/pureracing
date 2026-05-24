@@ -10,8 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ChampSub
-import ChampSubstation
+import com.racingdaily.data.model.ChampSub
+import com.racingdaily.data.model.ChampSubstation
 import com.racingdaily.data.remote.ApiService
 import kotlinx.coroutines.launch
 

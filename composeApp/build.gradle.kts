@@ -55,7 +55,7 @@ kotlin {
 }
 
 android {
-    namespace = "com.racingdaily.client"
+    namespace = "com.racingdaily"
     compileSdk = 36
 
     defaultConfig {

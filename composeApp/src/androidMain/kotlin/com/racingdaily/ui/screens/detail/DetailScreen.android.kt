@@ -14,14 +14,18 @@ actual fun HtmlView(url: String) {
             webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView, url: String) {
                     view.evaluateJavascript("""
-                        var h = document.querySelector('header');
-                        if (h) h.style.display = 'none';
-                        document.body.style.backgroundColor = '#0a0e14';
-                        document.body.style.color = '#e6edf3';
-                        var imgs = document.querySelectorAll('img');
-                        imgs.forEach(function(img) { img.style.maxWidth = '100%'; img.style.height = 'auto'; });
-                        var vids = document.querySelectorAll('video');
-                        vids.forEach(function(v) { v.style.maxWidth = '100%'; v.style.height = 'auto'; });
+                        (function() {
+                            if (document.getElementById('injected-dark-mode')) return;
+                            var style = document.createElement('style');
+                            style.id = 'injected-dark-mode';
+                            style.innerHTML = `
+                                header, .ad-header { display: none !important; }
+                                body { background-color: #000000 !important; color: #E0E0E0 !important; }
+                                img, video { max-width: 100% !important; height: auto !important; border-radius: 12px !important; }
+                                a { color: #82B1FF !important; }
+                            `;
+                            document.head.appendChild(style);
+                        })();
                     """.trimIndent(), null)
                 }
             }

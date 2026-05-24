@@ -22,46 +22,75 @@ actual fun HtmlView(url: String) {
     val shellRef = remember { mutableStateOf<Shell?>(null) }
 
     DisposableEffect(url) {
-        // Dispose old shell
-        shellRef.value?.let { oldShell ->
-            oldShell.display.asyncExec { if (!oldShell.isDisposed) oldShell.dispose() }
-        }
-
-        var disposed = false
         thread(isDaemon = true) {
-            val display = Display()
-            val shell = SWT_AWT.new_Shell(display, canvas)
-            shellRef.value = shell
-            shell.layout = FillLayout()
-            val browser = Browser(shell, SWT.EDGE)
-            browser.addProgressListener(object : ProgressListener {
-                override fun completed(event: org.eclipse.swt.browser.ProgressEvent) {
-                    display.timerExec(1500) {
-                        if (!shell.isDisposed) {
-                            browser.execute("""
-                                var h = document.querySelector('header');
-                                if (h) h.style.display = 'none';
-                                document.body.style.backgroundColor = '#0a0e14';
-                                document.body.style.color = '#e6edf3';
-                            """.trimIndent())
+            val display = Display.getDefault() ?: Display()
+            
+            display.syncExec {
+                try {
+                    val shell = SWT_AWT.new_Shell(display, canvas)
+                    shellRef.value = shell
+                    shell.layout = FillLayout()
+                    
+                    canvas.addComponentListener(object : java.awt.event.ComponentAdapter() {
+                        override fun componentResized(e: java.awt.event.ComponentEvent) {
+                            display.asyncExec {
+                                if (!shell.isDisposed) {
+                                    shell.setSize(canvas.width, canvas.height)
+                                }
+                            }
                         }
+                    })
+                    
+                    val browser = Browser(shell, SWT.EDGE)
+                    browser.addProgressListener(object : ProgressListener {
+                        override fun completed(event: org.eclipse.swt.browser.ProgressEvent) {
+                            display.timerExec(500) {
+                                if (!shell.isDisposed) {
+                                    browser.execute("""
+                                        (function() {
+                                            if (document.getElementById('injected-dark-mode')) return;
+                                            var style = document.createElement('style');
+                                            style.id = 'injected-dark-mode';
+                                            style.innerHTML = `
+                                                header, .ad-header { display: none !important; }
+                                                body { background-color: #000000 !important; color: #E0E0E0 !important; }
+                                                img, video { max-width: 100% !important; height: auto !important; border-radius: 12px !important; }
+                                                a { color: #82B1FF !important; }
+                                            `;
+                                            document.head.appendChild(style);
+                                        })();
+                                    """.trimIndent())
+                                }
+                            }
+                        }
+                        override fun changed(event: org.eclipse.swt.browser.ProgressEvent) {}
+                    })
+                    
+                    browser.setUrl(url)
+                    shell.setSize(canvas.width.coerceAtLeast(1), canvas.height.coerceAtLeast(1))
+                    shell.open()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
+            // Only the thread that created the display can run the event loop
+            if (display.thread == Thread.currentThread()) {
+                while (!display.isDisposed) {
+                    try {
+                        if (!display.readAndDispatch()) display.sleep()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
                     }
                 }
-                override fun changed(event: org.eclipse.swt.browser.ProgressEvent) {}
-            })
-            browser.setUrl(url)
-            shell.setSize(panel.width.coerceAtLeast(1), panel.height.coerceAtLeast(1))
-
-            while (!shell.isDisposed && !disposed) {
-                if (!display.readAndDispatch()) display.sleep()
             }
-            if (!display.isDisposed) display.dispose()
         }
 
         onDispose {
-            disposed = true
             shellRef.value?.let { shell ->
-                shell.display.asyncExec { if (!shell.isDisposed) shell.dispose() }
+                if (!shell.isDisposed) {
+                    shell.display.asyncExec { if (!shell.isDisposed) shell.dispose() }
+                }
             }
         }
     }

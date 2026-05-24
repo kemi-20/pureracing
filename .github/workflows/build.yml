@@ -22,12 +22,12 @@ jobs:
         with:
           gradle-version: '8.13'
       - name: Build Desktop distributable
-        run: gradle :composeApp:createReleaseDistributable --stacktrace
+        run: gradle :composeApp:createDistributable --stacktrace
       - name: Upload Desktop distributable
         uses: actions/upload-artifact@v4
         with:
           name: racingdaily-windows
-          path: composeApp/build/compose/binaries/main-release/app/**
+          path: composeApp/build/compose/binaries/main/app/**
           if-no-files-found: error
 
   build-android:

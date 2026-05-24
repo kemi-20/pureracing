@@ -45,12 +45,13 @@ kotlin {
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
             implementation(libs.haze)
+            implementation(libs.backdrop)
+            implementation(libs.shapes)
         }
 
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.ktor.client.okhttp)
-            implementation(libs.backdrop)
         }
 
         val desktopMain by getting {

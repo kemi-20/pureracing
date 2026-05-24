@@ -5,13 +5,16 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.haze
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.racingdaily.ui.components.LocalLayerBackdrop
 import dev.chrisbanes.haze.hazeChild
 import dev.chrisbanes.haze.HazeStyle
 
@@ -55,12 +58,10 @@ actual fun BackdropWrapper(
     modifier: Modifier,
     content: @Composable () -> Unit
 ) {
-    val hazeState = LocalHazeState.current
-    Box(
-        modifier = modifier.then(
-            if (hazeState != null) Modifier.haze(state = hazeState) else Modifier
-        )
-    ) {
-        content()
+    val backdrop = rememberLayerBackdrop()
+    CompositionLocalProvider(LocalLayerBackdrop provides backdrop) {
+        Box(modifier = modifier.layerBackdrop(backdrop)) {
+            content()
+        }
     }
 }

@@ -5,16 +5,18 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.racingdaily.ui.components.LocalLayerBackdrop
 import dev.chrisbanes.haze.hazeChild
 import dev.chrisbanes.haze.HazeStyle
-import com.kyant.backdrop.*
-import com.kyant.backdrop.backdrops.*
 
 @Composable
 actual fun GlassSurface(
@@ -51,18 +53,14 @@ actual fun GlassSurface(
     }
 }
 
-val LocalLayerBackdrop = androidx.compose.runtime.staticCompositionLocalOf<LayerBackdrop?> { null }
-
 @Composable
 actual fun BackdropWrapper(
     modifier: Modifier,
     content: @Composable () -> Unit
 ) {
     val backdrop = rememberLayerBackdrop()
-    androidx.compose.runtime.CompositionLocalProvider(LocalLayerBackdrop provides backdrop) {
-        Box(
-            modifier = modifier.layerBackdrop(backdrop)
-        ) {
+    CompositionLocalProvider(LocalLayerBackdrop provides backdrop) {
+        Box(modifier = modifier.layerBackdrop(backdrop)) {
             content()
         }
     }

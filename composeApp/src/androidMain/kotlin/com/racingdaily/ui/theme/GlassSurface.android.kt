@@ -12,9 +12,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.racingdaily.ui.components.LocalLayerBackdrop
+import dev.chrisbanes.haze.haze
 import dev.chrisbanes.haze.hazeChild
 import dev.chrisbanes.haze.HazeStyle
 
@@ -58,9 +57,15 @@ actual fun BackdropWrapper(
     modifier: Modifier,
     content: @Composable () -> Unit
 ) {
-    val backdrop = rememberLayerBackdrop()
-    CompositionLocalProvider(LocalLayerBackdrop provides backdrop) {
-        Box(modifier = modifier.layerBackdrop(backdrop)) {
+    val hazeState = LocalHazeState.current
+    // Android uses Haze for blur (WSA-compatible).
+    // Provide a null backdrop so glass components fall back to GlassSurface.
+    CompositionLocalProvider(LocalLayerBackdrop provides null) {
+        Box(
+            modifier = modifier.then(
+                if (hazeState != null) Modifier.haze(state = hazeState) else Modifier
+            )
+        ) {
             content()
         }
     }

@@ -1,185 +1,75 @@
 package com.racingdaily.ui.screens.rankings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHostController
+import coil3.compose.AsyncImage
+import com.racingdaily.data.model.RankingData
 import com.racingdaily.data.model.RankingOption
-import com.racingdaily.data.model.RankingTab
-import com.racingdaily.ui.theme.*
+import com.racingdaily.data.remote.ApiService
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
-import org.koin.compose.viewmodel.koinViewModel
-import org.koin.core.parameter.parametersOf
 
 @Composable
-fun RankingScreen(
-    navController: NavHostController,
-    category: String = "f1",
-    championshipId: Int = 0,
-    viewModel: RankingViewModel = koinViewModel { parametersOf(category, championshipId) }
-) {
-    val state by viewModel.state.collectAsState()
+fun RankingScreen(api: ApiService) {
+    var seasons by remember { mutableStateOf<List<RankingOption>>(emptyList()) }
+    var selectedSeason by remember { mutableStateOf<RankingOption?>(null) }
+    var isDriver by remember { mutableStateOf(true) }
+    var data by remember { mutableStateOf<RankingData?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    var selectedSubTab by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
 
-    Column(modifier = Modifier.fillMaxSize().background(Background)) {
-        Text(
-            "Rankings",
-            color = TextPrimary,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(16.dp, 16.dp, 16.dp, 8.dp)
-        )
+    fun load() { val s = selectedSeason ?: return; scope.launch { loading = true; runCatching { if (isDriver) api.getDriverRanking(s.chp_id, s.id) else api.getTeamRanking(s.chp_id, s.id) }.onSuccess { data = it; if (selectedSubTab.isEmpty() && it.list.isNotEmpty()) selectedSubTab = it.list.first().tab_key }; loading = false } }
+    LaunchedEffect(Unit) { scope.launch { api.getRankingNav().list.firstOrNull()?.options?.let { seasons = it; selectedSeason = it.firstOrNull(); load() } } }
+    LaunchedEffect(selectedSeason, isDriver) { load() }
 
-        if (state.isLoading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Loading...", color = TextSecondary)
-            }
-        } else {
-            // Driver/Team toggle for F1
-            if (category == "f1") {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    listOf("Driver" to true, "Constructor" to false).forEach { (label, isDriver) ->
-                        val selected = state.isDriverTab == isDriver
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (selected) AccentRed else Color.White.copy(alpha = 0.05f))
-                                .clickable { viewModel.toggleTab(isDriver) }
-                                .padding(horizontal = 20.dp, vertical = 8.dp)
-                        ) {
-                            Text(label, color = if (selected) Color.White else TextSecondary, fontSize = 14.sp)
-                        }
-                    }
-                }
-
-                // Season selector
-                val navData = state.navData
-                if (navData != null) {
-                    LazyRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(navData.list.flatMap { it.options }) { option ->
-                            val selected = option.id == state.selectedSeasonId
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(if (selected) AccentBlue.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f))
-                                    .clickable { viewModel.selectSeason(option.chp_id, option.id) }
-                                    .padding(horizontal = 12.dp, vertical = 6.dp)
-                            ) {
-                                Text(option.name, color = if (selected) AccentBlue else TextSecondary, fontSize = 12.sp)
-                            }
-                        }
-                    }
-                }
-
-                // Ranking data
-                val rankingData = if (state.isDriverTab) state.driverData else state.teamData
-                RankingDataView(rankingData)
-            }
-        }
-    }
-}
-
-@Composable
-fun RankingDataView(data: com.racingdaily.data.model.RankingData?) {
-    if (data == null) return
-    var selectedTab by remember { mutableStateOf(data.list.firstOrNull()?.tab_key ?: "") }
-
-    LazyColumn(
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 80.dp)
-    ) {
-        // Sub-tabs
-        item {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                items(data.list) { tab ->
-                    val selected = tab.tab_key == selectedTab
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(if (selected) AccentRed.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.04f))
-                            .clickable { selectedTab = tab.tab_key }
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                    ) {
-                        Text(tab.tab_name, color = if (selected) AccentRed else TextSecondary, fontSize = 11.sp)
-                    }
-                }
-            }
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Text("Rankings", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(16.dp, 16.dp, 16.dp, 8.dp))
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) { listOf("Driver" to true, "Constructor" to false).forEach { (label, d) -> FilterChip(d == isDriver, { isDriver = d }, { Text(label, fontSize = 13.sp, color = if (d == isDriver) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }); Spacer(Modifier.width(8.dp)) } }
+        LazyRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { items(seasons) { s -> val sel = s.id == (selectedSeason?.id ?: -1); FilterChip(sel, { selectedSeason = s }, { Text(s.name, fontSize = 11.sp, color = if (sel) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant) }) } }
+        data?.list?.let { tabs ->
+            LazyRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) { items(tabs) { t -> val sel = t.tab_key == selectedSubTab; SuggestionChip({ selectedSubTab = t.tab_key }, { Text(t.tab_name, fontSize = 10.sp, color = if (sel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }) } }
             Spacer(Modifier.height(8.dp))
-        }
-
-        // Table rows
-        val selectedTabData = data.list.find { it.tab_key == selectedTab }
-        if (selectedTabData != null) {
-            itemsIndexed(selectedTabData.list) { index, row ->
-                RankingRow(index + 1, row)
+            val tab = tabs.find { it.tab_key == selectedSubTab }
+            if (tab != null) LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), contentPadding = PaddingValues(bottom = 80.dp)) {
+                itemsIndexed(tab.list) { i, row -> RankingRow(i + 1, row) }
             }
         }
+        if (loading) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
     }
 }
 
 @Composable
-fun RankingRow(position: Int, row: JsonObject) {
-    // Try common field names for ranking items
-    val name = row["driver_abbr_chinese_name"]?.toString()?.removeSurrounding("\"")
-        ?: row["team_abbr_chinese_name"]?.toString()?.removeSurrounding("\"")
-        ?: row["name"]?.toString()?.removeSurrounding("\"") ?: ""
+fun RankingRow(pos: Int, row: JsonObject) {
+    val name = row["driver_abbr_chinese_name"]?.toString()?.removeSurrounding("\"") ?: row["team_abbr_chinese_name"]?.toString()?.removeSurrounding("\"") ?: ""
     val team = row["team_name"]?.toString()?.removeSurrounding("\"") ?: ""
-    val score = row["total_score"]?.toString() ?: row["points"]?.toString() ?: ""
-    val avatar = row["driver_avatar"]?.toString()?.removeSurrounding("\"")
-        ?: row["team_logo"]?.toString()?.removeSurrounding("\"")
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (position <= 3) Color.White.copy(alpha = 0.04f) else Color.Transparent)
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                "$position",
-                color = if (position <= 3) AccentYellow else TextTertiary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.width(32.dp)
-            )
-            if (avatar != null) {
-                coil3.compose.AsyncImage(
-                    model = avatar,
-                    contentDescription = null,
-                    modifier = Modifier.size(32.dp).clip(RoundedCornerShape(16.dp))
-                )
-                Spacer(Modifier.width(8.dp))
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(name, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                if (team.isNotEmpty()) Text(team, color = TextTertiary, fontSize = 11.sp)
-            }
-            Text(score, color = AccentBlue, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+    val pts = row["total_score"]?.toString() ?: row["points"]?.toString() ?: ""
+    val avatar = row["driver_avatar"]?.toString()?.removeSurrounding("\"") ?: row["team_logo"]?.toString()?.removeSurrounding("\"")
+    Surface(Modifier.fillMaxWidth().padding(vertical = 3.dp), shape = RoundedCornerShape(8.dp), color = if (pos <= 3) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else Color.Transparent) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("$pos", style = MaterialTheme.typography.titleMedium, color = if (pos <= 3) RacingYellow else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(32.dp))
+            if (avatar != null) { AsyncImage(avatar, null, Modifier.size(32.dp).clip(CircleShape), contentScale = ContentScale.Fit); Spacer(Modifier.width(8.dp)) }
+            Column(Modifier.weight(1f)) { Text(name, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface); if (team.isNotEmpty()) Text(team, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Text(pts, style = MaterialTheme.typography.titleMedium, color = RacingBlue, fontWeight = FontWeight.Bold)
         }
     }
 }
+
+private val RacingYellow = Color(0xFFD29922)
+private val RacingBlue = Color(0xFF58A6FF)

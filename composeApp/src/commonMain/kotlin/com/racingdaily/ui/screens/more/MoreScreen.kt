@@ -1,134 +1,48 @@
 package com.racingdaily.ui.screens.more
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHostController
-import com.racingdaily.data.model.ChampionshipSubstation
-import com.racingdaily.data.model.SubstationItem
-import com.racingdaily.ui.theme.*
-import org.koin.compose.viewmodel.koinViewModel
+import com.racingdaily.data.model.ChampSubstation
+import com.racingdaily.data.remote.ApiService
+import kotlinx.coroutines.launch
+
+data class ChampData(val subs: List<com.racingdaily.data.model.ChampSub> = emptyList())
 
 @Composable
-fun MoreScreen(navController: NavHostController, viewModel: MoreViewModel = koinViewModel()) {
-    val state by viewModel.state.collectAsState()
+fun MoreScreen(onChampClick: (String, Int) -> Unit, api: ApiService) {
+    var customSubs by remember { mutableStateOf<List<com.racingdaily.data.model.ChampSub>>(emptyList()) }
+    var motogpSubs by remember { mutableStateOf<List<com.racingdaily.data.model.ChampSub>>(emptyList()) }
+    var tcrSubs by remember { mutableStateOf<List<com.racingdaily.data.model.ChampSub>>(emptyList()) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(Unit) {
+        scope.launch { runCatching { api.getCustomSubstation().tmp }.onSuccess { customSubs = it } }
+        scope.launch { runCatching { api.getMotogpSubstation().tmp }.onSuccess { motogpSubs = it } }
+        scope.launch { runCatching { api.getTcrSubstation().tmp }.onSuccess { tcrSubs = it } }
+    }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().background(Background),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 80.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        item {
-            Text("More", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
-        }
-
-        // Championships section
-        item { SectionTitle("Championships") }
-
-        item {
-            ChampionshipCard("Custom Championship", "Feeder series and custom events",
-                onClick = {}) {
-                state.customData.substations?.tmp?.take(5)?.forEach { sub ->
-                    SubstationChip(sub, "custom") { navController.navigate("championship_driver/custom/${sub.custom_id}") }
-                }
-            }
-        }
-
-        item {
-            ChampionshipCard("MotoGP", "Grand Prix motorcycle racing",
-                onClick = {}) {
-                state.motogpData.substations?.tmp?.take(5)?.forEach { sub ->
-                    SubstationChip(sub, "motogp") { navController.navigate("championship_driver/motogp/${sub.motogp_id}") }
-                }
-            }
-        }
-
-        item {
-            ChampionshipCard("TCR", "Touring Car Racing",
-                onClick = {}) {
-                state.tcrData.substations?.tmp?.take(5)?.forEach { sub ->
-                    SubstationChip(sub, "tcr") { navController.navigate("championship_driver/tcr/${sub.tcr_id}") }
-                }
-            }
-        }
-
-        // App info
-        item { SectionTitle("App") }
-        state.appVersion?.let { ver ->
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.05f))
-                        .padding(16.dp)
-                ) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Version", color = TextSecondary, fontSize = 14.sp)
-                        Text("v${ver.ver}", color = TextPrimary, fontSize = 14.sp)
-                    }
-                }
-            }
-        }
+    LazyColumn(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        item { Text("More", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground); Spacer(Modifier.height(12.dp)) }
+        item { Text("Championships", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold) }
+        item { ChampCard("Custom Championship", customSubs) { sub -> onChampClick("custom", sub.custom_id) } }
+        item { ChampCard("MotoGP", motogpSubs) { sub -> onChampClick("motogp", sub.motogp_id) } }
+        item { ChampCard("TCR", tcrSubs) { sub -> onChampClick("tcr", sub.tcr_id) } }
+        item { Spacer(Modifier.height(8.dp)); Text("App", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold) }
+        item { ElevatedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)) { Text("RacingDaily Client v1.0.0", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(16.dp)) } }
     }
 }
 
 @Composable
-fun SectionTitle(title: String) {
-    Text(
-        title,
-        color = TextSecondary,
-        fontSize = 13.sp,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
-    )
-}
-
-@Composable
-fun ChampionshipCard(
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-    substations: @Composable ColumnScope.() -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color.White.copy(alpha = 0.06f))
-            .clickable(onClick = onClick)
-            .padding(16.dp)
-    ) {
-        Column {
-            Text(title, color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-            Text(subtitle, color = TextTertiary, fontSize = 12.sp)
-            Spacer(Modifier.height(8.dp))
-            substations()
-        }
-    }
-}
-
-@Composable
-fun SubstationChip(sub: SubstationItem, category: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(Color.White.copy(alpha = 0.04f))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 5.dp)
-    ) {
-        Text(sub.season_name, color = TextSecondary, fontSize = 11.sp)
+fun ChampCard(title: String, subs: List<ChampSub>, onClick: (ChampSub) -> Unit) {
+    ElevatedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Column(Modifier.padding(16.dp)) { Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium); Spacer(Modifier.height(6.dp))
+            subs.take(6).chunked(3).forEach { row -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) { row.forEach { sub -> SuggestionChip({ onClick(sub) }, { Text(sub.season_name, fontSize = 11.sp) }) } }; Spacer(Modifier.height(4.dp)) } }
     }
 }

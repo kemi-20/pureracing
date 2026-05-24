@@ -6,9 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,145 +18,39 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
+import com.racingdaily.data.model.NavTab
 import com.racingdaily.data.model.NewsItem
-import com.racingdaily.ui.theme.*
-import org.koin.compose.viewmodel.koinViewModel
+import com.racingdaily.data.remote.ApiService
+import kotlinx.coroutines.launch
 
 @Composable
-fun HomeScreen(navController: NavHostController, viewModel: HomeViewModel = koinViewModel()) {
-    val state by viewModel.state.collectAsState()
-    val listState = rememberLazyListState()
+fun HomeScreen(onArticleClick: (Int) -> Unit, api: ApiService) {
+    var tabs by remember { mutableStateOf<List<NavTab>>(emptyList()) }
+    var selectedTabId by remember { mutableIntStateOf(1) }
+    var news by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
 
-    // Pagination detection
-    val shouldLoadMore = remember {
-        derivedStateOf {
-            val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisibleItem >= state.newsItems.size - 3 && state.newsItems.isNotEmpty() && !state.isLoading
-        }
-    }
-    LaunchedEffect(shouldLoadMore.value) {
-        if (shouldLoadMore.value) viewModel.loadNextPage()
-    }
+    fun load() { scope.launch { loading = true; runCatching { api.getNewsList(selectedTabId) }.onSuccess { news = it.list }; loading = false } }
 
-    Column(modifier = Modifier.fillMaxSize().background(Background)) {
-        // Header
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp, 12.dp)
-        ) {
-            Text("RacingDaily", color = TextPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        }
+    LaunchedEffect(Unit) { scope.launch { api.getNavTabs().navbar.let { tabs = it; load() } } }
+    LaunchedEffect(selectedTabId) { load() }
 
-        // Tab bar
-        if (state.tabs.isNotEmpty()) {
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(state.tabs) { tab ->
-                    val selected = tab.id == state.selectedTabId
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (selected) AccentRed.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f))
-                            .clickable { viewModel.selectTab(tab.id) }
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            tab.name,
-                            color = if (selected) AccentRed else TextSecondary,
-                            fontSize = 13.sp,
-                            maxLines = 1
-                        )
-                    }
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-        }
-
-        // News list
-        if (state.isLoading && state.newsItems.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Loading...", color = TextSecondary)
-            }
-        } else if (state.error != null && state.newsItems.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Error: ${state.error}", color = AccentRed)
-            }
-        } else {
-            LazyColumn(
-                state = listState,
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 80.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(state.newsItems) { item ->
-                    NewsCard(item) {
-                        navController.navigate("detail/${item.id}")
-                    }
-                }
-                if (state.isLoading) {
-                    item {
-                        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                            Text("Loading more...", color = TextSecondary, fontSize = 12.sp)
-                        }
-                    }
-                }
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Text("RacingDaily", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(16.dp, 12.dp, 16.dp, 4.dp))
+        LazyRow(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(tabs) { tab ->
+                val sel = tab.id == selectedTabId
+                FilterChip(sel, { selectedTabId = tab.id }, { Text(tab.name, fontSize = 12.sp, color = if (sel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) })
             }
         }
-    }
-}
-
-@Composable
-fun NewsCard(item: NewsItem, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color.White.copy(alpha = 0.06f))
-            .clickable(onClick = onClick)
-    ) {
-        Column {
-            // Cover image
-            val coverUrl = item.covers.firstOrNull()?.path_url
-            if (coverUrl != null) {
-                AsyncImage(
-                    model = coverUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxWidth().height(160.dp)
-                )
-            }
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    item.title,
-                    color = TextPrimary,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(Modifier.height(6.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("${item.total_read} reads", color = TextTertiary, fontSize = 11.sp)
-                    item.tags.firstOrNull()?.let {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(AccentRed.copy(alpha = 0.12f))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(it.name, color = AccentRed, fontSize = 10.sp)
-                        }
-                    }
-                }
-            }
+        if (loading) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
+        else LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 8.dp)) {
+            items(news) { item -> ElevatedCard(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { onArticleClick(item.id) }, shape = RoundedCornerShape(14.dp), colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                Column { item.covers.firstOrNull()?.path_url?.let { AsyncImage(it, null, Modifier.fillMaxWidth().height(160.dp), contentScale = ContentScale.Crop) }
+                    Column(Modifier.padding(12.dp)) { Text(item.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) { Text("${item.total_read} reads", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant); item.tags.firstOrNull()?.let { SuggestionChip({}, { Text(it.name, fontSize = 10.sp, color = MaterialTheme.colorScheme.primary) }) } } } } }
         }
     }
 }

@@ -19,37 +19,51 @@ import kotlin.concurrent.thread
 actual fun HtmlView(url: String) {
     val canvas = remember { Canvas() }
     val panel = remember { JPanel(java.awt.BorderLayout()).apply { add(canvas, java.awt.BorderLayout.CENTER) } }
+    val shellRef = remember { mutableStateOf<Shell?>(null) }
 
     DisposableEffect(url) {
+        // Dispose old shell
+        shellRef.value?.let { oldShell ->
+            oldShell.display.asyncExec { if (!oldShell.isDisposed) oldShell.dispose() }
+        }
+
+        var disposed = false
         thread(isDaemon = true) {
             val display = Display()
             val shell = SWT_AWT.new_Shell(display, canvas)
+            shellRef.value = shell
             shell.layout = FillLayout()
             val browser = Browser(shell, SWT.EDGE)
             browser.addProgressListener(object : ProgressListener {
                 override fun completed(event: org.eclipse.swt.browser.ProgressEvent) {
-                    browser.execute("""
-                        var h = document.querySelector('header');
-                        if (h) h.style.display = 'none';
-                        document.body.style.backgroundColor = '#0a0e14';
-                        document.body.style.color = '#e6edf3';
-                        var imgs = document.querySelectorAll('img');
-                        imgs.forEach(function(img) { img.style.maxWidth = '100%'; img.style.height = 'auto'; });
-                        var vids = document.querySelectorAll('video');
-                        vids.forEach(function(v) { v.style.maxWidth = '100%'; v.style.height = 'auto'; });
-                    """.trimIndent())
+                    display.timerExec(1500) {
+                        if (!shell.isDisposed) {
+                            browser.execute("""
+                                var h = document.querySelector('header');
+                                if (h) h.style.display = 'none';
+                                document.body.style.backgroundColor = '#0a0e14';
+                                document.body.style.color = '#e6edf3';
+                            """.trimIndent())
+                        }
+                    }
                 }
                 override fun changed(event: org.eclipse.swt.browser.ProgressEvent) {}
             })
             browser.setUrl(url)
             shell.setSize(panel.width.coerceAtLeast(1), panel.height.coerceAtLeast(1))
 
-            while (!shell.isDisposed) {
+            while (!shell.isDisposed && !disposed) {
                 if (!display.readAndDispatch()) display.sleep()
             }
-            display.dispose()
+            if (!display.isDisposed) display.dispose()
         }
-        onDispose { }
+
+        onDispose {
+            disposed = true
+            shellRef.value?.let { shell ->
+                shell.display.asyncExec { if (!shell.isDisposed) shell.dispose() }
+            }
+        }
     }
 
     SwingPanel(factory = { panel }, modifier = Modifier.fillMaxSize())

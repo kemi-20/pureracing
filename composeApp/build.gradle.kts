@@ -36,6 +36,7 @@ kotlin {
             implementation(libs.ktor.serialization.json)
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
+            implementation(libs.kyant.backdrop)
         }
 
         androidMain.dependencies {

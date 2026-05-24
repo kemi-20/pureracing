@@ -26,8 +26,8 @@ actual fun HtmlView(url: String) {
             val shell = SWT_AWT.new_Shell(display, canvas)
             shell.layout = FillLayout()
             val browser = Browser(shell, SWT.EDGE)
-            browser.addProgressListener(ProgressListener { event ->
-                if (event.current == event.total) {
+            browser.addProgressListener(object : ProgressListener {
+                override fun completed(event: org.eclipse.swt.browser.ProgressEvent) {
                     browser.execute("""
                         var h = document.querySelector('header');
                         if (h) h.style.display = 'none';
@@ -39,6 +39,7 @@ actual fun HtmlView(url: String) {
                         vids.forEach(function(v) { v.style.maxWidth = '100%'; v.style.height = 'auto'; });
                     """.trimIndent())
                 }
+                override fun changed(event: org.eclipse.swt.browser.ProgressEvent) {}
             })
             browser.setUrl(url)
             shell.setSize(panel.width.coerceAtLeast(1), panel.height.coerceAtLeast(1))

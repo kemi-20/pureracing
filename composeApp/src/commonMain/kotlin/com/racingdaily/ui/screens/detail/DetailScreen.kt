@@ -1,51 +1,131 @@
 package com.racingdaily.ui.screens.detail
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.Dispatchers
+import coil3.compose.AsyncImage
+import com.racingdaily.data.model.NewsDetail
+import com.racingdaily.data.remote.ApiService
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import io.ktor.client.HttpClient
-import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
 
 @Composable
-fun DetailScreen(articleId: Int, onBack: () -> Unit) {
-    var html by remember { mutableStateOf<String?>(null) }
+fun DetailScreen(articleId: Int, onBack: () -> Unit, api: ApiService) {
+    var article by remember { mutableStateOf<NewsDetail?>(null) }
+    var loading by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
-    LaunchedEffect(articleId) {
-        scope.launch {
-            html = withContext(Dispatchers.IO) {
-                runCatching {
-                    val client = HttpClient()
-                    val raw = client.get("https://news.romielf.com/news.html?id=$articleId").bodyAsText()
-                    client.close()
-                    // Remove ad header, keep everything else
-                    val cleaned = raw.replace(Regex("<header[^>]*>.*?</header>", RegexOption.DOT_MATCHES_ALL), "")
-                        .replace(Regex("""<script[^>]*>.*?</script>""", RegexOption.DOT_MATCHES_ALL), "")
-                        // Fix relative URLs
-                        .replace("src=\"./", "src=\"https://news.romielf.com/")
-                        .replace("href=\"./", "href=\"https://news.romielf.com/")
-                        // Add base styles for readability
-                        .replace("<head>", "<head><base href=\"https://news.romielf.com/\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no\"><style>body{font-family:-apple-system,sans-serif;font-size:16px;color:#e6edf3;background:#0a0e14;padding:8px;line-height:1.6}img,video{max-width:100%%;height:auto}a{color:#58a6ff}</style>")
-                    cleaned
-                }.getOrNull()
-            }
-        }
-    }
+    LaunchedEffect(articleId) { scope.launch { runCatching { api.getNewsDetail(articleId) }.onSuccess { article = it }; loading = false } }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) { TextButton(onBack) { Text("< Back", color = MaterialTheme.colorScheme.secondary, fontSize = 14.sp) } }
-        if (html == null) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-        else HtmlView(html!!)
+        if (loading) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        else article?.details?.let { a ->
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+                Text(a.title, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("${a.total_read} reads", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (a.temotime.isNotEmpty()) Text(a.temotime, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Spacer(Modifier.height(12.dp))
+                HtmlRenderer(a.content)
+                Spacer(Modifier.height(32.dp))
+            }
+        }
     }
 }
 
 @Composable
-expect fun HtmlView(html: String)
+fun HtmlRenderer(html: String) {
+    val openUrl = rememberOpenUrl()
+    val nodes = remember(html) { parseHtml(html) }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        nodes.forEach { node ->
+            when (node) {
+                is HtmlNode.Image -> AsyncImage(node.src, null, Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.FillWidth)
+                is HtmlNode.Video -> Surface(Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(8.dp)).clickable { openUrl(node.src) }, color = Color.Black.copy(alpha = 0.3f)) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("▶", color = Color.White, fontSize = 36.sp); Text("Tap to play video", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp) }
+                    }
+                }
+                is HtmlNode.Text -> Text(node.richText, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, lineHeight = 24.sp)
+                is HtmlNode.Bold -> Text(node.richText, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, lineHeight = 24.sp, fontWeight = FontWeight.Bold)
+                is HtmlNode.Break -> Spacer(Modifier.height(8.dp))
+            }
+        }
+    }
+}
+
+sealed class HtmlNode {
+    data class Image(val src: String) : HtmlNode()
+    data class Video(val src: String) : HtmlNode()
+    data class Text(val richText: String) : HtmlNode()
+    data class Bold(val richText: String) : HtmlNode()
+    data object Break : HtmlNode()
+}
+
+fun parseHtml(html: String): List<HtmlNode> {
+    val nodes = mutableListOf<HtmlNode>()
+    var s = html
+
+    while (s.isNotEmpty()) {
+        when {
+            // Image
+            s.startsWith("<img") -> {
+                val src = Regex("""src="([^"]+)"""").find(s)?.groupValues?.get(1) ?: ""
+                nodes.add(HtmlNode.Image(src))
+                s = s.substringAfter(">").trimStart()
+            }
+            // Video
+            s.contains("<video") && s.indexOf("<video") < (s.indexOf("<img").let { if (it < 0) Int.MAX_VALUE else it }) -> {
+                val vidTag = Regex("<video[^>]*>.*?</video>", RegexOption.DOT_MATCHES_ALL).find(s)
+                if (vidTag != null) {
+                    val src = Regex("""src="([^"]+)"""").find(vidTag.value)?.groupValues?.get(1) ?: ""
+                    nodes.add(HtmlNode.Video(src))
+                    s = s.substring(vidTag.range.last + 1).trimStart()
+                } else break
+            }
+            // Break tags
+            s.startsWith("<br") -> { nodes.add(HtmlNode.Break); s = s.substringAfter(">").trimStart() }
+            s.startsWith("</p>") || s.startsWith("</div>") -> { nodes.add(HtmlNode.Break); s = s.substringAfter(">").trimStart() }
+            // Bold start
+            s.startsWith("<strong>") || s.startsWith("<b>") -> {
+                val tag = if (s.startsWith("<strong>")) "strong" else "b"
+                val endTag = "</$tag>"
+                val end = s.indexOf(endTag)
+                if (end > 0) {
+                    val text = cleanText(s.substring(s.indexOf(">") + 1, end))
+                    if (text.isNotBlank()) nodes.add(HtmlNode.Bold(text))
+                    s = s.substring(end + endTag.length).trimStart()
+                } else { s = s.substringAfter(">").trimStart() }
+            }
+            // HTML tag - skip
+            s.first() == '<' -> s = s.substringAfter(">").trimStart()
+            // Plain text
+            else -> {
+                val nextTag = s.indexOf('<')
+                val text = cleanText(if (nextTag < 0) s else s.substring(0, nextTag))
+                if (text.isNotBlank()) nodes.add(HtmlNode.Text(text))
+                s = if (nextTag < 0) "" else s.substring(nextTag)
+            }
+        }
+    }
+    return nodes.ifEmpty { listOf(HtmlNode.Text(cleanText(html))) }
+}
+
+fun cleanText(s: String): String = s.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").trim()
+
+@Composable expect fun rememberOpenUrl(): (String) -> Unit

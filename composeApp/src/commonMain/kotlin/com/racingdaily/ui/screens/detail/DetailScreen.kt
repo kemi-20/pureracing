@@ -41,7 +41,7 @@ fun DetailScreen(articleId: Int, onBack: () -> Unit, api: ApiService) {
                     if (a.temotime.isNotEmpty()) Text(a.temotime, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Spacer(Modifier.height(12.dp))
-                HtmlRenderer(a.content)
+                HtmlRenderer(a.content, articleId)
                 Spacer(Modifier.height(32.dp))
             }
         }
@@ -49,14 +49,14 @@ fun DetailScreen(articleId: Int, onBack: () -> Unit, api: ApiService) {
 }
 
 @Composable
-fun HtmlRenderer(html: String) {
+fun HtmlRenderer(html: String, articleId: Int) {
     val openUrl = rememberOpenUrl()
     val nodes = remember(html) { parseHtml(html) }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         nodes.forEach { node ->
             when (node) {
                 is HtmlNode.Image -> AsyncImage(node.src, null, Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.FillWidth)
-                is HtmlNode.Video -> Surface(Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(8.dp)).clickable { openUrl(node.src) }, color = Color.Black.copy(alpha = 0.3f)) {
+                is HtmlNode.Video -> Surface(Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(8.dp)).clickable { openUrl("https://news.romielf.com/news.html?id=$articleId") }, color = Color.Black.copy(alpha = 0.3f)) {
                     Box(contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("▶", color = Color.White, fontSize = 36.sp); Text("Tap to play video", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp) }
                     }

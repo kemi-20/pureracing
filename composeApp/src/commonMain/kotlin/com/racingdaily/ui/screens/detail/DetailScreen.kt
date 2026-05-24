@@ -20,7 +20,9 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.racingdaily.data.model.NewsDetail
 import com.racingdaily.data.remote.ApiService
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun DetailScreen(articleId: Int, onBack: () -> Unit, api: ApiService) {
@@ -41,7 +43,7 @@ fun DetailScreen(articleId: Int, onBack: () -> Unit, api: ApiService) {
                     if (a.temotime.isNotEmpty()) Text(a.temotime, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Spacer(Modifier.height(12.dp))
-                HtmlRenderer(a.content, articleId)
+                HtmlRenderer(a.content)
                 Spacer(Modifier.height(32.dp))
             }
         }
@@ -49,22 +51,27 @@ fun DetailScreen(articleId: Int, onBack: () -> Unit, api: ApiService) {
 }
 
 @Composable
-fun HtmlRenderer(html: String, articleId: Int) {
-    val openUrl = rememberOpenUrl()
+fun HtmlRenderer(html: String) {
+    val playVideo = rememberPlayVideo()
     val nodes = remember(html) { parseHtml(html) }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         nodes.forEach { node ->
             when (node) {
                 is HtmlNode.Image -> AsyncImage(node.src, null, Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.FillWidth)
-                is HtmlNode.Video -> Surface(Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(8.dp)).clickable { openUrl("https://news.romielf.com/news.html?id=$articleId") }, color = Color.Black.copy(alpha = 0.3f)) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("▶", color = Color.White, fontSize = 36.sp); Text("Tap to play video", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp) }
-                    }
-                }
+                is HtmlNode.Video -> VideoCard(node.src, playVideo)
                 is HtmlNode.Text -> Text(node.richText, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, lineHeight = 24.sp)
                 is HtmlNode.Bold -> Text(node.richText, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, lineHeight = 24.sp, fontWeight = FontWeight.Bold)
                 is HtmlNode.Break -> Spacer(Modifier.height(8.dp))
             }
+        }
+    }
+}
+
+@Composable
+fun VideoCard(videoUrl: String, playVideo: (String) -> Unit) {
+    Surface(Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(8.dp)).clickable { playVideo(videoUrl) }, color = Color.Black.copy(alpha = 0.3f)) {
+        Box(contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("▶", color = Color.White, fontSize = 36.sp); Text("Tap to play", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp) }
         }
     }
 }
@@ -80,52 +87,26 @@ sealed class HtmlNode {
 fun parseHtml(html: String): List<HtmlNode> {
     val nodes = mutableListOf<HtmlNode>()
     var s = html
-
     while (s.isNotEmpty()) {
         when {
-            // Image
-            s.startsWith("<img") -> {
-                val src = Regex("""src="([^"]+)"""").find(s)?.groupValues?.get(1) ?: ""
-                nodes.add(HtmlNode.Image(src))
-                s = s.substringAfter(">").trimStart()
-            }
-            // Video
+            s.startsWith("<img") -> { val src = Regex("""src="([^"]+)"""").find(s)?.groupValues?.get(1) ?: ""; nodes.add(HtmlNode.Image(src)); s = s.substringAfter(">").trimStart() }
             s.contains("<video") && s.indexOf("<video") < (s.indexOf("<img").let { if (it < 0) Int.MAX_VALUE else it }) -> {
                 val vidTag = Regex("<video[^>]*>.*?</video>", RegexOption.DOT_MATCHES_ALL).find(s)
-                if (vidTag != null) {
-                    val src = Regex("""src="([^"]+)"""").find(vidTag.value)?.groupValues?.get(1) ?: ""
-                    nodes.add(HtmlNode.Video(src))
-                    s = s.substring(vidTag.range.last + 1).trimStart()
-                } else break
+                if (vidTag != null) { val src = Regex("""src="([^"]+)"""").find(vidTag.value)?.groupValues?.get(1) ?: ""; nodes.add(HtmlNode.Video(src)); s = s.substring(vidTag.range.last + 1).trimStart() } else break
             }
-            // Break tags
             s.startsWith("<br") -> { nodes.add(HtmlNode.Break); s = s.substringAfter(">").trimStart() }
             s.startsWith("</p>") || s.startsWith("</div>") -> { nodes.add(HtmlNode.Break); s = s.substringAfter(">").trimStart() }
-            // Bold start
             s.startsWith("<strong>") || s.startsWith("<b>") -> {
-                val tag = if (s.startsWith("<strong>")) "strong" else "b"
-                val endTag = "</$tag>"
-                val end = s.indexOf(endTag)
-                if (end > 0) {
-                    val text = cleanText(s.substring(s.indexOf(">") + 1, end))
-                    if (text.isNotBlank()) nodes.add(HtmlNode.Bold(text))
-                    s = s.substring(end + endTag.length).trimStart()
-                } else { s = s.substringAfter(">").trimStart() }
+                val tag = if (s.startsWith("<strong>")) "strong" else "b"; val end = s.indexOf("</$tag>")
+                if (end > 0) { val text = cleanText(s.substring(s.indexOf(">") + 1, end)); if (text.isNotBlank()) nodes.add(HtmlNode.Bold(text)); s = s.substring(end + tag.length + 3).trimStart() } else { s = s.substringAfter(">").trimStart() }
             }
-            // HTML tag - skip
             s.first() == '<' -> s = s.substringAfter(">").trimStart()
-            // Plain text
-            else -> {
-                val nextTag = s.indexOf('<')
-                val text = cleanText(if (nextTag < 0) s else s.substring(0, nextTag))
-                if (text.isNotBlank()) nodes.add(HtmlNode.Text(text))
-                s = if (nextTag < 0) "" else s.substring(nextTag)
-            }
+            else -> { val nextTag = s.indexOf('<'); val text = cleanText(if (nextTag < 0) s else s.substring(0, nextTag)); if (text.isNotBlank()) nodes.add(HtmlNode.Text(text)); s = if (nextTag < 0) "" else s.substring(nextTag) }
         }
     }
     return nodes.ifEmpty { listOf(HtmlNode.Text(cleanText(html))) }
 }
 
-fun cleanText(s: String): String = s.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").trim()
+fun cleanText(s: String) = s.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").trim()
 
-@Composable expect fun rememberOpenUrl(): (String) -> Unit
+@Composable expect fun rememberPlayVideo(): (String) -> Unit

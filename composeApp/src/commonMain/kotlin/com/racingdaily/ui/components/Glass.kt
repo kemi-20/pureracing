@@ -100,35 +100,41 @@ fun GlassBackdropHost(content: @Composable BoxScope.() -> Unit) {
                 Modifier
                     .fillMaxSize()
                     .layerBackdrop(backdrop)
-                    .background(
-                        Brush.linearGradient(
-                            0f to Color(0xFF0B1220),
-                            0.26f to Color(0xFF13283D),
-                            0.55f to Color(0xFF14291F),
-                            0.78f to Color(0xFF321316),
-                            1f to Color(0xFF090D13),
-                            start = Offset.Zero,
-                            end = Offset(1300f, 2100f)
-                        )
-                    )
-                    .drawWithContent {
-                        drawContent()
-                        val stripe = Color.White.copy(alpha = 0.055f)
-                        val red = Color(0xFFE10600).copy(alpha = 0.12f)
-                        val cyan = Color(0xFF00D2BE).copy(alpha = 0.08f)
-                        val step = size.width / 6f
-                        repeat(8) { index ->
-                            val x = index * step - size.width * 0.4f
-                            drawLine(stripe, Offset(x, 0f), Offset(x + size.height * 0.48f, size.height), 1.3f)
-                        }
-                        drawCircle(red, radius = size.minDimension * 0.52f, center = Offset(size.width * 0.9f, size.height * 0.1f))
-                        drawCircle(cyan, radius = size.minDimension * 0.42f, center = Offset(size.width * 0.03f, size.height * 0.86f))
-                        drawRect(Color.Black.copy(alpha = 0.18f))
-                    }
+                    .pureRacingBackground()
             )
             content()
         }
     }
+}
+
+fun Modifier.pureRacingBackground(): Modifier = composed {
+    this
+        .background(MaterialTheme.colorScheme.background)
+        .background(
+            Brush.linearGradient(
+                0f to Color(0xFF0B1220),
+                0.26f to Color(0xFF13283D),
+                0.55f to Color(0xFF14291F),
+                0.78f to Color(0xFF321316),
+                1f to Color(0xFF090D13),
+                start = Offset.Zero,
+                end = Offset(1300f, 2100f)
+            )
+        )
+        .drawWithContent {
+            drawContent()
+            val stripe = Color.White.copy(alpha = 0.055f)
+            val red = Color(0xFFE10600).copy(alpha = 0.12f)
+            val cyan = Color(0xFF00D2BE).copy(alpha = 0.08f)
+            val step = size.width / 6f
+            repeat(8) { index ->
+                val x = index * step - size.width * 0.4f
+                drawLine(stripe, Offset(x, 0f), Offset(x + size.height * 0.48f, size.height), 1.3f)
+            }
+            drawCircle(red, radius = size.minDimension * 0.52f, center = Offset(size.width * 0.9f, size.height * 0.1f))
+            drawCircle(cyan, radius = size.minDimension * 0.42f, center = Offset(size.width * 0.03f, size.height * 0.86f))
+            drawRect(Color.Black.copy(alpha = 0.18f))
+        }
 }
 
 @Composable

@@ -1,6 +1,5 @@
 package com.racingdaily
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -36,9 +35,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -56,6 +57,7 @@ import com.racingdaily.ui.components.GlassIconButton
 import com.racingdaily.ui.components.GlassNavTab
 import com.racingdaily.ui.components.GlassSurface
 import com.racingdaily.ui.components.ScreenHeader
+import com.racingdaily.ui.components.pureRacingBackground
 import com.racingdaily.ui.screens.detail.DetailScreen
 import com.racingdaily.ui.screens.home.HomeScreen
 import com.racingdaily.ui.screens.more.MoreScreen
@@ -143,12 +145,12 @@ fun App(api: ApiService) {
                 }
 
                 when (val page = pageStack.lastOrNull()) {
-                    is AppPage.Championship -> AppPageOverlay { ChampScreen(page.category, page.id, goBack, api) }
-                    is AppPage.Track -> AppPageOverlay { TrackScreen(page.id, goBack, api) }
-                    is AppPage.Article -> AppPageOverlay { DetailScreen(page.id, page.title, page.url, goBack, api) }
-                    is AppPage.RaceDetail -> AppPageOverlay { RaceDetailScreen(page.gp, goBack) }
-                    is AppPage.DriverDetail -> AppPageOverlay { DriverDetailScreen(page, goBack, api) }
-                    is AppPage.TeamDetail -> AppPageOverlay { TeamDetailScreen(page, goBack, api) }
+                    is AppPage.Championship -> AppPageOverlay(page) { ChampScreen(page.category, page.id, goBack, api) }
+                    is AppPage.Track -> AppPageOverlay(page) { TrackScreen(page.id, goBack, api) }
+                    is AppPage.Article -> AppPageOverlay(page) { DetailScreen(page.id, page.title, page.url, goBack, api) }
+                    is AppPage.RaceDetail -> AppPageOverlay(page) { RaceDetailScreen(page.gp, goBack) }
+                    is AppPage.DriverDetail -> AppPageOverlay(page) { DriverDetailScreen(page, goBack, api) }
+                    is AppPage.TeamDetail -> AppPageOverlay(page) { TeamDetailScreen(page, goBack, api) }
                     null -> Unit
                 }
             }
@@ -157,13 +159,26 @@ fun App(api: ApiService) {
 }
 
 @Composable
-private fun AppPageOverlay(content: @Composable () -> Unit) {
+private fun AppPageOverlay(pageKey: AppPage, content: @Composable () -> Unit) {
+    var readyToShow by remember(pageKey) { mutableStateOf(false) }
+
+    LaunchedEffect(pageKey) {
+        withFrameNanos { }
+        readyToShow = true
+    }
+
     Box(
         Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
     ) {
-        content()
+        Box(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = if (readyToShow) 1f else 0f }
+                .pureRacingBackground()
+        ) {
+            content()
+        }
     }
 }
 

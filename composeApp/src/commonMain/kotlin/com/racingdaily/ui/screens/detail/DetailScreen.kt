@@ -98,7 +98,7 @@ internal fun buildArticleHtmlDocument(html: String): String = """
     html, body {
       margin: 0;
       padding: 0;
-      background: #0A0E14;
+      background: transparent;
       color: #E6EDF3;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
       font-size: 16px;

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -52,6 +53,8 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var reloadKey by remember { mutableIntStateOf(0) }
+    var didAutoScroll by remember(reloadKey) { mutableStateOf(false) }
+    val listState = rememberLazyListState()
 
     LaunchedEffect(reloadKey) {
         loading = true
@@ -60,6 +63,13 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
             .onSuccess { races = it.filter { gp -> gp.gp_id.isNotBlank() || gp.gp_name.isNotBlank() } }
             .onFailure { error = it.message ?: "Unable to load race schedule" }
         loading = false
+    }
+
+    LaunchedEffect(loading, error, races) {
+        if (!loading && error == null && races.isNotEmpty() && !didAutoScroll) {
+            didAutoScroll = true
+            listState.scrollToItem(races.nearestRaceIndex())
+        }
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -79,7 +89,8 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
                 }
             }
             else -> LazyColumn(
-                Modifier
+                state = listState,
+                modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -91,6 +102,16 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
             }
         }
     }
+}
+
+private fun List<RaceGp>.nearestRaceIndex(): Int {
+    val liveIndex = indexOfFirst { gp -> gp.session.any { it.race_status == 2 } }
+    if (liveIndex >= 0) return liveIndex
+
+    val upcomingIndex = indexOfFirst { gp -> gp.session.any { it.race_status != 1 } }
+    if (upcomingIndex >= 0) return upcomingIndex
+
+    return lastIndex.coerceAtLeast(0)
 }
 
 @Composable

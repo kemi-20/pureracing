@@ -30,6 +30,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,6 +46,7 @@ import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassChip
 import com.racingdaily.ui.components.GlassSurface
 import com.racingdaily.ui.components.ScreenHeader
+import kotlinx.coroutines.flow.collect
 
 @Composable
 fun HomeScreen(
@@ -57,8 +59,12 @@ fun HomeScreen(
     var tabs by remember { mutableStateOf<List<NavTab>>(emptyList()) }
     var news by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
+    var loadingMore by remember { mutableStateOf(false) }
+    var nextPage by remember { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
+    var loadMoreError by remember { mutableStateOf<String?>(null) }
     var reloadKey by remember { mutableIntStateOf(0) }
+    var loadMoreRetryKey by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(reloadKey) {
         runCatching { api.getNavTabs().navbar }
@@ -69,10 +75,42 @@ fun HomeScreen(
     LaunchedEffect(selectedTabId, reloadKey) {
         loading = true
         error = null
-        runCatching { api.getNewsList(selectedTabId) }
-            .onSuccess { news = it.list }
+        loadMoreError = null
+        loadMoreRetryKey = 0
+        nextPage = 0
+        runCatching { api.getNewsList(selectedTabId, page = 1) }
+            .onSuccess {
+                news = it.list
+                nextPage = it.next_page
+            }
             .onFailure { error = it.message ?: "Unable to load news" }
         loading = false
+    }
+
+    LaunchedEffect(selectedTabId, reloadKey) {
+        snapshotFlow {
+            val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            val totalItems = listState.layoutInfo.totalItemsCount
+            val nearEnd = lastVisibleIndex >= totalItems - 4
+            if (nearEnd && nextPage > 0 && !loading && !loadingMore && error == null && loadMoreError == null) {
+                "${selectedTabId}:${nextPage}:${loadMoreRetryKey}"
+            } else {
+                ""
+            }
+        }.collect { requestKey ->
+            if (requestKey.isBlank()) return@collect
+            val pageToLoad = requestKey.substringAfter(':').substringBefore(':').toIntOrNull() ?: return@collect
+            loadingMore = true
+            loadMoreError = null
+            runCatching { api.getNewsList(selectedTabId, page = pageToLoad) }
+                .onSuccess { data ->
+                    val existingIds = news.mapTo(mutableSetOf()) { it.id }
+                    news = news + data.list.filter { it.id !in existingIds }
+                    nextPage = data.next_page
+                }
+                .onFailure { loadMoreError = it.message ?: "Unable to load more news" }
+            loadingMore = false
+        }
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -130,6 +168,26 @@ fun HomeScreen(
             ) {
                 items(news, key = { it.id }) { item ->
                     NewsGlassCard(item, onArticleClick)
+                }
+                if (loadingMore) {
+                    item(key = "loading-more") {
+                        Box(Modifier.fillMaxWidth().padding(vertical = 18.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(26.dp))
+                        }
+                    }
+                } else if (loadMoreError != null) {
+                    item(key = "load-more-error") {
+                        GlassButton(
+                            onClick = {
+                                loadMoreError = null
+                                loadMoreRetryKey++
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Rounded.Refresh, null, tint = Color.White)
+                            Text("Retry loading more", color = Color.White)
+                        }
+                    }
                 }
             }
         }

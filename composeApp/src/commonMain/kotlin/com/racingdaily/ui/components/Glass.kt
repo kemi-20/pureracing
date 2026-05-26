@@ -1,5 +1,14 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.racingdaily.ui.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,6 +19,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,27 +28,47 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarColors
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
@@ -52,7 +83,7 @@ val LocalGlassBackdrop = staticCompositionLocalOf<LayerBackdrop?> { null }
 
 data class GlassNavTab<T>(
     val value: T,
-    val icon: String,
+    val icon: ImageVector,
     val label: String
 )
 
@@ -71,25 +102,28 @@ fun GlassBackdropHost(content: @Composable BoxScope.() -> Unit) {
                     .layerBackdrop(backdrop)
                     .background(
                         Brush.linearGradient(
-                            0f to Color(0xFF05070B),
-                            0.42f to Color(0xFF101927),
-                            0.72f to Color(0xFF101B17),
-                            1f to Color(0xFF240908),
+                            0f to Color(0xFF0B1220),
+                            0.26f to Color(0xFF13283D),
+                            0.55f to Color(0xFF14291F),
+                            0.78f to Color(0xFF321316),
+                            1f to Color(0xFF090D13),
                             start = Offset.Zero,
-                            end = Offset(1400f, 2200f)
+                            end = Offset(1300f, 2100f)
                         )
                     )
-                    .drawBehind {
+                    .drawWithContent {
+                        drawContent()
+                        val stripe = Color.White.copy(alpha = 0.055f)
                         val red = Color(0xFFE10600).copy(alpha = 0.12f)
-                        val blue = Color(0xFF58A6FF).copy(alpha = 0.09f)
-                        val green = Color(0xFF3FB950).copy(alpha = 0.06f)
-                        val gap = size.width / 5f
-                        repeat(6) { index ->
-                            val x = index * gap - size.width * 0.25f
-                            drawLine(red, Offset(x, 0f), Offset(x + size.height * 0.55f, size.height), 2.5f)
-                            drawLine(blue, Offset(size.width - x * 0.55f, 0f), Offset(size.width - x, size.height), 1.5f)
+                        val cyan = Color(0xFF00D2BE).copy(alpha = 0.08f)
+                        val step = size.width / 6f
+                        repeat(8) { index ->
+                            val x = index * step - size.width * 0.4f
+                            drawLine(stripe, Offset(x, 0f), Offset(x + size.height * 0.48f, size.height), 1.3f)
                         }
-                        drawRect(green, topLeft = Offset(0f, size.height * 0.72f), size = size.copy(height = size.height * 0.28f))
+                        drawCircle(red, radius = size.minDimension * 0.52f, center = Offset(size.width * 0.9f, size.height * 0.1f))
+                        drawCircle(cyan, radius = size.minDimension * 0.42f, center = Offset(size.width * 0.03f, size.height * 0.86f))
+                        drawRect(Color.Black.copy(alpha = 0.18f))
                     }
             )
             content()
@@ -100,7 +134,7 @@ fun GlassBackdropHost(content: @Composable BoxScope.() -> Unit) {
 @Composable
 fun GlassSurface(
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(16.dp),
+    shape: Shape = RoundedCornerShape(28.dp),
     selected: Boolean = false,
     onClick: (() -> Unit)? = null,
     role: Role? = null,
@@ -109,16 +143,15 @@ fun GlassSurface(
 ) {
     val backdrop = LocalGlassBackdrop.current
     val primary = MaterialTheme.colorScheme.primary
-    val surface = MaterialTheme.colorScheme.surface
     val borderColor =
         if (selected) primary.copy(alpha = 0.58f)
         else Color.White.copy(alpha = 0.18f)
     val surfaceColor =
-        if (selected) primary.copy(alpha = 0.26f)
-        else surface.copy(alpha = 0.44f)
+        if (selected) primary.copy(alpha = 0.23f)
+        else Color(0xFF0F151E).copy(alpha = 0.38f)
     val overlayColor =
-        if (selected) Color.White.copy(alpha = 0.08f)
-        else Color.White.copy(alpha = 0.045f)
+        if (selected) Color.White.copy(alpha = 0.11f)
+        else Color.White.copy(alpha = 0.055f)
 
     val glassModifier =
         if (backdrop != null) {
@@ -127,21 +160,21 @@ fun GlassSurface(
                 shape = { shape },
                 effects = {
                     vibrancy()
-                    blur(if (selected) 18.dp.toPx() else 14.dp.toPx())
+                    blur(if (selected) 8.dp.toPx() else 5.dp.toPx())
                     lens(
-                        refractionHeight = if (selected) 16.dp.toPx() else 10.dp.toPx(),
-                        refractionAmount = if (selected) 24.dp.toPx() else 18.dp.toPx(),
+                        refractionHeight = if (selected) 22.dp.toPx() else 16.dp.toPx(),
+                        refractionAmount = if (selected) 28.dp.toPx() else 22.dp.toPx(),
                         chromaticAberration = selected
                     )
                 },
                 highlight = {
-                    Highlight.Default.copy(alpha = if (selected) 0.72f else 0.42f)
+                    Highlight.Default.copy(alpha = if (selected) 0.78f else 0.48f)
                 },
                 shadow = {
                     Shadow(
-                        radius = if (selected) 24.dp else 18.dp,
-                        color = Color.Black.copy(alpha = 0.32f),
-                        alpha = if (selected) 0.9f else 0.65f
+                        radius = if (selected) 22.dp else 16.dp,
+                        color = Color.Black.copy(alpha = 0.3f),
+                        alpha = if (selected) 0.78f else 0.58f
                     )
                 },
                 onDrawSurface = {
@@ -183,12 +216,12 @@ fun GlassButton(
     content: @Composable RowScope.() -> Unit
 ) {
     GlassSurface(
-        modifier = modifier.defaultMinSize(minHeight = 42.dp),
+        modifier = modifier.defaultMinSize(minHeight = 46.dp),
         shape = RoundedCornerShape(999.dp),
         selected = selected,
         onClick = onClick,
         role = Role.Button,
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 11.dp)
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -199,28 +232,105 @@ fun GlassButton(
 }
 
 @Composable
+fun GlassIconButton(
+    icon: ImageVector,
+    contentDescription: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false
+) {
+    GlassSurface(
+        modifier = modifier.size(48.dp),
+        shape = CircleShape,
+        selected = selected,
+        onClick = onClick,
+        role = Role.Button
+    ) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Icon(
+                icon,
+                contentDescription = contentDescription,
+                tint = if (selected) Color.White else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+    }
+}
+
+@Composable
 fun GlassChip(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    leadingIcon: ImageVector? = null
 ) {
     GlassSurface(
-        modifier = modifier.heightIn(min = 34.dp),
+        modifier = modifier.heightIn(min = 38.dp),
         shape = RoundedCornerShape(999.dp),
         selected = selected,
         onClick = onClick,
         role = Role.Button,
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 7.dp)
+        contentPadding = PaddingValues(horizontal = 13.dp, vertical = 8.dp)
     ) {
-        Text(
-            label,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
-        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (leadingIcon != null) {
+                Icon(
+                    leadingIcon,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                label,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+fun ScreenHeader(
+    title: String,
+    subtitle: String? = null,
+    modifier: Modifier = Modifier,
+    actions: @Composable RowScope.() -> Unit = {}
+) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (!subtitle.isNullOrBlank()) {
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = actions)
     }
 }
 
@@ -235,15 +345,15 @@ fun <T> GlassBottomBar(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(24.dp),
-        contentPadding = PaddingValues(6.dp)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        shape = RoundedCornerShape(999.dp),
+        contentPadding = PaddingValues(5.dp)
     ) {
         Row(
             Modifier
                 .fillMaxWidth()
                 .height(58.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             tabs.forEach { tab ->
@@ -252,7 +362,7 @@ fun <T> GlassBottomBar(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
-                    shape = RoundedCornerShape(18.dp),
+                    shape = RoundedCornerShape(999.dp),
                     selected = isSelected,
                     onClick = { onSelected(tab.value) },
                     role = Role.Tab
@@ -262,7 +372,12 @@ fun <T> GlassBottomBar(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Text(tab.icon, fontSize = 16.sp, lineHeight = 18.sp, textAlign = TextAlign.Center)
+                        Icon(
+                            tab.icon,
+                            contentDescription = tab.label,
+                            modifier = Modifier.size(21.dp),
+                            tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         Text(
                             tab.label,
                             fontSize = 11.sp,
@@ -270,11 +385,182 @@ fun <T> GlassBottomBar(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
             }
         }
+    }
+}
+
+/*
+ * Adapted from ImageToolbox EnhancedTopAppBar by T8RIN, Apache-2.0.
+ * The original component switches between Material top app bar variants with animated content.
+ */
+@Composable
+fun EnhancedTopAppBar(
+    title: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    navigationIcon: @Composable () -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = {},
+    windowInsets: WindowInsets = EnhancedTopAppBarDefaults.windowInsets,
+    colors: TopAppBarColors = EnhancedTopAppBarDefaults.colors(),
+    scrollBehavior: TopAppBarScrollBehavior? = null,
+    type: EnhancedTopAppBarType = EnhancedTopAppBarType.Normal,
+    drawHorizontalStroke: Boolean = true
+) {
+    AnimatedContent(
+        targetState = type,
+        transitionSpec = { fadeIn() togetherWith fadeOut() }
+    ) {
+        when (it) {
+            EnhancedTopAppBarType.Center -> CenterAlignedTopAppBar(
+                title = title,
+                modifier = modifier.drawHorizontalStroke(drawHorizontalStroke),
+                navigationIcon = navigationIcon,
+                actions = actions,
+                windowInsets = windowInsets,
+                colors = colors,
+                scrollBehavior = scrollBehavior
+            )
+
+            EnhancedTopAppBarType.Normal -> TopAppBar(
+                title = title,
+                modifier = modifier.drawHorizontalStroke(drawHorizontalStroke),
+                navigationIcon = navigationIcon,
+                actions = actions,
+                windowInsets = windowInsets,
+                colors = colors,
+                scrollBehavior = scrollBehavior
+            )
+
+            EnhancedTopAppBarType.Large -> LargeTopAppBar(
+                title = title,
+                modifier = modifier.drawHorizontalStroke(drawHorizontalStroke),
+                navigationIcon = navigationIcon,
+                actions = actions,
+                windowInsets = windowInsets,
+                colors = colors,
+                scrollBehavior = scrollBehavior
+            )
+        }
+    }
+}
+
+enum class EnhancedTopAppBarType {
+    Center, Normal, Large
+}
+
+object EnhancedTopAppBarDefaults {
+    val windowInsets: WindowInsets
+        @Composable
+        get() = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
+
+    @Composable
+    fun colors(
+        containerColor: Color = Color.Transparent,
+        scrolledContainerColor: Color = Color.Transparent,
+        navigationIconContentColor: Color = MaterialTheme.colorScheme.onSurface,
+        titleContentColor: Color = MaterialTheme.colorScheme.onSurface,
+        actionIconContentColor: Color = MaterialTheme.colorScheme.onSurface,
+    ): TopAppBarColors = TopAppBarDefaults.topAppBarColors(
+        containerColor = containerColor,
+        scrolledContainerColor = scrolledContainerColor,
+        navigationIconContentColor = navigationIconContentColor,
+        titleContentColor = titleContentColor,
+        actionIconContentColor = actionIconContentColor
+    )
+}
+
+/*
+ * Inspired by ImageToolbox EnhancedIconButton by T8RIN, Apache-2.0.
+ * This keeps the animated shape/color behavior while routing the surface through Backdrop glass.
+ */
+@Composable
+fun EnhancedIconButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    selected: Boolean = false,
+    icon: ImageVector,
+    contentDescription: String? = null
+) {
+    val container by animateColorAsState(
+        if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
+        else Color.Transparent
+    )
+    val border by animateDpAsState(if (enabled) 1.dp else 0.dp)
+    OutlinedIconButton(
+        onClick = onClick,
+        modifier = modifier.size(48.dp),
+        enabled = enabled,
+        shape = CircleShape,
+        border = BorderStroke(border, Color.White.copy(alpha = if (selected) 0.35f else 0.18f)),
+        colors = IconButtonDefaults.outlinedIconButtonColors(
+            containerColor = container,
+            contentColor = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
+        )
+    ) {
+        Icon(icon, contentDescription, modifier = Modifier.size(22.dp))
+    }
+}
+
+@Composable
+fun PreferenceGlassRow(
+    title: String,
+    subtitle: String? = null,
+    icon: ImageVector? = null,
+    onClick: (() -> Unit)? = null,
+    endContent: @Composable RowScope.() -> Unit = {}
+) {
+    GlassSurface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        onClick = onClick,
+        role = if (onClick != null) Role.Button else null,
+        contentPadding = PaddingValues(16.dp)
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                GlassSurface(Modifier.size(42.dp), shape = CircleShape, selected = true) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                    }
+                }
+                androidx.compose.foundation.layout.Spacer(Modifier.size(12.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text(title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium)
+                if (!subtitle.isNullOrBlank()) {
+                    Text(
+                        subtitle,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = endContent)
+        }
+    }
+}
+
+private fun Modifier.drawHorizontalStroke(enabled: Boolean) = composed {
+    if (!enabled) {
+        Modifier
+    } else {
+        Modifier
+            .zIndex(1f)
+            .drawWithContent {
+                drawContent()
+                drawRect(
+                    color = Color.White.copy(alpha = 0.08f),
+                    topLeft = Offset(0f, size.height - 1f),
+                    size = Size(size.width, 1f)
+                )
+            }
     }
 }

@@ -78,7 +78,8 @@ object FlexibleIntSerializer : KSerializer<Int> {
     val session_type: Int = 0, val hour: List<String> = emptyList(), val race_status: Int = 0,
     val race_result: List<SessionResult> = emptyList())
 @Serializable data class SessionResult(val rank: Int = 0, @Serializable(with = FlexibleStringSerializer::class) val driverid: String = "", val dr_name: String = "",
-    @Serializable(with = FlexibleStringSerializer::class) val teamid: String = "", val team_logo: String = "", val gap: String = "")
+    @Serializable(with = FlexibleStringSerializer::class) val teamid: String = "", val team_logo: String = "", val gap: String = "",
+    @Serializable(with = FlexibleIntSerializer::class) val score_p: Int = 0, @Serializable(with = FlexibleIntSerializer::class) val is_fast: Int = 0)
 
 // Ranking
 @Serializable data class RankingNavData(val list: List<RankingNavItem> = emptyList())
@@ -101,7 +102,13 @@ object FlexibleIntSerializer : KSerializer<Int> {
 @Serializable data class TrackScoreData(val history: List<kotlinx.serialization.json.JsonObject> = emptyList())
 
 // Team
-@Serializable data class TeamScoreData(val history: kotlinx.serialization.json.JsonObject? = null)
+@Serializable data class DriverPhotoData(val list: List<DriverPhoto> = emptyList())
+@Serializable data class DriverPhoto(val path_url: String = "", val path: String = "", val image_url: String = "", val url: String = "")
+@Serializable data class TeamScoreData(
+    val honor: kotlinx.serialization.json.JsonElement? = null,
+    val summary: kotlinx.serialization.json.JsonElement? = null,
+    val history: kotlinx.serialization.json.JsonElement? = null
+)
 
 // Championship
 @Serializable data class ChampSeason(val remark: String = "", val th_data: List<String> = emptyList(),

@@ -17,7 +17,12 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Groups
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.racingdaily.data.model.RankingData
@@ -41,12 +47,18 @@ import com.racingdaily.data.remote.ApiService
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassChip
 import com.racingdaily.ui.components.GlassSurface
+import com.racingdaily.ui.components.ScreenHeader
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
 
 @Composable
-fun RankingScreen(api: ApiService) {
+fun RankingScreen(
+    api: ApiService,
+    onDriverClick: (chpId: Int, driverId: Int, name: String, avatar: String, teamLogo: String) -> Unit,
+    onTeamClick: (chpId: Int, teamId: Int, name: String, logo: String) -> Unit
+) {
     var seasons by remember { mutableStateOf<List<RankingOption>>(emptyList()) }
     var selectedSeason by remember { mutableStateOf<RankingOption?>(null) }
     var isDriver by remember { mutableStateOf(true) }
@@ -84,26 +96,21 @@ fun RankingScreen(api: ApiService) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        Text(
-            "Rankings",
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(16.dp, 16.dp, 16.dp, 8.dp)
-        )
+        ScreenHeader("Rankings", selectedSeason?.name?.ifBlank { "Championship standings" } ?: "Championship standings")
         Row(
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            GlassChip("Driver", selected = isDriver, onClick = { isDriver = true })
-            GlassChip("Constructor", selected = !isDriver, onClick = { isDriver = false })
+            GlassChip("Driver", selected = isDriver, onClick = { isDriver = true }, leadingIcon = Icons.Rounded.Person)
+            GlassChip("Constructor", selected = !isDriver, onClick = { isDriver = false }, leadingIcon = Icons.Rounded.Groups)
         }
         LazyRow(
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(seasons) { season ->
                 GlassChip(
@@ -118,27 +125,40 @@ fun RankingScreen(api: ApiService) {
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(tabs) { tab ->
                     GlassChip(
-                        label = tab.tab_name,
+                        label = tab.tab_name.replace("\n", " "),
                         selected = tab.tab_key == selectedSubTab,
                         onClick = { selectedSubTab = tab.tab_key }
                     )
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
             val tab = tabs.find { it.tab_key == selectedSubTab }
             if (tab != null) {
                 LazyColumn(
                     Modifier
                         .fillMaxSize()
                         .padding(horizontal = 16.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 96.dp)
                 ) {
+                    if (tab.remark.isNotBlank()) {
+                        item {
+                            Text(tab.remark.trim(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
                     itemsIndexed(tab.list) { index, row ->
-                        RankingRow(index + 1, row)
+                        RankingRow(
+                            pos = index + 1,
+                            row = row,
+                            isDriver = isDriver,
+                            chpId = selectedSeason?.chp_id ?: 0,
+                            onDriverClick = onDriverClick,
+                            onTeamClick = onTeamClick
+                        )
                     }
                 }
             }
@@ -152,7 +172,10 @@ fun RankingScreen(api: ApiService) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(12.dp))
-                    GlassButton({ reloadKey++ }) { Text("Retry", color = Color.White) }
+                    GlassButton({ reloadKey++ }) {
+                        Icon(Icons.Rounded.Refresh, null, tint = Color.White)
+                        Text("Retry", color = Color.White)
+                    }
                 }
             }
         }
@@ -160,33 +183,58 @@ fun RankingScreen(api: ApiService) {
 }
 
 @Composable
-fun RankingRow(pos: Int, row: JsonObject) {
+private fun RankingRow(
+    pos: Int,
+    row: JsonObject,
+    isDriver: Boolean,
+    chpId: Int,
+    onDriverClick: (chpId: Int, driverId: Int, name: String, avatar: String, teamLogo: String) -> Unit,
+    onTeamClick: (chpId: Int, teamId: Int, name: String, logo: String) -> Unit
+) {
     val name = row.text("driver_abbr_chinese_name").ifBlank { row.text("team_abbr_chinese_name") }
-    val team = row.text("team_name")
-    val pts = row.text("total_score").ifBlank { row.text("points") }
+    val team = row.text("team_name").ifBlank { row.text("team_abbr_chinese_name") }
+    val pts = row.bestScoreText()
     val avatar = row.text("driver_avatar").ifBlank { row.text("team_logo") }
+    val teamLogo = row.text("team_logo")
+    val driverId = row.intText("driver_id").ifZero { row.intText("drivers_id") }
+    val teamId = row.intText("team_id")
 
     GlassSurface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 3.dp),
+            .padding(vertical = 1.dp),
         selected = pos <= 3,
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+        onClick = {
+            if (isDriver && driverId > 0) {
+                onDriverClick(chpId, driverId, name, avatar, teamLogo)
+            } else if (!isDriver && teamId > 0) {
+                onTeamClick(chpId, teamId, name, avatar)
+            }
+        },
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "$pos",
                 style = MaterialTheme.typography.titleMedium,
                 color = if (pos <= 3) RacingYellow else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.width(32.dp)
+                modifier = Modifier.width(34.dp),
+                fontWeight = FontWeight.Bold
             )
             if (avatar.isNotBlank()) {
-                AsyncImage(avatar, null, Modifier.size(32.dp).clip(CircleShape), contentScale = ContentScale.Fit)
-                Spacer(Modifier.width(8.dp))
+                AsyncImage(avatar, null, Modifier.size(42.dp).clip(CircleShape), contentScale = ContentScale.Fit)
+                Spacer(Modifier.width(10.dp))
             }
             Column(Modifier.weight(1f)) {
-                Text(name, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                if (team.isNotEmpty()) {
+                Text(
+                    name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (team.isNotEmpty() && team != name) {
                     Text(team, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -197,6 +245,25 @@ fun RankingRow(pos: Int, row: JsonObject) {
 
 private fun JsonObject.text(key: String): String =
     (this[key] as? JsonPrimitive)?.contentOrNull.orEmpty()
+
+private fun JsonObject.intText(key: String): Int {
+    val primitive = this[key] as? JsonPrimitive ?: return 0
+    return primitive.intOrNull ?: primitive.content.toIntOrNull() ?: 0
+}
+
+private fun JsonObject.bestScoreText(): String {
+    val keys = listOf(
+        "total_score", "points", "gp_p1_cnt", "gp_pole_cnt", "gp_fastlap_cnt",
+        "gp_q_avg_rank_percent", "gp_race_avg_rank_percent", "use_time", "display_order"
+    )
+    keys.forEach { key ->
+        val value = text(key)
+        if (value.isNotBlank()) return value
+    }
+    return "-"
+}
+
+private inline fun Int.ifZero(block: () -> Int): Int = if (this == 0) block() else this
 
 private val RacingYellow = Color(0xFFD29922)
 private val RacingBlue = Color(0xFF58A6FF)

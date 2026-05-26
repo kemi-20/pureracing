@@ -15,7 +15,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Flag
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Route
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.racingdaily.data.model.RaceGp
@@ -37,9 +44,10 @@ import com.racingdaily.data.remote.ApiService
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassChip
 import com.racingdaily.ui.components.GlassSurface
+import com.racingdaily.ui.components.ScreenHeader
 
 @Composable
-fun RaceScreen(onSessionClick: (gpId: Int, sessionId: Int) -> Unit, onTrackClick: (Int) -> Unit, api: ApiService) {
+fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: ApiService) {
     var races by remember { mutableStateOf<List<RaceGp>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -49,18 +57,13 @@ fun RaceScreen(onSessionClick: (gpId: Int, sessionId: Int) -> Unit, onTrackClick
         loading = true
         error = null
         runCatching { api.getRaceSchedule() }
-            .onSuccess { races = it }
+            .onSuccess { races = it.filter { gp -> gp.gp_id.isNotBlank() || gp.gp_name.isNotBlank() } }
             .onFailure { error = it.message ?: "Unable to load race schedule" }
         loading = false
     }
 
     Column(Modifier.fillMaxSize()) {
-        Text(
-            "Race Schedule",
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(16.dp, 16.dp, 16.dp, 8.dp)
-        )
+        ScreenHeader("Race", "F1 sessions and results")
         when {
             loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
@@ -69,47 +72,90 @@ fun RaceScreen(onSessionClick: (gpId: Int, sessionId: Int) -> Unit, onTrackClick
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(12.dp))
-                    GlassButton({ reloadKey++ }) { Text("Retry", color = Color.White) }
+                    GlassButton({ reloadKey++ }) {
+                        Icon(Icons.Rounded.Refresh, null, tint = Color.White)
+                        Text("Retry", color = Color.White)
+                    }
                 }
             }
             else -> LazyColumn(
                 Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(bottom = 80.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 96.dp)
             ) {
-                items(races) { gp ->
-                    GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(12.dp)) {
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                AsyncImage(gp.gp_logo, null, Modifier.size(48.dp), contentScale = ContentScale.Fit)
-                                Spacer(Modifier.width(12.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(
-                                        gp.gp_name.ifBlank { gp.race_time_detail },
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    Text(gp.track_name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(gp.race_time_detail, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                                GlassChip(
-                                    label = gp.chp_name.ifBlank { "F1" },
-                                    selected = true,
-                                    onClick = { if (gp.track_id > 0) onTrackClick(gp.track_id) }
+                items(races, key = { "${it.gp_id}-${it.race_time}-${it.session.firstOrNull()?.session_id}" }) { gp ->
+                    RaceGlassCard(gp, onRaceClick, onTrackClick)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit) {
+    GlassSurface(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(16.dp),
+        onClick = { onRaceClick(gp) }
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AsyncImage(gp.gp_logo, null, Modifier.size(58.dp), contentScale = ContentScale.Fit)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        gp.gp_name.ifBlank { gp.race_time_detail },
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(gp.race_time_detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                    Text(gp.track_name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                GlassChip(
+                    label = gp.chp_name.ifBlank { "F1" },
+                    selected = true,
+                    onClick = { onRaceClick(gp) },
+                    leadingIcon = Icons.Rounded.Flag
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (gp.track_id > 0) {
+                    GlassChip(
+                        label = "Track",
+                        selected = false,
+                        onClick = { onTrackClick(gp.track_id) },
+                        leadingIcon = Icons.Rounded.Route
+                    )
+                }
+                gp.weather?.takeIf { it.temp.isNotBlank() }?.let {
+                    GlassChip("${it.temp}C", selected = false, onClick = {})
+                }
+            }
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(gp.session) { session ->
+                    GlassSurface(
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+                        selected = session.race_status == 1,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 9.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            Icon(Icons.Rounded.Timer, null, modifier = Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Column {
+                                Text(
+                                    session.session_name.firstOrNull().orEmpty(),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    style = MaterialTheme.typography.labelMedium
                                 )
-                            }
-                            Spacer(Modifier.height(8.dp))
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                items(gp.session.take(6)) { session ->
-                                    GlassChip(
-                                        label = session.session_name.firstOrNull() ?: "",
-                                        selected = false,
-                                        onClick = { onSessionClick(gp.gp_id.toIntOrNull() ?: 0, session.session_id) }
-                                    )
-                                }
+                                Text(
+                                    session.hour.joinToString("/"),
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
                             }
                         }
                     }

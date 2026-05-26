@@ -29,6 +29,7 @@ kotlin {
             implementation(compose.material3)
             implementation(compose.ui)
             implementation(compose.animation)
+            implementation(compose.materialIconsExtended)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.ktor.client.core)
@@ -84,7 +85,7 @@ compose.desktop {
         mainClass = "com.racingdaily.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Exe)
-            packageName = "RacingDaily"
+            packageName = "PureRacing"
             packageVersion = "1.0.0"
         }
     }

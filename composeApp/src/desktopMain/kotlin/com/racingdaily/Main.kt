@@ -6,7 +6,7 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 
 fun main() = application {
-    Window(onCloseRequest = ::exitApplication, title = "RacingDaily", state = rememberWindowState(width = 480.dp, height = 900.dp)) {
+    Window(onCloseRequest = ::exitApplication, title = "PureRacing", state = rememberWindowState(width = 480.dp, height = 900.dp)) {
         RacingDailyClient()
     }
 }

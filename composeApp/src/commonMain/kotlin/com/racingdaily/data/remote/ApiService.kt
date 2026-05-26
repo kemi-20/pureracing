@@ -44,6 +44,9 @@ class ApiService(private val client: HttpClient) {
     suspend fun getStationRank(gpId: Int) =
         client.get("station/rank") { parameter("gp_id", gpId) }.body<ApiResponse<StationRankData>>().requireData()
 
+    suspend fun getStationScore(gpId: Int) =
+        client.get("station/score") { parameter("gp_id", gpId) }.body<ApiResponse<kotlinx.serialization.json.JsonElement>>().requireData()
+
     suspend fun getTrackInfo(trackId: Int) =
         client.get("track/index") { parameter("track_id", trackId) }.body<ApiResponse<TrackData>>().requireData()
 
@@ -53,6 +56,10 @@ class ApiService(private val client: HttpClient) {
     suspend fun getTeamScore(chpId: Int, teamId: Int) =
         client.get("team/score") { parameter("chp_id", chpId); parameter("team_id", teamId) }
             .body<ApiResponse<TeamScoreData>>().requireData()
+
+    suspend fun getDriverPhoto(chpId: Int, driverId: Int) =
+        client.get("driver/photo") { parameter("chp_id", chpId); parameter("driver_id", driverId) }
+            .body<ApiResponse<kotlinx.serialization.json.JsonElement>>().requireData()
 
     suspend fun getCustomSeason() = client.get("custom/season").body<ApiResponse<ChampSeason>>().requireData()
     suspend fun getCustomSubstation() = client.get("custom/substation").body<ApiResponse<ChampSubstation>>().requireData()

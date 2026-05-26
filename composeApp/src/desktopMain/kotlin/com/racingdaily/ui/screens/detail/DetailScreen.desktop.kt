@@ -105,7 +105,7 @@ private object SwtThread {
     private var display: Display? = null
 
     init {
-        thread(name = "RacingDaily-SWT", isDaemon = true) {
+        thread(name = "PureRacing-SWT", isDaemon = true) {
             display = Display()
             ready.countDown()
             val current = display ?: return@thread

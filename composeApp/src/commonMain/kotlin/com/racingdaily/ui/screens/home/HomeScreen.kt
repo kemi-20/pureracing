@@ -10,10 +10,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.FiberManualRecord
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -36,11 +44,17 @@ import com.racingdaily.data.remote.ApiService
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassChip
 import com.racingdaily.ui.components.GlassSurface
+import com.racingdaily.ui.components.ScreenHeader
 
 @Composable
-fun HomeScreen(onArticleClick: (Int) -> Unit, api: ApiService) {
+fun HomeScreen(
+    onArticleClick: (NewsItem) -> Unit,
+    listState: LazyListState,
+    selectedTabId: Int,
+    onSelectedTabIdChange: (Int) -> Unit,
+    api: ApiService
+) {
     var tabs by remember { mutableStateOf<List<NavTab>>(emptyList()) }
-    var selectedTabId by remember { mutableIntStateOf(1) }
     var news by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -62,23 +76,33 @@ fun HomeScreen(onArticleClick: (Int) -> Unit, api: ApiService) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        Text(
-            "RacingDaily",
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(16.dp, 12.dp, 16.dp, 4.dp)
+        ScreenHeader(
+            title = "PureRacing",
+            subtitle = "Motorsport news and data",
+            actions = {
+                GlassSurface(
+                    modifier = Modifier.size(48.dp),
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    selected = false,
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+            }
         )
         LazyRow(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 4.dp),
+                .padding(horizontal = 16.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(tabs) { tab ->
                 GlassChip(
                     label = tab.name,
                     selected = tab.id == selectedTabId,
-                    onClick = { selectedTabId = tab.id }
+                    onClick = { onSelectedTabIdChange(tab.id) }
                 )
             }
         }
@@ -90,52 +114,80 @@ fun HomeScreen(onArticleClick: (Int) -> Unit, api: ApiService) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(12.dp))
-                    GlassButton({ reloadKey++ }) { Text("Retry", color = Color.White) }
+                    GlassButton({ reloadKey++ }) {
+                        Icon(Icons.Rounded.Refresh, null, tint = Color.White)
+                        Text("Retry", color = Color.White)
+                    }
                 }
             }
             else -> LazyColumn(
-                Modifier
+                state = listState,
+                modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(vertical = 8.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                contentPadding = PaddingValues(top = 12.dp, bottom = 96.dp)
             ) {
-                items(news) { item ->
-                    GlassSurface(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = { onArticleClick(item.id) }
-                    ) {
-                        Column {
-                            item.covers.firstOrNull()?.path_url?.let { url ->
-                                AsyncImage(url, null, Modifier.fillMaxWidth().height(160.dp), contentScale = ContentScale.Crop)
-                            }
-                            Column(Modifier.padding(12.dp)) {
-                                Text(
-                                    item.title,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 3,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Row(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 6.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        "${item.total_read} reads",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    item.tags.firstOrNull()?.let {
-                                        GlassChip(it.name, selected = true, onClick = {})
-                                    }
-                                }
-                            }
-                        }
+                items(news, key = { it.id }) { item ->
+                    NewsGlassCard(item, onArticleClick)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewsGlassCard(item: NewsItem, onArticleClick: (NewsItem) -> Unit) {
+    GlassSurface(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = { onArticleClick(item) },
+        contentPadding = PaddingValues(0.dp)
+    ) {
+        Column {
+            val cover = item.covers.firstOrNull()?.path_url.orEmpty()
+            if (cover.isNotBlank()) {
+                AsyncImage(
+                    cover,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxWidth().height(186.dp),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (item.istop == 1) {
+                        GlassChip("Pinned", selected = true, onClick = {})
                     }
+                    item.tags.firstOrNull()?.let { tag ->
+                        GlassChip(tag.name, selected = false, onClick = {})
+                    }
+                }
+                Text(
+                    item.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.FiberManualRecord, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(9.dp))
+                        Text(
+                            "${item.total_read} reads",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        if (item.publish_time > 0) item.publish_time.toString() else "News",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }

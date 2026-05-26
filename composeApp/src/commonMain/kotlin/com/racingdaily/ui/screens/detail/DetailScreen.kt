@@ -2,16 +2,17 @@ package com.racingdaily.ui.screens.detail
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,21 +25,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.racingdaily.data.model.ArticleDetail
 import com.racingdaily.data.remote.ApiService
+import com.racingdaily.platform.rememberShareLauncher
 import com.racingdaily.ui.components.GlassButton
-import com.racingdaily.ui.components.GlassSurface
+import com.racingdaily.ui.components.GlassIconButton
+import com.racingdaily.ui.components.ScreenHeader
 
 @Composable
-fun DetailScreen(articleId: Int, onBack: () -> Unit, api: ApiService) {
+fun DetailScreen(articleId: Int, initialTitle: String, initialUrl: String, onBack: () -> Unit, api: ApiService) {
     var article by remember(articleId) { mutableStateOf<ArticleDetail?>(null) }
     var loading by remember(articleId) { mutableStateOf(true) }
     var error by remember(articleId) { mutableStateOf<String?>(null) }
     var reloadKey by remember(articleId) { mutableIntStateOf(0) }
+    val shareLauncher = rememberShareLauncher()
+    val title = article?.title?.ifBlank { initialTitle } ?: initialTitle.ifBlank { "News" }
+    val shareUrl = article?.source_link?.ifBlank { initialUrl } ?: initialUrl.ifBlank { "https://news.romielf.com/news.html?id=$articleId" }
 
     LaunchedEffect(articleId, reloadKey) {
         loading = true
@@ -50,26 +53,14 @@ fun DetailScreen(articleId: Int, onBack: () -> Unit, api: ApiService) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            GlassSurface(
-                modifier = Modifier.size(48.dp),
-                shape = CircleShape,
-                onClick = onBack
-            ) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("<", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                }
+        ScreenHeader(
+            title = title,
+            subtitle = article?.temotime?.ifBlank { "Article" } ?: "Article",
+            actions = {
+                GlassIconButton(Icons.Rounded.Share, "Share", onClick = { shareLauncher.share("$title\n$shareUrl") })
+                GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
             }
-            Spacer(Modifier.width(12.dp))
-            Text(
-                article?.title ?: "Article",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-        }
+        )
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when {
                 loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = MaterialTheme.colorScheme.primary)
@@ -79,7 +70,10 @@ fun DetailScreen(articleId: Int, onBack: () -> Unit, api: ApiService) {
                 ) {
                     Text(error.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(12.dp))
-                    GlassButton({ reloadKey++ }) { Text("Retry", color = Color.White) }
+                    GlassButton({ reloadKey++ }) {
+                        Icon(Icons.Rounded.Refresh, null, tint = Color.White)
+                        Text("Retry", color = Color.White)
+                    }
                 }
                 article != null -> HtmlView(articleId, article?.htmlContent().orEmpty())
             }
@@ -116,7 +110,7 @@ internal fun buildArticleHtmlDocument(html: String): String = """
       max-width: 100% !important;
       height: auto !important;
       margin: 12px auto;
-      border-radius: 12px;
+      border-radius: 16px;
       background: #161B22;
     }
     video { width: 100% !important; }

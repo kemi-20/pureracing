@@ -1,5 +1,6 @@
 package com.racingdaily
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -157,10 +158,12 @@ fun App(api: ApiService) {
 
 @Composable
 private fun AppPageOverlay(content: @Composable () -> Unit) {
-    Box(Modifier.fillMaxSize()) {
-        GlassBackdropHost {
-            content()
-        }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        content()
     }
 }
 

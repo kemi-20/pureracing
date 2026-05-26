@@ -68,8 +68,13 @@ actual fun <T> OriginalLiquidBottomTabs(
         modifier = modifier
     ) {
         tabs.forEachIndexed { index, tab ->
-            LiquidBottomTab(onClick = { selectedIndex = index }) {
-                Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(22.dp))
+            LiquidBottomTab(onClick = {
+                selectedIndex = index
+                if (tab.value != selected) {
+                    onSelected(tab.value)
+                }
+            }) {
+                Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(22.dp), tint = Color.White)
                 Text(tab.label, style = MaterialTheme.typography.labelSmall, color = Color.White)
             }
         }

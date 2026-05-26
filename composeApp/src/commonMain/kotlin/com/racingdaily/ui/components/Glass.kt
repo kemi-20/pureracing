@@ -419,7 +419,7 @@ private fun FallbackGlassBottomBar(
                             tab.icon,
                             contentDescription = tab.label,
                             modifier = Modifier.size(21.dp),
-                            tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = Color.White
                         )
                         Text(
                             tab.label,

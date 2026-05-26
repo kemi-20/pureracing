@@ -70,7 +70,7 @@ actual fun <T> OriginalLiquidBottomTabs(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
-                        Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(22.dp), tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(22.dp), tint = Color.White)
                         Text(tab.label, style = MaterialTheme.typography.labelSmall, color = Color.White)
                     }
                 }

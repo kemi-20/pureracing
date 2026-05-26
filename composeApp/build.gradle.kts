@@ -61,6 +61,7 @@ kotlin {
 android {
     namespace = "com.racingdaily"
     compileSdk = 36
+    val androidKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
 
     defaultConfig {
         applicationId = "com.racingdaily.pureracing"
@@ -70,9 +71,23 @@ android {
         versionName = "1.0.0"
     }
 
+    signingConfigs {
+        create("release") {
+            if (!androidKeystorePath.isNullOrBlank()) {
+                storeFile = file(androidKeystorePath)
+                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (!androidKeystorePath.isNullOrBlank()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

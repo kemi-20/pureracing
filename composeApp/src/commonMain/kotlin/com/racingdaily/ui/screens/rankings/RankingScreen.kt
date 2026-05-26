@@ -138,6 +138,7 @@ fun RankingScreen(
             Spacer(Modifier.height(10.dp))
             val tab = tabs.find { it.tab_key == selectedSubTab }
             if (tab != null) {
+                val remark = tab.remark.cleanRankingRemark()
                 LazyColumn(
                     Modifier
                         .fillMaxSize()
@@ -145,9 +146,9 @@ fun RankingScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(bottom = 96.dp)
                 ) {
-                    if (tab.remark.isNotBlank()) {
+                    if (remark.isNotBlank()) {
                         item {
-                            Text(tab.remark.trim(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            Text(remark, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                     itemsIndexed(tab.list) { index, row ->
@@ -262,6 +263,12 @@ private fun JsonObject.bestScoreText(): String {
     }
     return "-"
 }
+
+private fun String.cleanRankingRemark(): String =
+    replace("\\n", "\n")
+        .lines()
+        .joinToString("\n") { it.trim() }
+        .trim()
 
 private inline fun Int.ifZero(block: () -> Int): Int = if (this == 0) block() else this
 

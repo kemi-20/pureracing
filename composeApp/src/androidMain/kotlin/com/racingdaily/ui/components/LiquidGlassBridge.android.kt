@@ -7,10 +7,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -47,20 +45,19 @@ actual fun <T> OriginalLiquidBottomTabs(
     modifier: Modifier
 ) {
     val externalSelectedIndex = tabs.indexOfFirst { it.value == selected }.coerceAtLeast(0)
-    var selectedIndex by remember(tabs) { mutableIntStateOf(externalSelectedIndex) }
+    val selectedIndexState = remember(tabs) { mutableIntStateOf(externalSelectedIndex) }
+    val selectedTabIndex = remember(selectedIndexState) { { selectedIndexState.intValue } }
 
     LaunchedEffect(externalSelectedIndex) {
-        selectedIndex = externalSelectedIndex
+        selectedIndexState.intValue = externalSelectedIndex
     }
 
     LiquidBottomTabs(
-        selectedTabIndex = { selectedIndex },
+        selectedTabIndex = selectedTabIndex,
         onTabSelected = { index ->
-            selectedIndex = index
+            selectedIndexState.intValue = index
             tabs.getOrNull(index)?.let { tab ->
-                if (tab.value != selected) {
-                    onSelected(tab.value)
-                }
+                onSelected(tab.value)
             }
         },
         backdrop = backdrop,
@@ -69,10 +66,8 @@ actual fun <T> OriginalLiquidBottomTabs(
     ) {
         tabs.forEachIndexed { index, tab ->
             LiquidBottomTab(onClick = {
-                selectedIndex = index
-                if (tab.value != selected) {
-                    onSelected(tab.value)
-                }
+                selectedIndexState.intValue = index
+                onSelected(tab.value)
             }) {
                 Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(22.dp), tint = Color.White)
                 Text(tab.label, style = MaterialTheme.typography.labelSmall, color = Color.White)

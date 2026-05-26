@@ -71,7 +71,7 @@ actual fun <T> OriginalLiquidBottomTabs(
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(22.dp), tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(tab.label, style = MaterialTheme.typography.labelSmall, color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(tab.label, style = MaterialTheme.typography.labelSmall, color = Color.White)
                     }
                 }
             }

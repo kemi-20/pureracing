@@ -56,9 +56,11 @@ fun DetailScreen(articleId: Int, initialTitle: String, initialUrl: String, onBac
         ScreenHeader(
             title = title,
             subtitle = article?.temotime?.ifBlank { "Article" } ?: "Article",
+            navigationIcon = {
+                GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
+            },
             actions = {
                 GlassIconButton(Icons.Rounded.Share, "Share", onClick = { shareLauncher.share("$title\n$shareUrl") })
-                GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
             }
         )
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {

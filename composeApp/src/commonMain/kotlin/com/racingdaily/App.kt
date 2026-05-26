@@ -90,14 +90,8 @@ fun App(api: ApiService) {
 
             BackHandler(enabled = pageStack.isNotEmpty(), onBack = goBack)
 
-            when (val page = pageStack.lastOrNull()) {
-                is AppPage.Championship -> ChampScreen(page.category, page.id, goBack, api)
-                is AppPage.Track -> TrackScreen(page.id, goBack, api)
-                is AppPage.Article -> DetailScreen(page.id, page.title, page.url, goBack, api)
-                is AppPage.RaceDetail -> RaceDetailScreen(page.gp, goBack)
-                is AppPage.DriverDetail -> DriverDetailScreen(page, goBack, api)
-                is AppPage.TeamDetail -> TeamDetailScreen(page, goBack, api)
-                else -> Scaffold(
+            Box(Modifier.fillMaxSize()) {
+                Scaffold(
                     containerColor = Color.Transparent,
                     bottomBar = {
                         GlassBottomBar(
@@ -111,8 +105,8 @@ fun App(api: ApiService) {
                             onSelected = { currentScreen = it }
                         )
                     }
-                ) { padding ->
-                    Box(Modifier.padding(padding)) {
+                ) {
+                    Box(Modifier.fillMaxSize()) {
                         when (currentScreen) {
                             Screen.HOME -> HomeScreen(
                                 onArticleClick = { item ->
@@ -146,7 +140,26 @@ fun App(api: ApiService) {
                         }
                     }
                 }
+
+                when (val page = pageStack.lastOrNull()) {
+                    is AppPage.Championship -> AppPageOverlay { ChampScreen(page.category, page.id, goBack, api) }
+                    is AppPage.Track -> AppPageOverlay { TrackScreen(page.id, goBack, api) }
+                    is AppPage.Article -> AppPageOverlay { DetailScreen(page.id, page.title, page.url, goBack, api) }
+                    is AppPage.RaceDetail -> AppPageOverlay { RaceDetailScreen(page.gp, goBack) }
+                    is AppPage.DriverDetail -> AppPageOverlay { DriverDetailScreen(page, goBack, api) }
+                    is AppPage.TeamDetail -> AppPageOverlay { TeamDetailScreen(page, goBack, api) }
+                    null -> Unit
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun AppPageOverlay(content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxSize()) {
+        GlassBackdropHost {
+            content()
         }
     }
 }
@@ -175,7 +188,7 @@ fun TrackScreen(trackId: Int, onBack: () -> Unit, api: ApiService) {
         ScreenHeader(
             title = track?.chinese_name?.ifBlank { track?.name.orEmpty() } ?: "Track",
             subtitle = listOf(track?.country, track?.location).filterNot { it.isNullOrBlank() }.joinToString(" / "),
-            actions = {
+            navigationIcon = {
                 GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
             }
         )
@@ -272,7 +285,7 @@ fun ChampScreen(category: String, id: Int, onBack: () -> Unit, api: ApiService) 
     }
 
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("Championship", "Season table", actions = {
+        ScreenHeader("Championship", "Season table", navigationIcon = {
             GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
         })
         if (loading) {
@@ -324,7 +337,7 @@ fun ChampScreen(category: String, id: Int, onBack: () -> Unit, api: ApiService) 
 @Composable
 fun RaceDetailScreen(gp: RaceGp, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader(gp.gp_name.ifBlank { "Race" }, gp.track_name, actions = {
+        ScreenHeader(gp.gp_name.ifBlank { "Race" }, gp.track_name, navigationIcon = {
             GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
         })
         LazyColumn(
@@ -403,7 +416,7 @@ fun DriverDetailScreen(page: AppPage.DriverDetail, onBack: () -> Unit, api: ApiS
     }
 
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader(page.name, "Driver profile", actions = {
+        ScreenHeader(page.name, "Driver profile", navigationIcon = {
             GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
         })
         LazyColumn(
@@ -452,7 +465,7 @@ fun TeamDetailScreen(page: AppPage.TeamDetail, onBack: () -> Unit, api: ApiServi
     }
 
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader(page.name, "Team profile", actions = {
+        ScreenHeader(page.name, "Team profile", navigationIcon = {
             GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
         })
         LazyColumn(

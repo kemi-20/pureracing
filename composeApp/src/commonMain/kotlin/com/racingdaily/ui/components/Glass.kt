@@ -427,7 +427,7 @@ private fun FallbackGlassBottomBar(
                             lineHeight = 14.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = Color.White,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                             textAlign = TextAlign.Center
                         )
@@ -447,6 +447,7 @@ fun ScreenHeader(
     title: String,
     subtitle: String? = null,
     modifier: Modifier = Modifier,
+    navigationIcon: @Composable RowScope.() -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     Row(
@@ -457,6 +458,7 @@ fun ScreenHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        navigationIcon()
         Column(Modifier.weight(1f)) {
             Text(
                 title,

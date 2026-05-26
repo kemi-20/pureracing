@@ -6,6 +6,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -41,18 +46,31 @@ actual fun <T> OriginalLiquidBottomTabs(
     backdrop: Backdrop,
     modifier: Modifier
 ) {
-    val selectedIndex = tabs.indexOfFirst { it.value == selected }.coerceAtLeast(0)
+    val externalSelectedIndex = tabs.indexOfFirst { it.value == selected }.coerceAtLeast(0)
+    var selectedIndex by remember(tabs) { mutableIntStateOf(externalSelectedIndex) }
+
+    LaunchedEffect(externalSelectedIndex) {
+        selectedIndex = externalSelectedIndex
+    }
+
     LiquidBottomTabs(
         selectedTabIndex = { selectedIndex },
-        onTabSelected = { index -> tabs.getOrNull(index)?.let { onSelected(it.value) } },
+        onTabSelected = { index ->
+            selectedIndex = index
+            tabs.getOrNull(index)?.let { tab ->
+                if (tab.value != selected) {
+                    onSelected(tab.value)
+                }
+            }
+        },
         backdrop = backdrop,
         tabsCount = tabs.size,
         modifier = modifier
     ) {
-        tabs.forEach { tab ->
-            LiquidBottomTab(onClick = { onSelected(tab.value) }) {
+        tabs.forEachIndexed { index, tab ->
+            LiquidBottomTab(onClick = { selectedIndex = index }) {
                 Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(22.dp))
-                Text(tab.label, style = MaterialTheme.typography.labelSmall)
+                Text(tab.label, style = MaterialTheme.typography.labelSmall, color = Color.White)
             }
         }
     }

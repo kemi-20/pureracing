@@ -12,6 +12,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -38,6 +39,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedIconButton
@@ -76,8 +78,6 @@ import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
-import com.kyant.backdrop.highlight.Highlight
-import com.kyant.backdrop.shadow.Shadow
 
 val LocalGlassBackdrop = staticCompositionLocalOf<LayerBackdrop?> { null }
 
@@ -143,15 +143,13 @@ fun GlassSurface(
 ) {
     val backdrop = LocalGlassBackdrop.current
     val primary = MaterialTheme.colorScheme.primary
+    val isLightTheme = !isSystemInDarkTheme()
+    val containerColor =
+        if (isLightTheme) Color(0xFFFAFAFA).copy(alpha = 0.4f)
+        else Color(0xFF121212).copy(alpha = 0.4f)
     val borderColor =
         if (selected) primary.copy(alpha = 0.58f)
         else Color.White.copy(alpha = 0.18f)
-    val surfaceColor =
-        if (selected) primary.copy(alpha = 0.23f)
-        else Color(0xFF0F151E).copy(alpha = 0.38f)
-    val overlayColor =
-        if (selected) Color.White.copy(alpha = 0.11f)
-        else Color.White.copy(alpha = 0.055f)
 
     val glassModifier =
         if (backdrop != null) {
@@ -160,37 +158,25 @@ fun GlassSurface(
                 shape = { shape },
                 effects = {
                     vibrancy()
-                    blur(if (selected) 8.dp.toPx() else 5.dp.toPx())
-                    lens(
-                        refractionHeight = if (selected) 22.dp.toPx() else 16.dp.toPx(),
-                        refractionAmount = if (selected) 28.dp.toPx() else 22.dp.toPx(),
-                        chromaticAberration = selected
-                    )
-                },
-                highlight = {
-                    Highlight.Default.copy(alpha = if (selected) 0.78f else 0.48f)
-                },
-                shadow = {
-                    Shadow(
-                        radius = if (selected) 22.dp else 16.dp,
-                        color = Color.Black.copy(alpha = 0.3f),
-                        alpha = if (selected) 0.78f else 0.58f
-                    )
+                    blur(8.dp.toPx())
+                    lens(24.dp.toPx(), 24.dp.toPx())
                 },
                 onDrawSurface = {
-                    drawRect(surfaceColor)
-                    drawRect(overlayColor)
+                    drawRect(containerColor)
+                    if (selected) {
+                        drawRect(primary.copy(alpha = 0.16f))
+                    }
                 }
             )
         } else {
-            Modifier.background(surfaceColor, shape)
+            Modifier.background(containerColor, shape)
         }
 
     Box(
         modifier
             .then(glassModifier)
             .clip(shape)
-            .border(1.dp, borderColor, shape)
+            .then(if (backdrop == null) Modifier.border(1.dp, borderColor, shape) else Modifier)
             .then(
                 if (onClick != null) {
                     Modifier.clickable(
@@ -215,6 +201,81 @@ fun GlassButton(
     selected: Boolean = false,
     content: @Composable RowScope.() -> Unit
 ) {
+    val backdrop = LocalGlassBackdrop.current
+    if (backdrop != null) {
+        val contentColor = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
+        OriginalLiquidButton(
+            onClick = onClick,
+            backdrop = backdrop,
+            modifier = modifier.defaultMinSize(minHeight = 48.dp),
+            selected = selected
+        ) {
+            CompositionLocalProvider(LocalContentColor provides contentColor) {
+                content()
+            }
+        }
+    } else {
+        FallbackGlassButton(
+            onClick = onClick,
+            modifier = modifier,
+            selected = selected,
+            content = content
+        )
+    }
+}
+
+@Composable
+fun GlassIconButton(
+    icon: ImageVector,
+    contentDescription: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false
+) {
+    val backdrop = LocalGlassBackdrop.current
+    if (backdrop != null) {
+        val contentColor = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
+        OriginalLiquidButton(
+            onClick = onClick,
+            backdrop = backdrop,
+            modifier = modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp),
+            selected = selected
+        ) {
+            CompositionLocalProvider(LocalContentColor provides contentColor) {
+                Icon(
+                    icon,
+                    contentDescription = contentDescription,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+    } else {
+        GlassSurface(
+            modifier = modifier.size(48.dp),
+            shape = CircleShape,
+            selected = selected,
+            onClick = onClick,
+            role = Role.Button
+        ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Icon(
+                    icon,
+                    contentDescription = contentDescription,
+                    tint = if (selected) Color.White else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FallbackGlassButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+    content: @Composable RowScope.() -> Unit
+) {
     GlassSurface(
         modifier = modifier.defaultMinSize(minHeight = 46.dp),
         shape = RoundedCornerShape(999.dp),
@@ -232,33 +293,7 @@ fun GlassButton(
 }
 
 @Composable
-fun GlassIconButton(
-    icon: ImageVector,
-    contentDescription: String?,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    selected: Boolean = false
-) {
-    GlassSurface(
-        modifier = modifier.size(48.dp),
-        shape = CircleShape,
-        selected = selected,
-        onClick = onClick,
-        role = Role.Button
-    ) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Icon(
-                icon,
-                contentDescription = contentDescription,
-                tint = if (selected) Color.White else MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(22.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun GlassChip(
+private fun FallbackGlassChip(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
@@ -298,47 +333,55 @@ fun GlassChip(
 }
 
 @Composable
-fun ScreenHeader(
-    title: String,
-    subtitle: String? = null,
+fun GlassChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    actions: @Composable RowScope.() -> Unit = {}
+    leadingIcon: ImageVector? = null
 ) {
-    Row(
-        modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(horizontal = 18.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                title,
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (!subtitle.isNullOrBlank()) {
+    val backdrop = LocalGlassBackdrop.current
+    if (backdrop != null) {
+        val contentColor = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+        OriginalLiquidButton(
+            onClick = onClick,
+            backdrop = backdrop,
+            modifier = modifier.defaultMinSize(minHeight = 48.dp),
+            selected = selected
+        ) {
+            CompositionLocalProvider(LocalContentColor provides contentColor) {
+                if (leadingIcon != null) {
+                    Icon(
+                        leadingIcon,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
                 Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    label,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
                 )
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = actions)
+    } else {
+        FallbackGlassChip(
+            label = label,
+            selected = selected,
+            onClick = onClick,
+            modifier = modifier,
+            leadingIcon = leadingIcon
+        )
     }
 }
 
 @Composable
-fun <T> GlassBottomBar(
-    tabs: List<GlassNavTab<T>>,
-    selected: T,
-    onSelected: (T) -> Unit,
+private fun FallbackGlassBottomBar(
+    tabs: List<GlassNavTab<Any?>>,
+    selected: Any?,
+    onSelected: (Any?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     GlassSurface(
@@ -392,6 +435,76 @@ fun <T> GlassBottomBar(
                 }
             }
         }
+    }
+}
+
+@Suppress("UNCHECKED_CAST")
+private fun <T> List<GlassNavTab<T>>.asAnyTabs(): List<GlassNavTab<Any?>> =
+    this as List<GlassNavTab<Any?>>
+
+@Composable
+fun ScreenHeader(
+    title: String,
+    subtitle: String? = null,
+    modifier: Modifier = Modifier,
+    actions: @Composable RowScope.() -> Unit = {}
+) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (!subtitle.isNullOrBlank()) {
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = actions)
+    }
+}
+
+@Composable
+fun <T> GlassBottomBar(
+    tabs: List<GlassNavTab<T>>,
+    selected: T,
+    onSelected: (T) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val backdrop = LocalGlassBackdrop.current
+    if (backdrop != null) {
+        OriginalLiquidBottomTabs(
+            tabs = tabs,
+            selected = selected,
+            onSelected = onSelected,
+            backdrop = backdrop,
+            modifier = modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+        )
+    } else {
+        FallbackGlassBottomBar(
+            tabs = tabs.asAnyTabs(),
+            selected = selected,
+            onSelected = { value -> @Suppress("UNCHECKED_CAST") onSelected(value as T) },
+            modifier = modifier
+        )
     }
 }
 

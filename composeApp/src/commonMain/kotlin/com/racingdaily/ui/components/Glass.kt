@@ -122,7 +122,6 @@ fun Modifier.pureRacingBackground(): Modifier = composed {
             )
         )
         .drawWithContent {
-            drawContent()
             val stripe = Color.White.copy(alpha = 0.055f)
             val red = Color(0xFFE10600).copy(alpha = 0.12f)
             val cyan = Color(0xFF00D2BE).copy(alpha = 0.08f)
@@ -134,6 +133,7 @@ fun Modifier.pureRacingBackground(): Modifier = composed {
             drawCircle(red, radius = size.minDimension * 0.52f, center = Offset(size.width * 0.9f, size.height * 0.1f))
             drawCircle(cyan, radius = size.minDimension * 0.42f, center = Offset(size.width * 0.03f, size.height * 0.86f))
             drawRect(Color.Black.copy(alpha = 0.18f))
+            drawContent()
         }
 }
 

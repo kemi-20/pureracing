@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.racingdaily.data.model.RaceGp
 import com.racingdaily.data.remote.ApiService
+import com.racingdaily.platform.LocalDateTimeParts
+import com.racingdaily.platform.currentLocalDateTimeParts
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassChip
 import com.racingdaily.ui.components.GlassSurface
@@ -108,10 +110,56 @@ private fun List<RaceGp>.nearestRaceIndex(): Int {
     val liveIndex = indexOfFirst { gp -> gp.session.any { it.race_status == 2 } }
     if (liveIndex >= 0) return liveIndex
 
+    val now = currentLocalDateTimeParts().toSortableMinutes()
+    val nextTimedRace = mapIndexedNotNull { index, gp ->
+        gp.nextSessionMinutesAfter(now)?.let { index to it }
+    }.minByOrNull { it.second }
+    if (nextTimedRace != null) return nextTimedRace.first
+
     val upcomingIndex = indexOfFirst { gp -> gp.session.any { it.race_status != 1 } }
     if (upcomingIndex >= 0) return upcomingIndex
 
     return lastIndex.coerceAtLeast(0)
+}
+
+private fun RaceGp.nextSessionMinutesAfter(now: Long): Long? {
+    val date = race_time.parseRaceDate() ?: return null
+    val sessionTimes = session
+        .flatMap { it.hour }
+        .mapNotNull { it.parseRaceHour() }
+    val candidates =
+        if (sessionTimes.isEmpty()) {
+            listOf(date.toSortableMinutes(0, 0))
+        } else {
+            sessionTimes.map { (hour, minute) -> date.toSortableMinutes(hour, minute) }
+        }
+    return candidates.filter { it > now }.minOrNull()
+}
+
+private data class RaceDate(val year: Int, val month: Int, val day: Int) {
+    fun toSortableMinutes(hour: Int, minute: Int): Long =
+        (((year * 100L + month) * 100L + day) * 24L + hour) * 60L + minute
+}
+
+private fun LocalDateTimeParts.toSortableMinutes(): Long =
+    RaceDate(year, month, day).toSortableMinutes(hour, minute)
+
+private fun String.parseRaceDate(): RaceDate? {
+    val parts = split("-")
+    if (parts.size != 3) return null
+    val year = parts[0].toIntOrNull() ?: return null
+    val month = parts[1].toIntOrNull() ?: return null
+    val day = parts[2].toIntOrNull() ?: return null
+    return RaceDate(year, month, day)
+}
+
+private fun String.parseRaceHour(): Pair<Int, Int>? {
+    val normalized = trim()
+    val parts = normalized.split(":")
+    if (parts.size < 2) return null
+    val hour = parts[0].toIntOrNull() ?: return null
+    val minute = parts[1].take(2).toIntOrNull() ?: return null
+    return hour to minute
 }
 
 @Composable

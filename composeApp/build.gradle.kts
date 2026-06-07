@@ -108,6 +108,9 @@ compose.desktop {
             targetFormats(TargetFormat.Exe)
             packageName = "PureRacing"
             packageVersion = "1.0.0"
+            windows {
+                iconFile.set(project.file("src/desktopMain/resources/app_icon.ico"))
+            }
         }
     }
 }

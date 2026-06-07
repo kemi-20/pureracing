@@ -64,8 +64,6 @@ import com.racingdaily.ui.screens.more.MoreScreen
 import com.racingdaily.ui.screens.race.RaceScreen
 import com.racingdaily.ui.screens.rankings.RankingScreen
 import com.racingdaily.ui.theme.RacingDailyTheme
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -77,8 +75,8 @@ sealed interface AppPage {
     data class Track(val id: Int) : AppPage
     data class Championship(val category: String, val id: Int) : AppPage
     data class RaceDetail(val gp: RaceGp) : AppPage
-    data class DriverDetail(val chpId: Int, val driverId: Int, val name: String, val avatar: String, val teamLogo: String) : AppPage
-    data class TeamDetail(val chpId: Int, val teamId: Int, val name: String, val logo: String) : AppPage
+    data class DriverDetail(val chpId: Int, val driverId: Int, val name: String, val avatar: String, val teamLogo: String, val stats: JsonObject) : AppPage
+    data class TeamDetail(val chpId: Int, val teamId: Int, val name: String, val logo: String, val stats: JsonObject) : AppPage
 }
 
 @Composable
@@ -127,11 +125,11 @@ fun App(api: ApiService) {
                             )
                             Screen.RANKINGS -> RankingScreen(
                                 api = api,
-                                onDriverClick = { chpId, driverId, name, avatar, teamLogo ->
-                                    pageStack += AppPage.DriverDetail(chpId, driverId, name, avatar, teamLogo)
+                                onDriverClick = { chpId, driverId, name, avatar, teamLogo, stats ->
+                                    pageStack += AppPage.DriverDetail(chpId, driverId, name, avatar, teamLogo, stats)
                                 },
-                                onTeamClick = { chpId, teamId, name, logo ->
-                                    pageStack += AppPage.TeamDetail(chpId, teamId, name, logo)
+                                onTeamClick = { chpId, teamId, name, logo, stats ->
+                                    pageStack += AppPage.TeamDetail(chpId, teamId, name, logo, stats)
                                 }
                             )
                             Screen.MORE -> MoreScreen(
@@ -149,8 +147,8 @@ fun App(api: ApiService) {
                     is AppPage.Track -> AppPageOverlay(page) { TrackScreen(page.id, goBack, api) }
                     is AppPage.Article -> AppPageOverlay(page) { DetailScreen(page.id, page.title, page.url, goBack, api) }
                     is AppPage.RaceDetail -> AppPageOverlay(page) { RaceDetailScreen(page.gp, goBack) }
-                    is AppPage.DriverDetail -> AppPageOverlay(page) { DriverDetailScreen(page, goBack, api) }
-                    is AppPage.TeamDetail -> AppPageOverlay(page) { TeamDetailScreen(page, goBack, api) }
+                    is AppPage.DriverDetail -> AppPageOverlay(page) { DriverDetailScreen(page, goBack) }
+                    is AppPage.TeamDetail -> AppPageOverlay(page) { TeamDetailScreen(page, goBack) }
                     null -> Unit
                 }
             }
@@ -418,23 +416,9 @@ private fun SessionCard(session: RaceSession) {
 }
 
 @Composable
-fun DriverDetailScreen(page: AppPage.DriverDetail, onBack: () -> Unit, api: ApiService) {
-    var photos by remember { mutableStateOf<JsonElement?>(null) }
-    var loading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var reloadKey by remember { mutableIntStateOf(0) }
-
-    LaunchedEffect(page.driverId, reloadKey) {
-        loading = true
-        error = null
-        runCatching { api.getDriverPhoto(page.chpId, page.driverId) }
-            .onSuccess { photos = it }
-            .onFailure { error = it.message ?: "Unable to load driver" }
-        loading = false
-    }
-
+fun DriverDetailScreen(page: AppPage.DriverDetail, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader(page.name, "Driver profile", navigationIcon = {
+        ScreenHeader(page.name, "车手详情", navigationIcon = {
             GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
         })
         LazyColumn(
@@ -449,41 +433,23 @@ fun DriverDetailScreen(page: AppPage.DriverDetail, onBack: () -> Unit, api: ApiS
                         Spacer(Modifier.width(14.dp))
                         Column(Modifier.weight(1f)) {
                             Text(page.name, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.headlineMedium)
-                            Text("Driver ID ${page.driverId}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            Text("车手 ID ${page.driverId}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         }
                         AsyncImage(page.teamLogo, null, Modifier.size(42.dp))
                     }
                 }
             }
             item {
-                when {
-                    loading -> Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                    error != null -> Text(error.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    else -> JsonSummaryCard("Photos", photos)
-                }
+                RankingStatsCard("本赛季数据", page.stats)
             }
         }
     }
 }
 
 @Composable
-fun TeamDetailScreen(page: AppPage.TeamDetail, onBack: () -> Unit, api: ApiService) {
-    var data by remember { mutableStateOf<com.racingdaily.data.model.TeamScoreData?>(null) }
-    var loading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var reloadKey by remember { mutableIntStateOf(0) }
-
-    LaunchedEffect(page.teamId, reloadKey) {
-        loading = true
-        error = null
-        runCatching { api.getTeamScore(page.chpId, page.teamId) }
-            .onSuccess { data = it }
-            .onFailure { error = it.message ?: "Unable to load team" }
-        loading = false
-    }
-
+fun TeamDetailScreen(page: AppPage.TeamDetail, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader(page.name, "Team profile", navigationIcon = {
+        ScreenHeader(page.name, "车队详情", navigationIcon = {
             GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
         })
         LazyColumn(
@@ -498,37 +464,35 @@ fun TeamDetailScreen(page: AppPage.TeamDetail, onBack: () -> Unit, api: ApiServi
                         Spacer(Modifier.width(14.dp))
                         Column(Modifier.weight(1f)) {
                             Text(page.name, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.headlineMedium)
-                            Text("Team ID ${page.teamId}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            Text("车队 ID ${page.teamId}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
             }
             item {
-                when {
-                    loading -> Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                    error != null -> Text(error.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    else -> Column(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)) {
-                        JsonSummaryCard("Summary", data?.summary)
-                        JsonSummaryCard("Honor", data?.honor)
-                        JsonSummaryCard("History", data?.history)
-                    }
-                }
+                RankingStatsCard("本赛季数据", page.stats)
             }
         }
     }
 }
 
 @Composable
-private fun JsonSummaryCard(title: String, element: JsonElement?) {
+private fun RankingStatsCard(title: String, stats: JsonObject) {
+    val rows = stats.rankingStatRows()
     GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
         Column {
             Text(title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(6.dp))
-            Text(
-                element?.compactPreview().orEmpty().ifBlank { "No data returned by this endpoint." },
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall
-            )
+            if (rows.isEmpty()) {
+                Text("暂无可展示数据", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            } else {
+                rows.forEach { (label, value) ->
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                        Text(value, color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
         }
     }
 }
@@ -543,11 +507,70 @@ private fun RaceSession.statusText(): String = when (race_status) {
 private fun JsonObject.text(key: String): String =
     (this[key] as? JsonPrimitive)?.contentOrNull.orEmpty()
 
-private fun JsonElement.compactPreview(maxLength: Int = 420): String {
-    val text = when (this) {
-        is JsonArray -> joinToString("\n") { it.compactPreview(120) }
-        is JsonObject -> entries.take(8).joinToString("\n") { (key, value) -> "$key: ${value.compactPreview(100)}" }
-        is JsonPrimitive -> contentOrNull ?: toString()
+private fun JsonObject.rankingStatRows(): List<Pair<String, String>> {
+    val preferredKeys = listOf(
+        "display_order",
+        "total_score",
+        "gp_p1_cnt",
+        "gp_p2_cnt",
+        "gp_p3_cnt",
+        "gp_pole_cnt",
+        "gp_fastlap_cnt",
+        "gp_fl_cnt",
+        "gp_leadlap_cnt",
+        "gp_start_cnt",
+        "gp_end_cnt",
+        "gp_start_end_percent",
+        "gp_q_avg_rank_percent",
+        "gp_race_avg_rank_percent",
+        "use_time",
+        "gp_name"
+    )
+    val rows = preferredKeys.mapNotNull { key ->
+        val value = text(key)
+        if (value.isBlank()) null else key.labelForRankingStat() to value
     }
-    return if (text.length <= maxLength) text else text.take(maxLength).trimEnd() + "..."
+    if (rows.isNotEmpty()) return rows
+
+    return entries
+        .filterNot { (key, _) -> key.isHiddenRankingStatKey() }
+        .mapNotNull { (key, _) ->
+            val value = text(key)
+            if (value.isBlank()) null else key.labelForRankingStat() to value
+        }
+}
+
+private fun String.labelForRankingStat(): String = when (this) {
+    "display_order" -> "排名"
+    "total_score" -> "积分"
+    "gp_p1_cnt" -> "冠军"
+    "gp_p2_cnt" -> "亚军"
+    "gp_p3_cnt" -> "季军"
+    "gp_pole_cnt" -> "杆位"
+    "gp_fastlap_cnt", "gp_fl_cnt" -> "最快圈"
+    "gp_leadlap_cnt" -> "领跑圈数"
+    "gp_start_cnt" -> "出赛"
+    "gp_end_cnt" -> "完赛"
+    "gp_start_end_percent" -> "完赛率"
+    "gp_q_avg_rank_percent" -> "排位平均排名"
+    "gp_race_avg_rank_percent" -> "正赛平均排名"
+    "use_time" -> "用时"
+    "gp_name" -> "分站"
+    else -> replace("_", " ")
+}
+
+private fun String.isHiddenRankingStatKey(): Boolean =
+    this in setOf(
+        "id",
+        "driver_id",
+        "drivers_id",
+        "driver_avatar",
+        "driver_abbr_chinese_name",
+        "team_id",
+        "team_logo",
+        "team_name",
+        "team_abbr_chinese_name",
+        "page_show_color",
+        "site_point"
+    ) || contains("display_order") || endsWith("_trend") || endsWith("_format")
 }

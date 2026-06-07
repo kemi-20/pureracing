@@ -109,6 +109,58 @@ object FlexibleIntSerializer : KSerializer<Int> {
     val summary: kotlinx.serialization.json.JsonElement? = null,
     val history: kotlinx.serialization.json.JsonElement? = null
 )
+@Serializable data class TeamInfoData(
+    val id: Int = 0,
+    val name: String = "",
+    val chinese_name: String = "",
+    val logo: String = "",
+    val history: String = "",
+    val first_entry: String = "",
+    val fleet_type: String = "",
+    val supplier: String = "",
+    val chassis: String = "",
+    val power_unit: String = "",
+    val photo: String = "",
+    val tab: List<TeamInfoTab> = emptyList(),
+    val drivers: TeamPeopleData = TeamPeopleData(),
+    val car: List<TeamCarInfo> = emptyList()
+)
+@Serializable data class TeamInfoTab(val text: String = "", val value: String = "")
+@Serializable data class TeamPeopleData(
+    val driver: List<TeamDriverInfo> = emptyList(),
+    val worker: List<TeamWorkerInfo> = emptyList(),
+    val test: List<TeamNamedInfo> = emptyList(),
+    val youth: List<TeamNamedInfo> = emptyList(),
+    val famous: List<TeamNamedInfo> = emptyList()
+)
+@Serializable data class TeamDriverInfo(
+    val driver_id: Int = 0,
+    val avatar: String = "",
+    val addr_chinese_name: String = "",
+    @Serializable(with = FlexibleStringSerializer::class) val number: String = "",
+    val t_colour: String = ""
+)
+@Serializable data class TeamWorkerInfo(
+    val driver_id: Int = 0,
+    val avatar: String = "",
+    val addr_chinese_name: String = "",
+    val position: String = ""
+)
+@Serializable data class TeamNamedInfo(
+    val driver_id: Int = 0,
+    val name: String = "",
+    val addr_chinese_name: String = "",
+    val avatar: String = "",
+    val position: String = ""
+)
+@Serializable data class TeamCarInfo(
+    val id: Int = 0,
+    val season_id: Int = 0,
+    val chassis: String = "",
+    val power_unit: String = "",
+    val photo: List<String> = emptyList(),
+    val is_now: Int = 0
+)
 
 // Championship
 @Serializable data class ChampSeason(val remark: String = "", val th_data: List<String> = emptyList(),

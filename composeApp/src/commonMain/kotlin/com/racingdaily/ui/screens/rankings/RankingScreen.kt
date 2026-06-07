@@ -56,8 +56,8 @@ import kotlinx.serialization.json.intOrNull
 @Composable
 fun RankingScreen(
     api: ApiService,
-    onDriverClick: (chpId: Int, driverId: Int, name: String, avatar: String, teamLogo: String, stats: JsonObject) -> Unit,
-    onTeamClick: (chpId: Int, teamId: Int, name: String, logo: String, stats: JsonObject) -> Unit
+    onDriverClick: (chpId: Int, seasonId: Int, driverId: Int, name: String, avatar: String, teamLogo: String, stats: JsonObject) -> Unit,
+    onTeamClick: (chpId: Int, seasonId: Int, teamId: Int, name: String, logo: String, stats: JsonObject) -> Unit
 ) {
     var seasons by remember { mutableStateOf<List<RankingOption>>(emptyList()) }
     var selectedSeason by remember { mutableStateOf<RankingOption?>(null) }
@@ -157,6 +157,7 @@ fun RankingScreen(
                             row = row,
                             isDriver = isDriver,
                             chpId = selectedSeason?.chp_id ?: 0,
+                            seasonId = selectedSeason?.id ?: 0,
                             onDriverClick = onDriverClick,
                             onTeamClick = onTeamClick
                         )
@@ -189,8 +190,9 @@ private fun RankingRow(
     row: JsonObject,
     isDriver: Boolean,
     chpId: Int,
-    onDriverClick: (chpId: Int, driverId: Int, name: String, avatar: String, teamLogo: String, stats: JsonObject) -> Unit,
-    onTeamClick: (chpId: Int, teamId: Int, name: String, logo: String, stats: JsonObject) -> Unit
+    seasonId: Int,
+    onDriverClick: (chpId: Int, seasonId: Int, driverId: Int, name: String, avatar: String, teamLogo: String, stats: JsonObject) -> Unit,
+    onTeamClick: (chpId: Int, seasonId: Int, teamId: Int, name: String, logo: String, stats: JsonObject) -> Unit
 ) {
     val name = row.text("driver_abbr_chinese_name").ifBlank { row.text("team_abbr_chinese_name") }
     val team = row.text("team_name").ifBlank { row.text("team_abbr_chinese_name") }
@@ -207,9 +209,9 @@ private fun RankingRow(
         selected = pos <= 3,
         onClick = {
             if (isDriver && driverId > 0) {
-                onDriverClick(chpId, driverId, name, avatar, teamLogo, row)
+                onDriverClick(chpId, seasonId, driverId, name, avatar, teamLogo, row)
             } else if (!isDriver && teamId > 0) {
-                onTeamClick(chpId, teamId, name, avatar, row)
+                onTeamClick(chpId, seasonId, teamId, name, avatar, row)
             }
         },
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)

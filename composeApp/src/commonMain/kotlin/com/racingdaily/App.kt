@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -12,7 +13,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Article
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
@@ -38,14 +41,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.racingdaily.data.model.ChampSeason
 import com.racingdaily.data.model.RaceGp
 import com.racingdaily.data.model.RaceSession
+import com.racingdaily.data.model.TeamInfoData
+import com.racingdaily.data.model.TeamDriverInfo
+import com.racingdaily.data.model.TeamWorkerInfo
 import com.racingdaily.data.model.TrackInfo
 import com.racingdaily.data.remote.ApiService
 import com.racingdaily.platform.BackHandler
@@ -75,8 +83,8 @@ sealed interface AppPage {
     data class Track(val id: Int) : AppPage
     data class Championship(val category: String, val id: Int) : AppPage
     data class RaceDetail(val gp: RaceGp) : AppPage
-    data class DriverDetail(val chpId: Int, val driverId: Int, val name: String, val avatar: String, val teamLogo: String, val stats: JsonObject) : AppPage
-    data class TeamDetail(val chpId: Int, val teamId: Int, val name: String, val logo: String, val stats: JsonObject) : AppPage
+    data class DriverDetail(val chpId: Int, val seasonId: Int, val driverId: Int, val name: String, val avatar: String, val teamLogo: String, val stats: JsonObject) : AppPage
+    data class TeamDetail(val chpId: Int, val seasonId: Int, val teamId: Int, val name: String, val logo: String, val stats: JsonObject) : AppPage
 }
 
 @Composable
@@ -125,11 +133,11 @@ fun App(api: ApiService) {
                             )
                             Screen.RANKINGS -> RankingScreen(
                                 api = api,
-                                onDriverClick = { chpId, driverId, name, avatar, teamLogo, stats ->
-                                    pageStack += AppPage.DriverDetail(chpId, driverId, name, avatar, teamLogo, stats)
+                                onDriverClick = { chpId, seasonId, driverId, name, avatar, teamLogo, stats ->
+                                    pageStack += AppPage.DriverDetail(chpId, seasonId, driverId, name, avatar, teamLogo, stats)
                                 },
-                                onTeamClick = { chpId, teamId, name, logo, stats ->
-                                    pageStack += AppPage.TeamDetail(chpId, teamId, name, logo, stats)
+                                onTeamClick = { chpId, seasonId, teamId, name, logo, stats ->
+                                    pageStack += AppPage.TeamDetail(chpId, seasonId, teamId, name, logo, stats)
                                 }
                             )
                             Screen.MORE -> MoreScreen(
@@ -148,7 +156,7 @@ fun App(api: ApiService) {
                     is AppPage.Article -> AppPageOverlay(page) { DetailScreen(page.id, page.title, page.url, goBack, api) }
                     is AppPage.RaceDetail -> AppPageOverlay(page) { RaceDetailScreen(page.gp, goBack) }
                     is AppPage.DriverDetail -> AppPageOverlay(page) { DriverDetailScreen(page, goBack) }
-                    is AppPage.TeamDetail -> AppPageOverlay(page) { TeamDetailScreen(page, goBack) }
+                    is AppPage.TeamDetail -> AppPageOverlay(page) { TeamDetailScreen(page, goBack, api) }
                     null -> Unit
                 }
             }
@@ -417,61 +425,263 @@ private fun SessionCard(session: RaceSession) {
 
 @Composable
 fun DriverDetailScreen(page: AppPage.DriverDetail, onBack: () -> Unit) {
+    val profile = page.driverProfile()
+    var selectedTab by rememberSaveable(page.driverId) { mutableStateOf("info") }
+
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader(page.name, "车手详情", navigationIcon = {
+        ScreenHeader(profile.chineseName, "Driver profile", navigationIcon = {
             GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
         })
         LazyColumn(
             Modifier.fillMaxSize().padding(horizontal = 16.dp),
-            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
             item {
                 GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        AsyncImage(page.avatar, null, Modifier.size(76.dp))
+                        AsyncImage(
+                            page.avatar,
+                            null,
+                            Modifier.size(96.dp).clip(CircleShape),
+                            contentScale = ContentScale.Fit
+                        )
                         Spacer(Modifier.width(14.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(page.name, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.headlineMedium)
-                            Text("车手 ID ${page.driverId}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            Text(profile.chineseName, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.headlineMedium)
+                            Text(profile.englishName.ifBlank { "Driver ID ${page.driverId}" }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                listOf(profile.team, profile.number.takeIf { it.isNotBlank() }?.let { "#$it" })
+                                    .filterNotNull()
+                                    .filter { it.isNotBlank() }
+                                    .joinToString(" "),
+                                color = MaterialTheme.colorScheme.secondary,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                         AsyncImage(page.teamLogo, null, Modifier.size(42.dp))
                     }
                 }
             }
             item {
-                RankingStatsCard("本赛季数据", page.stats)
+                ProfileTabs(
+                    tabs = listOf("info" to "资料", "score" to "成绩", "news" to "新闻"),
+                    selected = selectedTab,
+                    onSelected = { selectedTab = it }
+                )
+            }
+            when (selectedTab) {
+                "info" -> item { InfoTable("基本资料", profile.infoRows) }
+                "score" -> item { RankingStatsCard("本赛季数据", page.stats) }
+                "news" -> item { EmptyProfileCard("新闻", "暂无相关新闻数据") }
             }
         }
     }
 }
 
 @Composable
-fun TeamDetailScreen(page: AppPage.TeamDetail, onBack: () -> Unit) {
+fun TeamDetailScreen(page: AppPage.TeamDetail, onBack: () -> Unit, api: ApiService) {
+    var teamInfo by remember(page.teamId) { mutableStateOf<TeamInfoData?>(null) }
+    var loading by remember(page.teamId) { mutableStateOf(true) }
+    var error by remember(page.teamId) { mutableStateOf<String?>(null) }
+    var selectedTab by rememberSaveable(page.teamId) { mutableStateOf("info") }
+
+    LaunchedEffect(page.chpId, page.seasonId, page.teamId) {
+        loading = true
+        error = null
+        runCatching { api.getTeamInfo(page.chpId, page.teamId, page.seasonId) }
+            .onSuccess { teamInfo = it }
+            .onFailure { error = it.message ?: "Unable to load team profile" }
+        loading = false
+    }
+
+    val title = teamInfo?.chinese_name?.ifBlank { teamInfo?.name.orEmpty() }?.ifBlank { page.name } ?: page.name
+    val subtitle = teamInfo?.name?.ifBlank { "Team profile" } ?: "Team profile"
+
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader(page.name, "车队详情", navigationIcon = {
+        ScreenHeader(title, subtitle, navigationIcon = {
             GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
         })
         LazyColumn(
             Modifier.fillMaxSize().padding(horizontal = 16.dp),
-            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
             item {
                 GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        AsyncImage(page.logo, null, Modifier.size(74.dp))
+                        AsyncImage(teamInfo?.logo?.ifBlank { page.logo } ?: page.logo, null, Modifier.size(74.dp))
                         Spacer(Modifier.width(14.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(page.name, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.headlineMedium)
-                            Text("车队 ID ${page.teamId}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            Text(title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.headlineSmall)
+                            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                            teamInfo?.first_entry?.takeIf { it.isNotBlank() }?.let {
+                                Text(it, color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            }
                         }
                     }
                 }
             }
-            item {
-                RankingStatsCard("本赛季数据", page.stats)
+            teamInfo?.photo?.takeIf { it.isNotBlank() }?.let { photo ->
+                item {
+                    GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(8.dp)) {
+                        AsyncImage(photo, null, Modifier.fillMaxWidth().height(148.dp), contentScale = ContentScale.Crop)
+                    }
+                }
             }
+            item {
+                val tabs = teamInfo?.tab?.map { it.value to it.text }?.takeIf { it.isNotEmpty() }
+                    ?: listOf("info" to "资料", "score" to "成绩", "car" to "车", "news" to "新闻")
+                ProfileTabs(tabs, selectedTab, onSelected = { selectedTab = it })
+            }
+            if (loading) {
+                item {
+                    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            } else if (selectedTab == "info") {
+                item {
+                    InfoTable("基本资料", teamInfo.teamInfoRows(page))
+                }
+                teamInfo?.drivers?.driver?.takeIf { it.isNotEmpty() }?.let { drivers ->
+                    item { TeamDriversSection("车手", drivers) }
+                }
+                teamInfo?.drivers?.worker?.takeIf { it.isNotEmpty() }?.let { workers ->
+                    item { TeamWorkersSection("主要成员", workers) }
+                }
+                item { TeamNamedRow("测试车手", teamInfo?.drivers?.test?.map { it.name.ifBlank { it.addr_chinese_name } }.orEmpty()) }
+                item { TeamNamedRow("青训车手", teamInfo?.drivers?.youth?.map { it.name.ifBlank { it.addr_chinese_name } }.orEmpty()) }
+                error?.let { item { EmptyProfileCard("接口提示", it) } }
+            } else if (selectedTab == "score") {
+                item { RankingStatsCard("本赛季数据", page.stats) }
+            } else if (selectedTab == "car") {
+                val cars = teamInfo?.car.orEmpty()
+                if (cars.isEmpty()) {
+                    item { EmptyProfileCard("车", "暂无赛车数据") }
+                } else {
+                    items(cars.size) { index ->
+                        val car = cars[index]
+                        GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(12.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("${car.season_id} ${car.chassis}", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                Text(car.power_unit, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                                car.photo.firstOrNull()?.let { photo ->
+                                    AsyncImage(photo, null, Modifier.fillMaxWidth().height(150.dp), contentScale = ContentScale.Crop)
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (selectedTab == "news") {
+                item { EmptyProfileCard("新闻", "暂无相关新闻数据") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileTabs(
+    tabs: List<Pair<String, String>>,
+    selected: String,
+    onSelected: (String) -> Unit
+) {
+    LazyRow(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(tabs.size) { index ->
+            val (value, text) = tabs[index]
+            GlassChip(text, selected = selected == value, onClick = { onSelected(value) })
+        }
+    }
+}
+
+@Composable
+private fun InfoTable(title: String, rows: List<Pair<String, String>>) {
+    GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            rows.forEach { (label, value) ->
+                InfoRow(label, value)
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+        Text(
+            label,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.width(92.dp)
+        )
+        Text(
+            value,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (value.isNotBlank()) FontWeight.SemiBold else FontWeight.Normal,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun TeamDriversSection(title: String, drivers: List<TeamDriverInfo>) {
+    GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            drivers.chunked(3).forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    row.forEach { driver ->
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            AsyncImage(driver.avatar, null, Modifier.size(62.dp), contentScale = ContentScale.Fit)
+                            Text("#${driver.number}", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(driver.addr_chinese_name, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TeamWorkersSection(title: String, workers: List<TeamWorkerInfo>) {
+    GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            workers.chunked(3).forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    row.forEach { worker ->
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            AsyncImage(worker.avatar, null, Modifier.size(62.dp), contentScale = ContentScale.Fit)
+                            Text(worker.position, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            Text(worker.addr_chinese_name, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TeamNamedRow(title: String, names: List<String>) {
+    InfoTable(title, listOf(title to names.filter { it.isNotBlank() }.joinToString("、")))
+}
+
+@Composable
+private fun EmptyProfileCard(title: String, message: String) {
+    GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
@@ -573,3 +783,74 @@ private fun String.isHiddenRankingStatKey(): Boolean =
         "page_show_color",
         "site_point"
     ) || contains("display_order") || endsWith("_trend") || endsWith("_format")
+
+private data class DriverProfile(
+    val chineseName: String,
+    val englishName: String,
+    val team: String,
+    val number: String,
+    val infoRows: List<Pair<String, String>>
+)
+
+private fun AppPage.DriverDetail.driverProfile(): DriverProfile {
+    val team = stats.text("team_abbr_chinese_name").ifBlank { stats.text("team_name") }
+    return when (driverId) {
+        210928 -> DriverProfile(
+            chineseName = "安东内利",
+            englishName = "Andrea Kimi Antonelli",
+            team = "梅赛德斯",
+            number = "12",
+            infoRows = listOf(
+                "英文名" to "Andrea Kimi Antonelli",
+                "中文名" to "安东内利",
+                "F1首赛" to "2025年澳大利亚站",
+                "状态" to "现役",
+                "昵称" to "",
+                "星座" to "",
+                "年龄" to "20",
+                "生日" to "2006-08-25",
+                "身高" to "172cm",
+                "体重" to "70kg",
+                "车队" to "梅赛德斯",
+                "车手号码" to "12",
+                "T架颜色" to "绿色",
+                "薪水" to "200万美元(2025)",
+                "合同期" to "2026-12-31",
+                "超级驾照分" to "7",
+                "一年罚分" to "5",
+                "国籍" to "意大利",
+                "出生地" to "意大利博洛尼亚",
+                "居住地" to ""
+            )
+        )
+        else -> DriverProfile(
+            chineseName = name,
+            englishName = "",
+            team = team,
+            number = stats.text("number").ifBlank { stats.text("driver_number") },
+            infoRows = listOf(
+                "中文名" to name,
+                "车队" to team,
+                "车手ID" to "$driverId"
+            )
+        )
+    }
+}
+
+private fun TeamInfoData?.teamInfoRows(page: AppPage.TeamDetail): List<Pair<String, String>> {
+    if (this == null) {
+        return listOf(
+            "中文名" to page.name,
+            "车队ID" to "${page.teamId}"
+        )
+    }
+    return listOf(
+        "英文名" to name,
+        "中文名" to chinese_name,
+        "F1首赛" to first_entry,
+        "历史名称" to history,
+        "车队类型" to fleet_type,
+        "动力单元" to power_unit.ifBlank { supplier },
+        "底盘" to chassis
+    ).filter { (_, value) -> value.isNotBlank() }
+}

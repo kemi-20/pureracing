@@ -573,4 +573,3 @@ private fun String.isHiddenRankingStatKey(): Boolean =
         "page_show_color",
         "site_point"
     ) || contains("display_order") || endsWith("_trend") || endsWith("_format")
-}

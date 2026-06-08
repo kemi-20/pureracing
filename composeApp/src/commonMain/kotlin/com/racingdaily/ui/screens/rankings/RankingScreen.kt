@@ -109,7 +109,8 @@ fun RankingScreen(
         LazyRow(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(vertical = 8.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(seasons) { season ->
@@ -122,9 +123,8 @@ fun RankingScreen(
         }
         data?.visibleRankingTabs()?.let { tabs ->
             LazyRow(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(tabs) { tab ->
@@ -275,7 +275,11 @@ private fun String.cleanRankingRemark(): String =
 private inline fun Int.ifZero(block: () -> Int): Int = if (this == 0) block() else this
 
 private fun RankingData.visibleRankingTabs() =
-    list.filterNot { it.tab_key == "score_movements" || it.tab_key == "t_score_movements" }
+    list.filterNot {
+        it.tab_key in setOf("score_movements", "t_score_movements") ||
+            it.tab_key.contains("score_trend") ||
+            it.tab_name.replace("\n", "").contains("积分走势")
+    }
 
 private val RacingYellow = Color(0xFFD29922)
 private val RacingBlue = Color(0xFF58A6FF)

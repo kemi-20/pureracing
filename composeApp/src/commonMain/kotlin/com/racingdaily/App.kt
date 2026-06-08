@@ -1314,13 +1314,28 @@ private fun TeamInfoData?.teamInfoRows(page: AppPage.TeamDetail): List<Pair<Stri
         "中文名" to chinese_name,
         "F1首赛" to first_entry,
         "基地" to address,
-        "总部" to factory,
+        "总部地址" to factory,
         "历史名称" to history,
         "车队类型" to fleet_type,
         "预算" to budget,
         "动力单元" to power_unit.ifBlank { supplier },
         "底盘" to chassis,
         "风洞时间" to wind_tunnel,
-        "简介" to information
+        "简介" to information.ifBlank { teamIntroFallback(page.teamId, chinese_name.ifBlank { page.name }) }
     ).filter { (_, value) -> value.isNotBlank() }
+}
+
+private fun teamIntroFallback(teamId: Int, fallbackName: String): String = when (teamId) {
+    79 -> "奥迪车队以欣维尔为基地，由索伯体系过渡而来，并在 2026 赛季以奥迪厂队身份参加 F1。"
+    80 -> "法拉利是 F1 历史最悠久的车队，总部位于马拉内罗，是唯一从世界锦标赛创立初期延续至今的参赛车队。"
+    81 -> "梅赛德斯AMG马石油F1车队以布拉克利和布里克斯沃斯为核心基地，长期以厂队身份研发底盘和动力单元。"
+    82 -> "阿斯顿马丁F1车队以银石为基地，依托阿斯顿马丁品牌和阿美等合作伙伴持续扩建技术设施。"
+    83 -> "迈凯伦F1车队总部位于沃金，是 F1 传统强队之一，长期以独立车队身份参与顶级方程式竞争。"
+    84 -> "威廉姆斯F1车队以格罗夫为基地，是 F1 经典英国车队之一，拥有深厚的工程传统和冠军历史。"
+    85 -> "红牛车队以米尔顿凯恩斯为基地，是现代 F1 最具竞争力的车队之一，以空气动力学和整体运营能力著称。"
+    86 -> "哈斯F1车队是美国背景的 F1 车队，运营体系横跨美国、英国和意大利，并与法拉利保持技术合作。"
+    87 -> "红牛二队以法恩扎为基地，是红牛体系内培养和使用年轻车手的重要 F1 车队。"
+    88 -> "Alpine F1车队以恩斯通为底盘基地，代表雷诺集团旗下 Alpine 品牌参加 F1。"
+    cadillacTeamId -> "凯迪拉克作为通用汽车和 TWG Motorsports 支持的新车队，于 2026 赛季加入 F1。"
+    else -> fallbackName.takeIf { it.isNotBlank() }?.let { "$it 是当前 F1 参赛车队之一。" }.orEmpty()
 }

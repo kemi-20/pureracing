@@ -56,7 +56,11 @@ import com.racingdaily.data.model.RaceGp
 import com.racingdaily.data.model.RaceSession
 import com.racingdaily.data.model.RankingData
 import com.racingdaily.data.model.TeamInfoData
+import com.racingdaily.data.model.TeamCarInfo
 import com.racingdaily.data.model.TeamDriverInfo
+import com.racingdaily.data.model.TeamInfoTab
+import com.racingdaily.data.model.TeamNamedInfo
+import com.racingdaily.data.model.TeamPeopleData
 import com.racingdaily.data.model.TeamWorkerInfo
 import com.racingdaily.data.model.TrackInfo
 import com.racingdaily.data.remote.ApiService
@@ -605,15 +609,24 @@ fun TeamDetailScreen(
         loading = true
         error = null
         runCatching {
-            val info = api.getTeamInfo(page.chpId, page.teamId, page.seasonId)
+            val officialInfo = runCatching { api.getTeamInfo(page.chpId, page.teamId, page.seasonId) }
+            val info = officialInfo.getOrNull()
+                ?.takeIf { it.hasUsableOfficialTeamInfo() }
+                ?: page.cadillacFallbackTeamInfo()
             val news = teamNewsTagIds[page.teamId]
                 ?.let { tagId -> runCatching { api.getNewsList(tagId) }.getOrNull()?.list }
                 .orEmpty()
-            info to news
+            info to (news to officialInfo.exceptionOrNull())
         }
-            .onSuccess { (info, news) ->
+            .onSuccess { (info, newsAndError) ->
+                val (news, officialError) = newsAndError
                 teamInfo = info
                 teamNews = news
+                error = if (info == null) {
+                    officialError?.message ?: "Unable to load team profile"
+                } else {
+                    officialError?.message?.takeIf { page.cadillacFallbackTeamInfo() != null }
+                }
             }
             .onFailure { error = it.message ?: "Unable to load team profile" }
         loading = false
@@ -1223,6 +1236,72 @@ private val teamNewsTagIds = mapOf(
     210212 to 234
 )
 
+private const val cadillacTeamId = 210212
+private const val cadillacLogo = "https://oss.static.romielf.com/icon/F1/2026/cadillac.png"
+private const val cadillacCarPhoto = "https://media.formula1.com/image/upload/c_lfill%2Cw_3392/q_auto/v1740000001/common/f1/2026/cadillac/2026cadillaccarright.webp"
+
+private fun TeamInfoData.hasUsableOfficialTeamInfo(): Boolean =
+    id > 0 || name.isNotBlank() || chinese_name.isNotBlank() || drivers.driver.isNotEmpty() || car.isNotEmpty()
+
+private fun AppPage.TeamDetail.cadillacFallbackTeamInfo(): TeamInfoData? {
+    if (teamId != cadillacTeamId) return null
+
+    return TeamInfoData(
+        id = cadillacTeamId,
+        name = "Cadillac Formula 1 Team",
+        chinese_name = "凯迪拉克F1车队",
+        logo = logo.ifBlank { cadillacLogo },
+        address = "英国，银石",
+        factory = "Silverstone, United Kingdom",
+        first_entry = "2026",
+        fleet_type = "厂队（通用汽车 / TWG Motorsports）",
+        supplier = "Ferrari",
+        chassis = "MAC-26",
+        power_unit = "Ferrari",
+        information = "凯迪拉克作为通用汽车和 TWG Motorsports 支持的新车队，于 2026 赛季加入 F1。",
+        photo = cadillacCarPhoto,
+        tab = listOf(
+            TeamInfoTab("资料", "info"),
+            TeamInfoTab("成绩", "score"),
+            TeamInfoTab("车", "car"),
+            TeamInfoTab("新闻", "news")
+        ),
+        drivers = TeamPeopleData(
+            driver = listOf(
+                TeamDriverInfo(
+                    driver_id = 112,
+                    avatar = "https://oss.static.romielf.com/uploads/20260305/e496321652185f37bf75000d9b95ca17.png",
+                    addr_chinese_name = "佩雷兹",
+                    number = "11"
+                ),
+                TeamDriverInfo(
+                    driver_id = 114,
+                    avatar = "https://oss.static.romielf.com/uploads/20260305/5462fe4f0aae630fdda6eb1ce98528d0.png",
+                    addr_chinese_name = "博塔斯",
+                    number = "77"
+                )
+            ),
+            worker = listOf(
+                TeamWorkerInfo(addr_chinese_name = "格雷姆·劳登", position = "车队领队"),
+                TeamWorkerInfo(addr_chinese_name = "尼克·切斯特", position = "技术负责人")
+            ),
+            test = listOf(
+                TeamNamedInfo(name = "周冠宇", position = "储备车手"),
+                TeamNamedInfo(name = "科尔顿·赫塔", position = "测试车手")
+            )
+        ),
+        car = listOf(
+            TeamCarInfo(
+                season_id = 2026,
+                chassis = "MAC-26",
+                power_unit = "Ferrari",
+                photo = listOf(cadillacCarPhoto),
+                is_now = 1
+            )
+        )
+    )
+}
+
 private fun TeamInfoData?.teamInfoRows(page: AppPage.TeamDetail): List<Pair<String, String>> {
     if (this == null) {
         return listOf(
@@ -1234,9 +1313,14 @@ private fun TeamInfoData?.teamInfoRows(page: AppPage.TeamDetail): List<Pair<Stri
         "英文名" to name,
         "中文名" to chinese_name,
         "F1首赛" to first_entry,
+        "基地" to address,
+        "总部" to factory,
         "历史名称" to history,
         "车队类型" to fleet_type,
+        "预算" to budget,
         "动力单元" to power_unit.ifBlank { supplier },
-        "底盘" to chassis
+        "底盘" to chassis,
+        "风洞时间" to wind_tunnel,
+        "简介" to information
     ).filter { (_, value) -> value.isNotBlank() }
 }

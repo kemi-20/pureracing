@@ -101,9 +101,35 @@ object FlexibleIntSerializer : KSerializer<Int> {
 @Serializable data class TrackData(val track: TrackInfo = TrackInfo())
 @Serializable data class TrackScoreData(val history: List<kotlinx.serialization.json.JsonObject> = emptyList())
 
-// Team
-@Serializable data class DriverPhotoData(val list: List<DriverPhoto> = emptyList())
+// Driver
+@Serializable data class DriverInfoData(
+    val title: DriverInfoTitle = DriverInfoTitle(),
+    val list: List<NewsItem> = emptyList(),
+    val next_page: Int = 0
+)
+@Serializable data class DriverInfoTitle(
+    val avatar: String = "",
+    val addr_chinese_name: String = "",
+    val chinese_name: String = "",
+    val name: String = "",
+    @Serializable(with = FlexibleStringSerializer::class) val height: String = "",
+    val helmet: String = "",
+    @Serializable(with = FlexibleStringSerializer::class) val birthday: String = "",
+    @Serializable(with = FlexibleStringSerializer::class) val number: String = "",
+    val nationality: String = "",
+    val nationality_img: String = "",
+    val info_is_show: Int = 0,
+    val score_is_show: Int = 0,
+    val score_honor_is_show: Int = 0,
+    val score_history_is_show: Int = 0,
+    val news_is_show: Int = 0,
+    val tab: List<TeamInfoTab> = emptyList(),
+    val status: Int = 0
+)
+@Serializable data class DriverPhotoData(val img: List<String> = emptyList())
 @Serializable data class DriverPhoto(val path_url: String = "", val path: String = "", val image_url: String = "", val url: String = "")
+
+// Team
 @Serializable data class TeamScoreData(
     val honor: kotlinx.serialization.json.JsonElement? = null,
     val summary: kotlinx.serialization.json.JsonElement? = null,

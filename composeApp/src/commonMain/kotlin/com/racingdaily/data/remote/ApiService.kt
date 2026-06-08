@@ -64,9 +64,16 @@ class ApiService(private val client: HttpClient) {
             parameter("season_id", seasonId)
         }.body<ApiResponse<TeamInfoData>>().requireData()
 
+    suspend fun getDriverInfo(chpId: Int, driverId: Int, seasonId: Int) =
+        client.get("driver/infor") {
+            parameter("chp_id", chpId)
+            parameter("id", driverId)
+            parameter("season_id", seasonId)
+        }.body<ApiResponse<DriverInfoData>>().requireData()
+
     suspend fun getDriverPhoto(chpId: Int, driverId: Int) =
-        client.get("driver/photo") { parameter("chp_id", chpId); parameter("driver_id", driverId) }
-            .body<ApiResponse<kotlinx.serialization.json.JsonElement>>().requireData()
+        client.get("driver/photo") { parameter("chp_id", chpId); parameter("id", driverId) }
+            .body<ApiResponse<DriverPhotoData>>().requireData()
 
     suspend fun getCustomSeason() = client.get("custom/season").body<ApiResponse<ChampSeason>>().requireData()
     suspend fun getCustomSubstation() = client.get("custom/substation").body<ApiResponse<ChampSubstation>>().requireData()

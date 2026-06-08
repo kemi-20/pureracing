@@ -49,6 +49,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.racingdaily.data.model.ChampSeason
+import com.racingdaily.data.model.DriverInfoData
+import com.racingdaily.data.model.DriverInfoTitle
+import com.racingdaily.data.model.NewsItem
 import com.racingdaily.data.model.RaceGp
 import com.racingdaily.data.model.RaceSession
 import com.racingdaily.data.model.RankingData
@@ -157,7 +160,11 @@ fun App(api: ApiService) {
                     is AppPage.Track -> AppPageOverlay(page) { TrackScreen(page.id, goBack, api) }
                     is AppPage.Article -> AppPageOverlay(page) { DetailScreen(page.id, page.title, page.url, goBack, api) }
                     is AppPage.RaceDetail -> AppPageOverlay(page) { RaceDetailScreen(page.gp, goBack) }
-                    is AppPage.DriverDetail -> AppPageOverlay(page) { DriverDetailScreen(page, goBack, api) }
+                    is AppPage.DriverDetail -> AppPageOverlay(page) {
+                        DriverDetailScreen(page, goBack, api) { item ->
+                            pageStack += AppPage.Article(item.id, item.title, item.http_url)
+                        }
+                    }
                     is AppPage.TeamDetail -> AppPageOverlay(page) { TeamDetailScreen(page, goBack, api) }
                     null -> Unit
                 }
@@ -426,19 +433,52 @@ private fun SessionCard(session: RaceSession) {
 }
 
 @Composable
-fun DriverDetailScreen(page: AppPage.DriverDetail, onBack: () -> Unit, api: ApiService) {
-    val profile = page.driverProfile()
+fun DriverDetailScreen(
+    page: AppPage.DriverDetail,
+    onBack: () -> Unit,
+    api: ApiService,
+    onArticleClick: (NewsItem) -> Unit
+) {
     var selectedTab by rememberSaveable(page.driverId) { mutableStateOf("info") }
+    var driverInfo by remember(page.driverId) { mutableStateOf<DriverInfoData?>(null) }
+    var photos by remember(page.driverId) { mutableStateOf<List<String>>(emptyList()) }
+    var loading by remember(page.driverId) { mutableStateOf(true) }
+    var error by remember(page.driverId) { mutableStateOf<String?>(null) }
     var seasonScores by remember(page.driverId) { mutableStateOf<List<DriverSeasonScore>>(emptyList()) }
     var scoreLoading by remember(page.driverId) { mutableStateOf(true) }
     var scoreError by remember(page.driverId) { mutableStateOf<String?>(null) }
 
     LaunchedEffect(page.driverId, page.chpId, page.seasonId) {
+        loading = true
+        error = null
+        runCatching {
+            val info = api.getDriverInfo(page.chpId, page.driverId, page.seasonId)
+            val photoData = runCatching { api.getDriverPhoto(page.chpId, page.driverId) }.getOrNull()
+            info to photoData?.img.orEmpty()
+        }.onSuccess { (info, loadedPhotos) ->
+            driverInfo = info
+            photos = loadedPhotos
+            if (selectedTab !in info.visibleTabs().map { it.first }) {
+                selectedTab = info.visibleTabs().firstOrNull()?.first ?: "info"
+            }
+        }.onFailure {
+            error = it.message ?: "Unable to load driver profile"
+        }
+        loading = false
+    }
+
+    LaunchedEffect(page.driverId, page.chpId, page.seasonId) {
         scoreLoading = true
         scoreError = null
         runCatching {
-            val firstSeason = profile.firstSeason().coerceAtLeast(1950)
-            (firstSeason..page.seasonId).mapNotNull { seasonId ->
+            val seasons = api.getRankingNav()
+                .list
+                .flatMap { it.options }
+                .map { it.id }
+                .filter { it in 1950..page.seasonId }
+                .distinct()
+                .sorted()
+            seasons.mapNotNull { seasonId ->
                 runCatching {
                     api.getDriverRanking(page.chpId, seasonId).toDriverSeasonScore(seasonId, page.driverId)
                 }.getOrNull()
@@ -451,8 +491,16 @@ fun DriverDetailScreen(page: AppPage.DriverDetail, onBack: () -> Unit, api: ApiS
         scoreLoading = false
     }
 
+    val title = driverInfo?.title
+    val displayName = title?.addr_chinese_name?.ifBlank { page.name } ?: page.name
+    val englishName = title?.name.orEmpty()
+    val teamName = title?.chinese_name?.ifBlank { page.stats.text("team_abbr_chinese_name") } ?: page.stats.text("team_abbr_chinese_name")
+    val number = title?.number?.ifBlank { page.stats.text("number") } ?: page.stats.text("number")
+    val avatar = title?.avatar?.ifBlank { page.avatar } ?: page.avatar
+    val tabs = driverInfo?.visibleTabs()?.takeIf { it.isNotEmpty() } ?: listOf("info" to "资料", "score" to "成绩", "news" to "新闻")
+
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader(profile.chineseName, "Driver profile", navigationIcon = {
+        ScreenHeader(displayName, "Driver profile", navigationIcon = {
             GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
         })
         LazyColumn(
@@ -464,17 +512,17 @@ fun DriverDetailScreen(page: AppPage.DriverDetail, onBack: () -> Unit, api: ApiS
                 GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         AsyncImage(
-                            page.avatar,
+                            avatar,
                             null,
                             Modifier.size(96.dp).clip(CircleShape),
                             contentScale = ContentScale.Fit
                         )
                         Spacer(Modifier.width(14.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(profile.chineseName, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.headlineMedium)
-                            Text(profile.englishName.ifBlank { "Driver ID ${page.driverId}" }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
+                            Text(displayName, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.headlineMedium)
+                            Text(englishName.ifBlank { "Driver ID ${page.driverId}" }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
                             Text(
-                                listOf(profile.team, profile.number.takeIf { it.isNotBlank() }?.let { "#$it" })
+                                listOf(teamName, number.takeIf { it.isNotBlank() }?.let { "#$it" })
                                     .filterNotNull()
                                     .filter { it.isNotBlank() }
                                     .joinToString(" "),
@@ -483,19 +531,33 @@ fun DriverDetailScreen(page: AppPage.DriverDetail, onBack: () -> Unit, api: ApiS
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
-                        AsyncImage(page.teamLogo, null, Modifier.size(42.dp))
+                        AsyncImage(title?.nationality_img?.ifBlank { page.teamLogo } ?: page.teamLogo, null, Modifier.size(42.dp))
                     }
                 }
             }
             item {
-                ProfileTabs(
-                    tabs = listOf("info" to "资料", "score" to "成绩", "news" to "新闻"),
-                    selected = selectedTab,
-                    onSelected = { selectedTab = it }
-                )
+                ProfileTabs(tabs = tabs, selected = selectedTab, onSelected = { selectedTab = it })
+            }
+            if (loading) {
+                item {
+                    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
+            error?.let {
+                item { EmptyProfileCard("接口提示", it) }
             }
             when (selectedTab) {
-                "info" -> item { InfoTable("基本资料", profile.infoRows) }
+                "info" -> {
+                    item { InfoTable("基本资料", title.driverInfoRows(page)) }
+                    title?.helmet?.takeIf { it.isNotBlank() }?.let { helmet ->
+                        item { DriverImageStrip("头盔", listOf(helmet)) }
+                    }
+                    photos.takeIf { it.isNotEmpty() }?.let {
+                        item { DriverImageStrip("照片", it.take(6)) }
+                    }
+                }
                 "score" -> item {
                     DriverSeasonScoresCard(
                         scores = seasonScores,
@@ -504,7 +566,16 @@ fun DriverDetailScreen(page: AppPage.DriverDetail, onBack: () -> Unit, api: ApiS
                         fallbackStats = page.stats
                     )
                 }
-                "news" -> item { EmptyProfileCard("新闻", "暂无相关新闻数据") }
+                "news" -> {
+                    val news = driverInfo?.list.orEmpty()
+                    if (news.isEmpty()) {
+                        item { EmptyProfileCard("新闻", "暂无相关新闻数据") }
+                    } else {
+                        items(news.size) { index ->
+                            DriverNewsCard(news[index], onArticleClick)
+                        }
+                    }
+                }
             }
         }
     }
@@ -705,6 +776,55 @@ private fun TeamWorkersSection(title: String, workers: List<TeamWorkerInfo>) {
 @Composable
 private fun TeamNamedRow(title: String, names: List<String>) {
     InfoTable(title, listOf(title to names.filter { it.isNotBlank() }.joinToString("、")))
+}
+
+@Composable
+private fun DriverImageStrip(title: String, images: List<String>) {
+    GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                items(images.size) { index ->
+                    AsyncImage(
+                        images[index],
+                        null,
+                        Modifier.width(132.dp).height(92.dp).clip(MaterialTheme.shapes.medium),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DriverNewsCard(item: NewsItem, onArticleClick: (NewsItem) -> Unit) {
+    GlassSurface(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = { onArticleClick(item) },
+        contentPadding = PaddingValues(0.dp)
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            val cover = item.covers.firstOrNull()?.path_url.orEmpty()
+            if (cover.isNotBlank()) {
+                AsyncImage(
+                    cover,
+                    null,
+                    Modifier.width(112.dp).height(86.dp),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            Column(Modifier.weight(1f).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(item.title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    item.tags.firstOrNull()?.name?.takeIf { it.isNotBlank() }?.let {
+                        Text(it, color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelMedium)
+                    }
+                    Text("${item.total_read} reads", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -937,188 +1057,42 @@ private fun Int.asScoreText(): String = if (this == 0) "0" else toString()
 
 private inline fun Int.ifZero(block: () -> Int): Int = if (this == 0) block() else this
 
-private data class DriverProfile(
-    val chineseName: String,
-    val englishName: String,
-    val team: String,
-    val number: String,
-    val infoRows: List<Pair<String, String>>
-)
+private fun DriverInfoData.visibleTabs(): List<Pair<String, String>> =
+    title.tab.mapNotNull { tab ->
+        val value = tab.value.ifBlank { return@mapNotNull null }
+        val text = tab.text.ifBlank { value }
+        value to text
+    }
 
-private data class DriverProfileSeed(
-    val chineseName: String,
-    val englishName: String,
-    val team: String,
-    val number: String,
-    val firstRace: String,
-    val birthday: String,
-    val height: String,
-    val weight: String,
-    val nationality: String,
-    val birthplace: String,
-    val residence: String = "",
-    val age: String = "",
-    val nickname: String = "",
-    val zodiac: String = "",
-    val tColor: String = "",
-    val salary: String = "",
-    val contract: String = "",
-    val superLicense: String = "",
-    val penaltyPoints: String = "",
-    val instagram: String = ""
-)
-
-private fun AppPage.DriverDetail.driverProfile(): DriverProfile {
-    val team = stats.text("team_abbr_chinese_name").ifBlank { stats.text("team_name") }
-    val seed = driverProfileSeeds[driverId]
-    if (seed != null) {
-        return DriverProfile(
-            chineseName = seed.chineseName,
-            englishName = seed.englishName,
-            team = seed.team,
-            number = seed.number,
-            infoRows = listOf(
-                "英文名" to seed.englishName,
-                "中文名" to seed.chineseName,
-                "F1首赛" to seed.firstRace,
-                "状态" to "现役",
-                "昵称" to seed.nickname,
-                "星座" to seed.zodiac,
-                "年龄" to seed.age,
-                "生日" to seed.birthday,
-                "身高" to seed.height,
-                "体重" to seed.weight,
-                "车队" to seed.team,
-                "车手号码" to seed.number,
-                "T架颜色" to seed.tColor,
-                "薪水" to seed.salary,
-                "合同期" to seed.contract,
-                "超级驾照分" to seed.superLicense,
-                "一年罚分" to seed.penaltyPoints,
-                "国籍" to seed.nationality,
-                "出生地" to seed.birthplace,
-                "居住地" to seed.residence,
-                "INS" to seed.instagram
-            )
+private fun DriverInfoTitle?.driverInfoRows(page: AppPage.DriverDetail): List<Pair<String, String>> {
+    if (this == null) {
+        return listOf(
+            "中文名" to page.name,
+            "车手ID" to "${page.driverId}",
+            "车队" to page.stats.text("team_abbr_chinese_name").ifBlank { page.stats.text("team_name") }
         )
     }
-    val teamName = team.ifBlank { teamNameById[stats.text("team_id")] ?: "" }
-    return DriverProfile(
-        chineseName = name,
-        englishName = "",
-        team = teamName,
-        number = stats.text("number").ifBlank { stats.text("driver_number") },
-        infoRows = listOf(
-            "中文名" to name,
-            "车队" to teamName,
-            "车手ID" to "$driverId"
-        )
+    return listOf(
+        "英文名" to name,
+        "中文名" to addr_chinese_name,
+        "状态" to status.driverStatusText(),
+        "年龄" to birthday,
+        "身高" to height.withUnit("cm"),
+        "车队" to chinese_name,
+        "车手号码" to number,
+        "国籍" to nationality,
+        "车手ID" to "${page.driverId}"
     )
 }
 
-private fun DriverProfile.firstSeason(): Int =
-    infoRows.firstOrNull { it.first == "F1首赛" }
-        ?.second
-        ?.take(4)
-        ?.toIntOrNull()
-        ?: 2019
+private fun String.withUnit(unit: String): String =
+    if (isBlank() || endsWith(unit)) this else "$this$unit"
 
-private val teamNameById = mapOf(
-    "79" to "奥迪",
-    "80" to "法拉利",
-    "81" to "梅赛德斯",
-    "82" to "阿斯顿马丁",
-    "83" to "迈凯伦",
-    "84" to "威廉姆斯",
-    "85" to "红牛",
-    "86" to "哈斯",
-    "87" to "红牛二队",
-    "88" to "Alpine",
-    "210212" to "凯迪拉克"
-)
-
-private val driverProfileSeeds = mapOf(
-    110 to DriverProfileSeed(
-        chineseName = "汉密尔顿",
-        englishName = "Sir Lewis Carl Davidson Hamilton",
-        team = "法拉利",
-        number = "44",
-        firstRace = "2007年澳大利亚站",
-        birthday = "1985-01-07",
-        height = "174cm",
-        weight = "73kg",
-        nationality = "英国",
-        birthplace = "英国，斯蒂芙尼奇",
-        residence = "摩纳哥",
-        age = "41",
-        nickname = "小汉，老汉，爵士，汉一圈",
-        zodiac = "摩羯座",
-        tColor = "绿色",
-        salary = "6000万美元(2025)",
-        contract = "2026-12-31",
-        superLicense = "9",
-        penaltyPoints = "3"
-    ),
-    210928 to DriverProfileSeed(
-        chineseName = "安东内利",
-        englishName = "Andrea Kimi Antonelli",
-        team = "梅赛德斯",
-        number = "12",
-        firstRace = "2025年澳大利亚站",
-        birthday = "2006-08-25",
-        height = "172cm",
-        weight = "70kg",
-        nationality = "意大利",
-        birthplace = "意大利博洛尼亚",
-        age = "20",
-        tColor = "绿色",
-        salary = "200万美元(2025)",
-        contract = "2026-12-31",
-        superLicense = "7",
-        penaltyPoints = "5"
-    ),
-    123 to DriverProfileSeed(
-        chineseName = "拉塞尔",
-        englishName = "George William Russell",
-        team = "梅赛德斯",
-        number = "63",
-        firstRace = "2019年澳大利亚站",
-        birthday = "1998-02-15",
-        height = "185cm",
-        weight = "70kg",
-        nationality = "英国",
-        birthplace = "英国，金士林",
-        residence = "英国",
-        age = "28",
-        nickname = "皇帝",
-        zodiac = "水瓶座",
-        tColor = "黑色",
-        salary = "1500万美元(2025)",
-        contract = "2026-12-31",
-        superLicense = "12",
-        penaltyPoints = "0",
-        instagram = "@georgerussell63"
-    ),
-    121 to DriverProfileSeed("勒克莱尔", "Charles Leclerc", "法拉利", "16", "2018年澳大利亚站", "1997-10-16", "180cm", "69kg", "摩纳哥", "摩纳哥蒙特卡洛"),
-    210899 to DriverProfileSeed("皮亚斯特里", "Oscar Piastri", "迈凯伦", "81", "2023年巴林站", "2001-04-06", "178cm", "68kg", "澳大利亚", "澳大利亚墨尔本"),
-    122 to DriverProfileSeed("诺里斯", "Lando Norris", "迈凯伦", "4", "2019年澳大利亚站", "1999-11-13", "170cm", "68kg", "英国", "英国布里斯托尔", residence = "摩纳哥"),
-    116 to DriverProfileSeed("维斯塔潘", "Max Verstappen", "红牛", "1", "2015年澳大利亚站", "1997-09-30", "181cm", "72kg", "荷兰", "比利时哈瑟尔特", residence = "摩纳哥"),
-    210919 to DriverProfileSeed("哈贾尔", "Isack Hadjar", "红牛", "6", "2025年澳大利亚站", "2004-09-28", "167cm", "", "法国", "法国巴黎"),
-    210902 to DriverProfileSeed("劳森", "Liam Lawson", "红牛二队", "30", "2023年荷兰站", "2002-02-11", "174cm", "72kg", "新西兰", "新西兰黑斯廷斯"),
-    120 to DriverProfileSeed("加斯利", "Pierre Gasly", "Alpine", "10", "2017年马来西亚站", "1996-02-07", "177cm", "70kg", "法国", "法国鲁昂"),
-    210918 to DriverProfileSeed("贝尔曼", "Oliver Bearman", "哈斯", "87", "2024年沙特阿拉伯站", "2005-05-08", "184cm", "", "英国", "英国切姆斯福德"),
-    210927 to DriverProfileSeed("科拉平托", "Franco Colapinto", "Alpine", "43", "2024年意大利站", "2003-05-27", "176cm", "", "阿根廷", "阿根廷皮拉尔"),
-    210938 to DriverProfileSeed("林德布拉德", "Arvid Lindblad", "红牛二队", "41", "", "2007-08-08", "", "", "英国", "英国伦敦"),
-    115 to DriverProfileSeed("塞恩斯", "Carlos Sainz", "威廉姆斯", "55", "2015年澳大利亚站", "1994-09-01", "178cm", "66kg", "西班牙", "西班牙马德里"),
-    210848 to DriverProfileSeed("阿尔本", "Alexander Albon", "威廉姆斯", "23", "2019年澳大利亚站", "1996-03-23", "186cm", "74kg", "泰国", "英国伦敦"),
-    117 to DriverProfileSeed("奥康", "Esteban Ocon", "哈斯", "31", "2016年比利时站", "1996-09-17", "186cm", "66kg", "法国", "法国埃夫勒"),
-    210934 to DriverProfileSeed("博托莱托", "Gabriel Bortoleto", "奥迪", "5", "2025年澳大利亚站", "2004-10-14", "184cm", "", "巴西", "巴西圣保罗"),
-    112 to DriverProfileSeed("佩雷兹", "Sergio Perez", "凯迪拉克", "11", "2011年澳大利亚站", "1990-01-26", "173cm", "63kg", "墨西哥", "墨西哥瓜达拉哈拉"),
-    210807 to DriverProfileSeed("霍肯博格", "Nico Hulkenberg", "奥迪", "27", "2010年巴林站", "1987-08-19", "184cm", "74kg", "德国", "德国埃默里希"),
-    109 to DriverProfileSeed("阿隆索", "Fernando Alonso", "阿斯顿马丁", "14", "2001年澳大利亚站", "1981-07-29", "171cm", "68kg", "西班牙", "西班牙奥维耶多"),
-    114 to DriverProfileSeed("博塔斯", "Valtteri Bottas", "凯迪拉克", "77", "2013年澳大利亚站", "1989-08-28", "173cm", "69kg", "芬兰", "芬兰纳斯托拉"),
-    119 to DriverProfileSeed("斯托尔", "Lance Stroll", "阿斯顿马丁", "18", "2017年澳大利亚站", "1998-10-29", "182cm", "70kg", "加拿大", "加拿大蒙特利尔")
-)
+private fun Int.driverStatusText(): String = when (this) {
+    1 -> "现役"
+    2 -> "退役"
+    else -> ""
+}
 
 private fun TeamInfoData?.teamInfoRows(page: AppPage.TeamDetail): List<Pair<String, String>> {
     if (this == null) {

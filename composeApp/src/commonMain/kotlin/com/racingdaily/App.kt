@@ -792,50 +792,150 @@ private data class DriverProfile(
     val infoRows: List<Pair<String, String>>
 )
 
+private data class DriverProfileSeed(
+    val chineseName: String,
+    val englishName: String,
+    val team: String,
+    val number: String,
+    val firstRace: String,
+    val birthday: String,
+    val height: String,
+    val weight: String,
+    val nationality: String,
+    val birthplace: String,
+    val residence: String = "",
+    val age: String = "",
+    val nickname: String = "",
+    val zodiac: String = "",
+    val tColor: String = "",
+    val salary: String = "",
+    val contract: String = "",
+    val superLicense: String = "",
+    val penaltyPoints: String = ""
+)
+
 private fun AppPage.DriverDetail.driverProfile(): DriverProfile {
     val team = stats.text("team_abbr_chinese_name").ifBlank { stats.text("team_name") }
-    return when (driverId) {
-        210928 -> DriverProfile(
-            chineseName = "安东内利",
-            englishName = "Andrea Kimi Antonelli",
-            team = "梅赛德斯",
-            number = "12",
+    val seed = driverProfileSeeds[driverId]
+    if (seed != null) {
+        return DriverProfile(
+            chineseName = seed.chineseName,
+            englishName = seed.englishName,
+            team = seed.team,
+            number = seed.number,
             infoRows = listOf(
-                "英文名" to "Andrea Kimi Antonelli",
-                "中文名" to "安东内利",
-                "F1首赛" to "2025年澳大利亚站",
+                "英文名" to seed.englishName,
+                "中文名" to seed.chineseName,
+                "F1首赛" to seed.firstRace,
                 "状态" to "现役",
-                "昵称" to "",
-                "星座" to "",
-                "年龄" to "20",
-                "生日" to "2006-08-25",
-                "身高" to "172cm",
-                "体重" to "70kg",
-                "车队" to "梅赛德斯",
-                "车手号码" to "12",
-                "T架颜色" to "绿色",
-                "薪水" to "200万美元(2025)",
-                "合同期" to "2026-12-31",
-                "超级驾照分" to "7",
-                "一年罚分" to "5",
-                "国籍" to "意大利",
-                "出生地" to "意大利博洛尼亚",
-                "居住地" to ""
-            )
-        )
-        else -> DriverProfile(
-            chineseName = name,
-            englishName = "",
-            team = team,
-            number = stats.text("number").ifBlank { stats.text("driver_number") },
-            infoRows = listOf(
-                "中文名" to name,
-                "车队" to team,
-                "车手ID" to "$driverId"
+                "昵称" to seed.nickname,
+                "星座" to seed.zodiac,
+                "年龄" to seed.age,
+                "生日" to seed.birthday,
+                "身高" to seed.height,
+                "体重" to seed.weight,
+                "车队" to seed.team,
+                "车手号码" to seed.number,
+                "T架颜色" to seed.tColor,
+                "薪水" to seed.salary,
+                "合同期" to seed.contract,
+                "超级驾照分" to seed.superLicense,
+                "一年罚分" to seed.penaltyPoints,
+                "国籍" to seed.nationality,
+                "出生地" to seed.birthplace,
+                "居住地" to seed.residence
             )
         )
     }
+    val teamName = team.ifBlank { teamNameById[stats.text("team_id")] ?: "" }
+    return DriverProfile(
+        chineseName = name,
+        englishName = "",
+        team = teamName,
+        number = stats.text("number").ifBlank { stats.text("driver_number") },
+        infoRows = listOf(
+            "中文名" to name,
+            "车队" to teamName,
+            "车手ID" to "$driverId"
+        )
+    )
 }
+
+private val teamNameById = mapOf(
+    "79" to "奥迪",
+    "80" to "法拉利",
+    "81" to "梅赛德斯",
+    "82" to "阿斯顿马丁",
+    "83" to "迈凯伦",
+    "84" to "威廉姆斯",
+    "85" to "红牛",
+    "86" to "哈斯",
+    "87" to "红牛二队",
+    "88" to "Alpine",
+    "210212" to "凯迪拉克"
+)
+
+private val driverProfileSeeds = mapOf(
+    110 to DriverProfileSeed(
+        chineseName = "汉密尔顿",
+        englishName = "Sir Lewis Carl Davidson Hamilton",
+        team = "法拉利",
+        number = "44",
+        firstRace = "2007年澳大利亚站",
+        birthday = "1985-01-07",
+        height = "174cm",
+        weight = "73kg",
+        nationality = "英国",
+        birthplace = "英国，斯蒂芙尼奇",
+        residence = "摩纳哥",
+        age = "41",
+        nickname = "小汉，老汉，爵士，汉一圈",
+        zodiac = "摩羯座",
+        tColor = "绿色",
+        salary = "6000万美元(2025)",
+        contract = "2026-12-31",
+        superLicense = "9",
+        penaltyPoints = "3"
+    ),
+    210928 to DriverProfileSeed(
+        chineseName = "安东内利",
+        englishName = "Andrea Kimi Antonelli",
+        team = "梅赛德斯",
+        number = "12",
+        firstRace = "2025年澳大利亚站",
+        birthday = "2006-08-25",
+        height = "172cm",
+        weight = "70kg",
+        nationality = "意大利",
+        birthplace = "意大利博洛尼亚",
+        age = "20",
+        tColor = "绿色",
+        salary = "200万美元(2025)",
+        contract = "2026-12-31",
+        superLicense = "7",
+        penaltyPoints = "5"
+    ),
+    123 to DriverProfileSeed("拉塞尔", "George Russell", "梅赛德斯", "63", "2019年澳大利亚站", "1998-02-15", "185cm", "70kg", "英国", "英国金斯林"),
+    121 to DriverProfileSeed("勒克莱尔", "Charles Leclerc", "法拉利", "16", "2018年澳大利亚站", "1997-10-16", "180cm", "69kg", "摩纳哥", "摩纳哥蒙特卡洛"),
+    210899 to DriverProfileSeed("皮亚斯特里", "Oscar Piastri", "迈凯伦", "81", "2023年巴林站", "2001-04-06", "178cm", "68kg", "澳大利亚", "澳大利亚墨尔本"),
+    122 to DriverProfileSeed("诺里斯", "Lando Norris", "迈凯伦", "4", "2019年澳大利亚站", "1999-11-13", "170cm", "68kg", "英国", "英国布里斯托尔", residence = "摩纳哥"),
+    116 to DriverProfileSeed("维斯塔潘", "Max Verstappen", "红牛", "1", "2015年澳大利亚站", "1997-09-30", "181cm", "72kg", "荷兰", "比利时哈瑟尔特", residence = "摩纳哥"),
+    210919 to DriverProfileSeed("哈贾尔", "Isack Hadjar", "红牛", "6", "2025年澳大利亚站", "2004-09-28", "167cm", "", "法国", "法国巴黎"),
+    210902 to DriverProfileSeed("劳森", "Liam Lawson", "红牛二队", "30", "2023年荷兰站", "2002-02-11", "174cm", "72kg", "新西兰", "新西兰黑斯廷斯"),
+    120 to DriverProfileSeed("加斯利", "Pierre Gasly", "Alpine", "10", "2017年马来西亚站", "1996-02-07", "177cm", "70kg", "法国", "法国鲁昂"),
+    210918 to DriverProfileSeed("贝尔曼", "Oliver Bearman", "哈斯", "87", "2024年沙特阿拉伯站", "2005-05-08", "184cm", "", "英国", "英国切姆斯福德"),
+    210927 to DriverProfileSeed("科拉平托", "Franco Colapinto", "Alpine", "43", "2024年意大利站", "2003-05-27", "176cm", "", "阿根廷", "阿根廷皮拉尔"),
+    210938 to DriverProfileSeed("林德布拉德", "Arvid Lindblad", "红牛二队", "41", "", "2007-08-08", "", "", "英国", "英国伦敦"),
+    115 to DriverProfileSeed("塞恩斯", "Carlos Sainz", "威廉姆斯", "55", "2015年澳大利亚站", "1994-09-01", "178cm", "66kg", "西班牙", "西班牙马德里"),
+    210848 to DriverProfileSeed("阿尔本", "Alexander Albon", "威廉姆斯", "23", "2019年澳大利亚站", "1996-03-23", "186cm", "74kg", "泰国", "英国伦敦"),
+    117 to DriverProfileSeed("奥康", "Esteban Ocon", "哈斯", "31", "2016年比利时站", "1996-09-17", "186cm", "66kg", "法国", "法国埃夫勒"),
+    210934 to DriverProfileSeed("博托莱托", "Gabriel Bortoleto", "奥迪", "5", "2025年澳大利亚站", "2004-10-14", "184cm", "", "巴西", "巴西圣保罗"),
+    112 to DriverProfileSeed("佩雷兹", "Sergio Perez", "凯迪拉克", "11", "2011年澳大利亚站", "1990-01-26", "173cm", "63kg", "墨西哥", "墨西哥瓜达拉哈拉"),
+    210807 to DriverProfileSeed("霍肯博格", "Nico Hulkenberg", "奥迪", "27", "2010年巴林站", "1987-08-19", "184cm", "74kg", "德国", "德国埃默里希"),
+    109 to DriverProfileSeed("阿隆索", "Fernando Alonso", "阿斯顿马丁", "14", "2001年澳大利亚站", "1981-07-29", "171cm", "68kg", "西班牙", "西班牙奥维耶多"),
+    114 to DriverProfileSeed("博塔斯", "Valtteri Bottas", "凯迪拉克", "77", "2013年澳大利亚站", "1989-08-28", "173cm", "69kg", "芬兰", "芬兰纳斯托拉"),
+    119 to DriverProfileSeed("斯托尔", "Lance Stroll", "阿斯顿马丁", "18", "2017年澳大利亚站", "1998-10-29", "182cm", "70kg", "加拿大", "加拿大蒙特利尔")
+)
 
 private fun TeamInfoData?.teamInfoRows(page: AppPage.TeamDetail): List<Pair<String, String>> {
     if (this == null) {

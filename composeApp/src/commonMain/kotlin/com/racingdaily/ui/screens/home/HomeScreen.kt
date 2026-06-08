@@ -47,6 +47,7 @@ import com.racingdaily.data.model.NewsItem
 import com.racingdaily.data.remote.ApiService
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassChip
+import com.racingdaily.ui.components.GlassIconButton
 import com.racingdaily.ui.components.GlassSurface
 import com.racingdaily.ui.components.ScreenHeader
 import kotlinx.coroutines.flow.collect
@@ -125,17 +126,7 @@ fun HomeScreen(
             title = appTitle,
             subtitle = appSubtitle,
             actions = {
-                GlassSurface(
-                    modifier = Modifier.size(48.dp),
-                    shape = androidx.compose.foundation.shape.CircleShape,
-                    selected = false,
-                    onClick = onSearchClick,
-                    contentPadding = PaddingValues(0.dp)
-                ) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
-                    }
-                }
+                GlassIconButton(Icons.Rounded.Search, "Search", onSearchClick)
             }
         )
         val tabsOverlayInitialOffset = 78.dp

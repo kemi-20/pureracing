@@ -1,5 +1,6 @@
 package com.racingdaily.ui.screens.home
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FiberManualRecord
 import androidx.compose.material.icons.rounded.Refresh
@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import com.racingdaily.data.model.NavTab
 import com.racingdaily.data.model.NewsItem
@@ -135,68 +136,73 @@ fun HomeScreen(
                 }
             }
         )
-        GlassSurface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(0.dp),
-            contentPadding = PaddingValues(vertical = 8.dp)
-        ) {
-            LazyRow(
-                Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(tabs) { tab ->
-                    GlassChip(
-                        label = tab.name,
-                        selected = tab.id == selectedTabId,
-                        onClick = { onSelectedTabIdChange(tab.id) }
-                    )
+        Box(Modifier.fillMaxSize()) {
+            when {
+                loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
-            }
-        }
-        when {
-            loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-            }
-            error != null -> Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(12.dp))
-                    GlassButton({ reloadKey++ }) {
-                        Icon(Icons.Rounded.Refresh, null, tint = Color.White)
-                        Text("Retry", color = Color.White)
-                    }
-                }
-            }
-            else -> LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-                contentPadding = PaddingValues(top = 12.dp, bottom = 96.dp)
-            ) {
-                items(news, key = { it.id }) { item ->
-                    NewsGlassCard(item, onArticleClick)
-                }
-                if (loadingMore) {
-                    item(key = "loading-more") {
-                        Box(Modifier.fillMaxWidth().padding(vertical = 18.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(26.dp))
-                        }
-                    }
-                } else if (loadMoreError != null) {
-                    item(key = "load-more-error") {
-                        GlassButton(
-                            onClick = {
-                                loadMoreError = null
-                                loadMoreRetryKey++
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
+                error != null -> Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(error.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(12.dp))
+                        GlassButton({ reloadKey++ }) {
                             Icon(Icons.Rounded.Refresh, null, tint = Color.White)
-                            Text("Retry loading more", color = Color.White)
+                            Text("Retry", color = Color.White)
                         }
+                    }
+                }
+                else -> LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    contentPadding = PaddingValues(top = 12.dp, bottom = 96.dp)
+                ) {
+                    items(news, key = { it.id }) { item ->
+                        NewsGlassCard(item, onArticleClick)
+                    }
+                    if (loadingMore) {
+                        item(key = "loading-more") {
+                            Box(Modifier.fillMaxWidth().padding(vertical = 18.dp), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(26.dp))
+                            }
+                        }
+                    } else if (loadMoreError != null) {
+                        item(key = "load-more-error") {
+                            GlassButton(
+                                onClick = {
+                                    loadMoreError = null
+                                    loadMoreRetryKey++
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Rounded.Refresh, null, tint = Color.White)
+                                Text("Retry loading more", color = Color.White)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.16f))
+                    .padding(vertical = 8.dp)
+                    .zIndex(1f)
+            ) {
+                LazyRow(
+                    Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(tabs) { tab ->
+                        GlassChip(
+                            label = tab.name,
+                            selected = tab.id == selectedTabId,
+                            onClick = { onSelectedTabIdChange(tab.id) }
+                        )
                     }
                 }
             }

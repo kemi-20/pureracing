@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FiberManualRecord
 import androidx.compose.material.icons.rounded.Refresh
@@ -134,18 +135,23 @@ fun HomeScreen(
                 }
             }
         )
-        LazyRow(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        GlassSurface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(0.dp),
+            contentPadding = PaddingValues(vertical = 8.dp)
         ) {
-            items(tabs) { tab ->
-                GlassChip(
-                    label = tab.name,
-                    selected = tab.id == selectedTabId,
-                    onClick = { onSelectedTabIdChange(tab.id) }
-                )
+            LazyRow(
+                Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(tabs) { tab ->
+                    GlassChip(
+                        label = tab.name,
+                        selected = tab.id == selectedTabId,
+                        onClick = { onSelectedTabIdChange(tab.id) }
+                    )
+                }
             }
         }
         when {

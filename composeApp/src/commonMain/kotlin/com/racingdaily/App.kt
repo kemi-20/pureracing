@@ -51,6 +51,7 @@ import coil3.compose.AsyncImage
 import com.racingdaily.data.model.ChampSeason
 import com.racingdaily.data.model.RaceGp
 import com.racingdaily.data.model.RaceSession
+import com.racingdaily.data.model.RankingData
 import com.racingdaily.data.model.TeamInfoData
 import com.racingdaily.data.model.TeamDriverInfo
 import com.racingdaily.data.model.TeamWorkerInfo
@@ -75,6 +76,7 @@ import com.racingdaily.ui.theme.RacingDailyTheme
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
 
 enum class Screen { HOME, RACE, RANKINGS, MORE }
 
@@ -155,7 +157,7 @@ fun App(api: ApiService) {
                     is AppPage.Track -> AppPageOverlay(page) { TrackScreen(page.id, goBack, api) }
                     is AppPage.Article -> AppPageOverlay(page) { DetailScreen(page.id, page.title, page.url, goBack, api) }
                     is AppPage.RaceDetail -> AppPageOverlay(page) { RaceDetailScreen(page.gp, goBack) }
-                    is AppPage.DriverDetail -> AppPageOverlay(page) { DriverDetailScreen(page, goBack) }
+                    is AppPage.DriverDetail -> AppPageOverlay(page) { DriverDetailScreen(page, goBack, api) }
                     is AppPage.TeamDetail -> AppPageOverlay(page) { TeamDetailScreen(page, goBack, api) }
                     null -> Unit
                 }
@@ -424,9 +426,30 @@ private fun SessionCard(session: RaceSession) {
 }
 
 @Composable
-fun DriverDetailScreen(page: AppPage.DriverDetail, onBack: () -> Unit) {
+fun DriverDetailScreen(page: AppPage.DriverDetail, onBack: () -> Unit, api: ApiService) {
     val profile = page.driverProfile()
     var selectedTab by rememberSaveable(page.driverId) { mutableStateOf("info") }
+    var seasonScores by remember(page.driverId) { mutableStateOf<List<DriverSeasonScore>>(emptyList()) }
+    var scoreLoading by remember(page.driverId) { mutableStateOf(true) }
+    var scoreError by remember(page.driverId) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(page.driverId, page.chpId, page.seasonId) {
+        scoreLoading = true
+        scoreError = null
+        runCatching {
+            val firstSeason = profile.firstSeason().coerceAtLeast(1950)
+            (firstSeason..page.seasonId).mapNotNull { seasonId ->
+                runCatching {
+                    api.getDriverRanking(page.chpId, seasonId).toDriverSeasonScore(seasonId, page.driverId)
+                }.getOrNull()
+            }.sortedByDescending { it.season }
+        }.onSuccess {
+            seasonScores = it
+        }.onFailure {
+            scoreError = it.message ?: "Unable to load season results"
+        }
+        scoreLoading = false
+    }
 
     Column(Modifier.fillMaxSize()) {
         ScreenHeader(profile.chineseName, "Driver profile", navigationIcon = {
@@ -473,7 +496,14 @@ fun DriverDetailScreen(page: AppPage.DriverDetail, onBack: () -> Unit) {
             }
             when (selectedTab) {
                 "info" -> item { InfoTable("基本资料", profile.infoRows) }
-                "score" -> item { RankingStatsCard("本赛季数据", page.stats) }
+                "score" -> item {
+                    DriverSeasonScoresCard(
+                        scores = seasonScores,
+                        loading = scoreLoading,
+                        error = scoreError,
+                        fallbackStats = page.stats
+                    )
+                }
                 "news" -> item { EmptyProfileCard("新闻", "暂无相关新闻数据") }
             }
         }
@@ -612,6 +642,7 @@ private fun InfoTable(title: String, rows: List<Pair<String, String>>) {
 
 @Composable
 private fun InfoRow(label: String, value: String) {
+    val displayValue = value.ifBlank { "-" }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
         Text(
             label,
@@ -620,7 +651,7 @@ private fun InfoRow(label: String, value: String) {
             modifier = Modifier.width(92.dp)
         )
         Text(
-            value,
+            displayValue,
             color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (value.isNotBlank()) FontWeight.SemiBold else FontWeight.Normal,
@@ -687,6 +718,83 @@ private fun EmptyProfileCard(title: String, message: String) {
 }
 
 @Composable
+private fun DriverSeasonScoresCard(
+    scores: List<DriverSeasonScore>,
+    loading: Boolean,
+    error: String?,
+    fallbackStats: JsonObject
+) {
+    GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("近年来成绩", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text("F1", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            }
+            when {
+                loading -> Box(Modifier.fillMaxWidth().height(96.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
+                error != null && scores.isEmpty() -> {
+                    Text(error, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    DriverFallbackStats(fallbackStats)
+                }
+                scores.isEmpty() -> DriverFallbackStats(fallbackStats)
+                else -> {
+                    DriverSeasonScoreRow(
+                        listOf("赛季", "名次", "总积分", "分冠", "领奖台", "杆位", "最快圈速"),
+                        isHeader = true
+                    )
+                    scores.forEach { score ->
+                        DriverSeasonScoreRow(
+                            listOf(
+                                score.season.toString(),
+                                score.rank.asScoreText(),
+                                score.totalScore.asScoreText(),
+                                score.wins.asScoreText(),
+                                score.podiums.asScoreText(),
+                                score.poles.asScoreText(),
+                                score.fastestLaps.asScoreText()
+                            ),
+                            isHeader = false
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DriverFallbackStats(stats: JsonObject) {
+    val rows = stats.rankingStatRows()
+    if (rows.isEmpty()) {
+        Text("暂无可展示数据", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+    } else {
+        rows.forEach { (label, value) ->
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                Text(value, color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DriverSeasonScoreRow(values: List<String>, isHeader: Boolean) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        values.forEachIndexed { index, value ->
+            Text(
+                value,
+                color = if (isHeader) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                style = if (isHeader) MaterialTheme.typography.labelMedium else MaterialTheme.typography.bodyLarge,
+                fontWeight = if (isHeader) FontWeight.SemiBold else FontWeight.Bold,
+                modifier = Modifier.weight(if (index == 2) 1.25f else 1f)
+            )
+        }
+    }
+}
+
+@Composable
 private fun RankingStatsCard(title: String, stats: JsonObject) {
     val rows = stats.rankingStatRows()
     GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
@@ -716,6 +824,11 @@ private fun RaceSession.statusText(): String = when (race_status) {
 
 private fun JsonObject.text(key: String): String =
     (this[key] as? JsonPrimitive)?.contentOrNull.orEmpty()
+
+private fun JsonObject.intValue(key: String): Int {
+    val primitive = this[key] as? JsonPrimitive ?: return 0
+    return primitive.intOrNull ?: primitive.content.toIntOrNull() ?: 0
+}
 
 private fun JsonObject.rankingStatRows(): List<Pair<String, String>> {
     val preferredKeys = listOf(
@@ -784,6 +897,46 @@ private fun String.isHiddenRankingStatKey(): Boolean =
         "site_point"
     ) || contains("display_order") || endsWith("_trend") || endsWith("_format")
 
+private data class DriverSeasonScore(
+    val season: Int,
+    val rank: Int,
+    val totalScore: Int,
+    val wins: Int,
+    val podiums: Int,
+    val poles: Int,
+    val fastestLaps: Int
+)
+
+private fun RankingData.toDriverSeasonScore(season: Int, driverId: Int): DriverSeasonScore? {
+    fun rowFrom(tabKey: String): JsonObject? =
+        list.firstOrNull { it.tab_key == tabKey }
+            ?.list
+            ?.firstOrNull { row -> row.intValue("driver_id").ifZero { row.intValue("drivers_id") } == driverId }
+
+    val total = rowFrom("total_score") ?: return null
+    val podium = rowFrom("gp_p_cnt")
+    val pole = rowFrom("gp_pole_cnt")
+    val fastest = rowFrom("gp_fl_cnt") ?: rowFrom("gp_fastlap_cnt")
+    val wins = podium?.intValue("gp_p1_cnt") ?: total.intValue("gp_p1_cnt")
+    val podiums = (podium?.intValue("gp_p1_cnt") ?: total.intValue("gp_p1_cnt")) +
+        (podium?.intValue("gp_p2_cnt") ?: total.intValue("gp_p2_cnt")) +
+        (podium?.intValue("gp_p3_cnt") ?: total.intValue("gp_p3_cnt"))
+
+    return DriverSeasonScore(
+        season = season,
+        rank = total.intValue("display_order"),
+        totalScore = total.intValue("total_score"),
+        wins = wins,
+        podiums = podiums,
+        poles = pole?.intValue("gp_pole_cnt") ?: total.intValue("gp_pole_cnt"),
+        fastestLaps = fastest?.intValue("gp_fl_cnt") ?: fastest?.intValue("gp_fastlap_cnt") ?: total.intValue("gp_fl_cnt")
+    )
+}
+
+private fun Int.asScoreText(): String = if (this == 0) "0" else toString()
+
+private inline fun Int.ifZero(block: () -> Int): Int = if (this == 0) block() else this
+
 private data class DriverProfile(
     val chineseName: String,
     val englishName: String,
@@ -811,7 +964,8 @@ private data class DriverProfileSeed(
     val salary: String = "",
     val contract: String = "",
     val superLicense: String = "",
-    val penaltyPoints: String = ""
+    val penaltyPoints: String = "",
+    val instagram: String = ""
 )
 
 private fun AppPage.DriverDetail.driverProfile(): DriverProfile {
@@ -843,7 +997,8 @@ private fun AppPage.DriverDetail.driverProfile(): DriverProfile {
                 "一年罚分" to seed.penaltyPoints,
                 "国籍" to seed.nationality,
                 "出生地" to seed.birthplace,
-                "居住地" to seed.residence
+                "居住地" to seed.residence,
+                "INS" to seed.instagram
             )
         )
     }
@@ -860,6 +1015,13 @@ private fun AppPage.DriverDetail.driverProfile(): DriverProfile {
         )
     )
 }
+
+private fun DriverProfile.firstSeason(): Int =
+    infoRows.firstOrNull { it.first == "F1首赛" }
+        ?.second
+        ?.take(4)
+        ?.toIntOrNull()
+        ?: 2019
 
 private val teamNameById = mapOf(
     "79" to "奥迪",
@@ -915,7 +1077,28 @@ private val driverProfileSeeds = mapOf(
         superLicense = "7",
         penaltyPoints = "5"
     ),
-    123 to DriverProfileSeed("拉塞尔", "George Russell", "梅赛德斯", "63", "2019年澳大利亚站", "1998-02-15", "185cm", "70kg", "英国", "英国金斯林"),
+    123 to DriverProfileSeed(
+        chineseName = "拉塞尔",
+        englishName = "George William Russell",
+        team = "梅赛德斯",
+        number = "63",
+        firstRace = "2019年澳大利亚站",
+        birthday = "1998-02-15",
+        height = "185cm",
+        weight = "70kg",
+        nationality = "英国",
+        birthplace = "英国，金士林",
+        residence = "英国",
+        age = "28",
+        nickname = "皇帝",
+        zodiac = "水瓶座",
+        tColor = "黑色",
+        salary = "1500万美元(2025)",
+        contract = "2026-12-31",
+        superLicense = "12",
+        penaltyPoints = "0",
+        instagram = "@georgerussell63"
+    ),
     121 to DriverProfileSeed("勒克莱尔", "Charles Leclerc", "法拉利", "16", "2018年澳大利亚站", "1997-10-16", "180cm", "69kg", "摩纳哥", "摩纳哥蒙特卡洛"),
     210899 to DriverProfileSeed("皮亚斯特里", "Oscar Piastri", "迈凯伦", "81", "2023年巴林站", "2001-04-06", "178cm", "68kg", "澳大利亚", "澳大利亚墨尔本"),
     122 to DriverProfileSeed("诺里斯", "Lando Norris", "迈凯伦", "4", "2019年澳大利亚站", "1999-11-13", "170cm", "68kg", "英国", "英国布里斯托尔", residence = "摩纳哥"),

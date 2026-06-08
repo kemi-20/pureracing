@@ -54,6 +54,7 @@ import kotlinx.coroutines.flow.collect
 @Composable
 fun HomeScreen(
     onArticleClick: (NewsItem) -> Unit,
+    onSearchClick: () -> Unit,
     listState: LazyListState,
     selectedTabId: Int,
     onSelectedTabIdChange: (Int) -> Unit,
@@ -128,6 +129,7 @@ fun HomeScreen(
                     modifier = Modifier.size(48.dp),
                     shape = androidx.compose.foundation.shape.CircleShape,
                     selected = false,
+                    onClick = onSearchClick,
                     contentPadding = PaddingValues(0.dp)
                 ) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

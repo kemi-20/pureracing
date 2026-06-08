@@ -79,6 +79,7 @@ import com.racingdaily.ui.screens.home.HomeScreen
 import com.racingdaily.ui.screens.more.MoreScreen
 import com.racingdaily.ui.screens.race.RaceScreen
 import com.racingdaily.ui.screens.rankings.RankingScreen
+import com.racingdaily.ui.screens.search.SearchScreen
 import com.racingdaily.ui.theme.RacingDailyTheme
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -88,6 +89,7 @@ import kotlinx.serialization.json.intOrNull
 enum class Screen { HOME, RACE, RANKINGS, MORE }
 
 sealed interface AppPage {
+    data object Search : AppPage
     data class Article(val id: Int, val title: String, val url: String) : AppPage
     data class Track(val id: Int) : AppPage
     data class Championship(val category: String, val id: Int) : AppPage
@@ -130,6 +132,9 @@ fun App(api: ApiService) {
                                 onArticleClick = { item ->
                                     pageStack += AppPage.Article(item.id, item.title, item.http_url)
                                 },
+                                onSearchClick = {
+                                    pageStack += AppPage.Search
+                                },
                                 listState = homeListState,
                                 selectedTabId = homeSelectedTabId,
                                 onSelectedTabIdChange = { homeSelectedTabId = it },
@@ -160,6 +165,15 @@ fun App(api: ApiService) {
                 }
 
                 when (val page = pageStack.lastOrNull()) {
+                    is AppPage.Search -> AppPageOverlay(page) {
+                        SearchScreen(
+                            onBack = goBack,
+                            onArticleClick = { item ->
+                                pageStack += AppPage.Article(item.id, item.title, item.http_url)
+                            },
+                            api = api
+                        )
+                    }
                     is AppPage.Championship -> AppPageOverlay(page) { ChampScreen(page.category, page.id, goBack, api) }
                     is AppPage.Track -> AppPageOverlay(page) { TrackScreen(page.id, goBack, api) }
                     is AppPage.Article -> AppPageOverlay(page) { DetailScreen(page.id, page.title, page.url, goBack, api) }

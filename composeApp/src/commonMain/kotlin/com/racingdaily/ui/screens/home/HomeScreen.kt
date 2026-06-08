@@ -136,6 +136,8 @@ fun HomeScreen(
                 }
             }
         )
+        val tabsOverlayInitialOffset = 78.dp
+
         Box(Modifier.fillMaxSize()) {
             when {
                 loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -157,7 +159,7 @@ fun HomeScreen(
                         .fillMaxSize()
                         .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
-                    contentPadding = PaddingValues(top = 12.dp, bottom = 96.dp)
+                    contentPadding = PaddingValues(top = tabsOverlayInitialOffset, bottom = 96.dp)
                 ) {
                     items(news, key = { it.id }) { item ->
                         NewsGlassCard(item, onArticleClick)

@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -65,6 +66,9 @@ fun HomeScreen(
     var loadMoreError by remember { mutableStateOf<String?>(null) }
     var reloadKey by remember { mutableIntStateOf(0) }
     var loadMoreRetryKey by remember { mutableIntStateOf(0) }
+    val isChinese = Locale.current.language.startsWith("zh")
+    val appTitle = if (isChinese) "纯净赛车" else "PureRacing"
+    val appSubtitle = if (isChinese) "每日 F1 新闻" else "Daily F1 News"
 
     LaunchedEffect(reloadKey) {
         runCatching { api.getNavTabs().navbar }
@@ -115,8 +119,8 @@ fun HomeScreen(
 
     Column(Modifier.fillMaxSize()) {
         ScreenHeader(
-            title = "PureRacing",
-            subtitle = "Motorsport news and data",
+            title = appTitle,
+            subtitle = appSubtitle,
             actions = {
                 GlassSurface(
                     modifier = Modifier.size(48.dp),

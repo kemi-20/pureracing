@@ -8,7 +8,7 @@ import androidx.compose.ui.window.rememberWindowState
 import java.util.Locale
 
 fun main() = application {
-    val appName = if (Locale.getDefault().language == "zh") "纯享赛车" else "PureRacing"
+    val appName = if (Locale.getDefault().language == "zh") "纯净赛车" else "PureRacing"
     Window(
         onCloseRequest = ::exitApplication,
         title = appName,

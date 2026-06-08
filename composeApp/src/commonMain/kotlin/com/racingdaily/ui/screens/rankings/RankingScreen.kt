@@ -88,7 +88,7 @@ fun RankingScreen(
             if (isDriver) api.getDriverRanking(season.chp_id, season.id) else api.getTeamRanking(season.chp_id, season.id)
         }.onSuccess {
             data = it
-            selectedSubTab = it.list.firstOrNull()?.tab_key.orEmpty()
+            selectedSubTab = it.visibleRankingTabs().firstOrNull()?.tab_key.orEmpty()
         }.onFailure {
             error = it.message ?: "Unable to load rankings"
         }
@@ -120,7 +120,7 @@ fun RankingScreen(
                 )
             }
         }
-        data?.list?.let { tabs ->
+        data?.visibleRankingTabs()?.let { tabs ->
             LazyRow(
                 Modifier
                     .fillMaxWidth()
@@ -273,6 +273,9 @@ private fun String.cleanRankingRemark(): String =
         .trim()
 
 private inline fun Int.ifZero(block: () -> Int): Int = if (this == 0) block() else this
+
+private fun RankingData.visibleRankingTabs() =
+    list.filterNot { it.tab_key == "score_movements" || it.tab_key == "t_score_movements" }
 
 private val RacingYellow = Color(0xFFD29922)
 private val RacingBlue = Color(0xFF58A6FF)

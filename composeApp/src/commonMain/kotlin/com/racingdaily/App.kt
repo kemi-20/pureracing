@@ -165,7 +165,11 @@ fun App(api: ApiService) {
                             pageStack += AppPage.Article(item.id, item.title, item.http_url)
                         }
                     }
-                    is AppPage.TeamDetail -> AppPageOverlay(page) { TeamDetailScreen(page, goBack, api) }
+                    is AppPage.TeamDetail -> AppPageOverlay(page) {
+                        TeamDetailScreen(page, goBack, api) { item ->
+                            pageStack += AppPage.Article(item.id, item.title, item.http_url)
+                        }
+                    }
                     null -> Unit
                 }
             }
@@ -520,7 +524,7 @@ fun DriverDetailScreen(
                         Spacer(Modifier.width(14.dp))
                         Column(Modifier.weight(1f)) {
                             Text(displayName, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.headlineMedium)
-                            Text(englishName.ifBlank { "Driver ID ${page.driverId}" }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
+                            Text(englishName.ifBlank { "Driver profile" }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
                             Text(
                                 listOf(teamName, number.takeIf { it.isNotBlank() }?.let { "#$it" })
                                     .filterNotNull()
@@ -582,19 +586,61 @@ fun DriverDetailScreen(
 }
 
 @Composable
-fun TeamDetailScreen(page: AppPage.TeamDetail, onBack: () -> Unit, api: ApiService) {
+fun TeamDetailScreen(
+    page: AppPage.TeamDetail,
+    onBack: () -> Unit,
+    api: ApiService,
+    onArticleClick: (NewsItem) -> Unit
+) {
     var teamInfo by remember(page.teamId) { mutableStateOf<TeamInfoData?>(null) }
+    var teamNews by remember(page.teamId) { mutableStateOf<List<NewsItem>>(emptyList()) }
+    var seasonScores by remember(page.teamId) { mutableStateOf<List<TeamSeasonScore>>(emptyList()) }
     var loading by remember(page.teamId) { mutableStateOf(true) }
     var error by remember(page.teamId) { mutableStateOf<String?>(null) }
+    var scoreLoading by remember(page.teamId) { mutableStateOf(true) }
+    var scoreError by remember(page.teamId) { mutableStateOf<String?>(null) }
     var selectedTab by rememberSaveable(page.teamId) { mutableStateOf("info") }
 
     LaunchedEffect(page.chpId, page.seasonId, page.teamId) {
         loading = true
         error = null
-        runCatching { api.getTeamInfo(page.chpId, page.teamId, page.seasonId) }
-            .onSuccess { teamInfo = it }
+        runCatching {
+            val info = api.getTeamInfo(page.chpId, page.teamId, page.seasonId)
+            val news = teamNewsTagIds[page.teamId]
+                ?.let { tagId -> runCatching { api.getNewsList(tagId) }.getOrNull()?.list }
+                .orEmpty()
+            info to news
+        }
+            .onSuccess { (info, news) ->
+                teamInfo = info
+                teamNews = news
+            }
             .onFailure { error = it.message ?: "Unable to load team profile" }
         loading = false
+    }
+
+    LaunchedEffect(page.chpId, page.seasonId, page.teamId) {
+        scoreLoading = true
+        scoreError = null
+        runCatching {
+            val seasons = api.getRankingNav()
+                .list
+                .flatMap { it.options }
+                .map { it.id }
+                .filter { it in 1950..page.seasonId }
+                .distinct()
+                .sorted()
+            seasons.mapNotNull { seasonId ->
+                runCatching {
+                    api.getTeamRanking(page.chpId, seasonId).toTeamSeasonScore(seasonId, page.teamId)
+                }.getOrNull()
+            }.sortedByDescending { it.season }
+        }.onSuccess {
+            seasonScores = it
+        }.onFailure {
+            scoreError = it.message ?: "Unable to load team season results"
+        }
+        scoreLoading = false
     }
 
     val title = teamInfo?.chinese_name?.ifBlank { teamInfo?.name.orEmpty() }?.ifBlank { page.name } ?: page.name
@@ -656,7 +702,14 @@ fun TeamDetailScreen(page: AppPage.TeamDetail, onBack: () -> Unit, api: ApiServi
                 item { TeamNamedRow("青训车手", teamInfo?.drivers?.youth?.map { it.name.ifBlank { it.addr_chinese_name } }.orEmpty()) }
                 error?.let { item { EmptyProfileCard("接口提示", it) } }
             } else if (selectedTab == "score") {
-                item { RankingStatsCard("本赛季数据", page.stats) }
+                item {
+                    TeamSeasonScoresCard(
+                        scores = seasonScores,
+                        loading = scoreLoading,
+                        error = scoreError,
+                        fallbackStats = page.stats
+                    )
+                }
             } else if (selectedTab == "car") {
                 val cars = teamInfo?.car.orEmpty()
                 if (cars.isEmpty()) {
@@ -676,7 +729,13 @@ fun TeamDetailScreen(page: AppPage.TeamDetail, onBack: () -> Unit, api: ApiServi
                     }
                 }
             } else if (selectedTab == "news") {
-                item { EmptyProfileCard("新闻", "暂无相关新闻数据") }
+                if (teamNews.isEmpty()) {
+                    item { EmptyProfileCard("新闻", "暂无相关新闻数据") }
+                } else {
+                    items(teamNews.size) { index ->
+                        DriverNewsCard(teamNews[index], onArticleClick)
+                    }
+                }
             }
         }
     }
@@ -900,6 +959,46 @@ private fun DriverFallbackStats(stats: JsonObject) {
 }
 
 @Composable
+private fun TeamSeasonScoresCard(
+    scores: List<TeamSeasonScore>,
+    loading: Boolean,
+    error: String?,
+    fallbackStats: JsonObject
+) {
+    GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("近年来成绩", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text("F1", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            }
+            when {
+                loading -> Box(Modifier.fillMaxWidth().height(96.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
+                error != null && scores.isEmpty() -> {
+                    Text(error, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    DriverFallbackStats(fallbackStats)
+                }
+                scores.isEmpty() -> DriverFallbackStats(fallbackStats)
+                else -> {
+                    DriverSeasonScoreRow(listOf("赛季", "名次", "总积分"), isHeader = true)
+                    scores.forEach { score ->
+                        DriverSeasonScoreRow(
+                            listOf(
+                                score.season.toString(),
+                                score.rank.asScoreText(),
+                                score.totalScore.asScoreText()
+                            ),
+                            isHeader = false
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun DriverSeasonScoreRow(values: List<String>, isHeader: Boolean) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         values.forEachIndexed { index, value ->
@@ -1027,6 +1126,12 @@ private data class DriverSeasonScore(
     val fastestLaps: Int
 )
 
+private data class TeamSeasonScore(
+    val season: Int,
+    val rank: Int,
+    val totalScore: Int
+)
+
 private fun RankingData.toDriverSeasonScore(season: Int, driverId: Int): DriverSeasonScore? {
     fun rowFrom(tabKey: String): JsonObject? =
         list.firstOrNull { it.tab_key == tabKey }
@@ -1053,6 +1158,18 @@ private fun RankingData.toDriverSeasonScore(season: Int, driverId: Int): DriverS
     )
 }
 
+private fun RankingData.toTeamSeasonScore(season: Int, teamId: Int): TeamSeasonScore? {
+    val total = list.firstOrNull { it.tab_key == "total_score" }
+        ?.list
+        ?.firstOrNull { row -> row.intValue("team_id") == teamId }
+        ?: return null
+    return TeamSeasonScore(
+        season = season,
+        rank = total.intValue("display_order"),
+        totalScore = total.intValue("total_score")
+    )
+}
+
 private fun Int.asScoreText(): String = if (this == 0) "0" else toString()
 
 private inline fun Int.ifZero(block: () -> Int): Int = if (this == 0) block() else this
@@ -1068,7 +1185,6 @@ private fun DriverInfoTitle?.driverInfoRows(page: AppPage.DriverDetail): List<Pa
     if (this == null) {
         return listOf(
             "中文名" to page.name,
-            "车手ID" to "${page.driverId}",
             "车队" to page.stats.text("team_abbr_chinese_name").ifBlank { page.stats.text("team_name") }
         )
     }
@@ -1080,8 +1196,7 @@ private fun DriverInfoTitle?.driverInfoRows(page: AppPage.DriverDetail): List<Pa
         "身高" to height.withUnit("cm"),
         "车队" to chinese_name,
         "车手号码" to number,
-        "国籍" to nationality,
-        "车手ID" to "${page.driverId}"
+        "国籍" to nationality
     )
 }
 
@@ -1093,6 +1208,20 @@ private fun Int.driverStatusText(): String = when (this) {
     2 -> "退役"
     else -> ""
 }
+
+private val teamNewsTagIds = mapOf(
+    79 to 32,
+    80 to 10,
+    81 to 7,
+    82 to 33,
+    83 to 27,
+    84 to 35,
+    85 to 26,
+    86 to 34,
+    87 to 30,
+    88 to 31,
+    210212 to 234
+)
 
 private fun TeamInfoData?.teamInfoRows(page: AppPage.TeamDetail): List<Pair<String, String>> {
     if (this == null) {

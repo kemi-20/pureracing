@@ -51,11 +51,30 @@ object FlexibleIntSerializer : KSerializer<Int> {
     }
 }
 
+object FlexibleLongSerializer : KSerializer<Long> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("FlexibleLong", PrimitiveKind.LONG)
+
+    override fun deserialize(decoder: Decoder): Long {
+        val input = decoder as? JsonDecoder ?: return decoder.decodeLong()
+        val element = input.decodeJsonElement()
+        if (element is JsonNull) return 0L
+        return when (element) {
+            is JsonPrimitive -> element.longOrNull ?: element.content.toLongOrNull() ?: 0L
+            else -> 0L
+        }
+    }
+
+    override fun serialize(encoder: Encoder, value: Long) {
+        encoder.encodeLong(value)
+    }
+}
+
 @Serializable data class ApiResponse<T>(val code: Int, val msg: String = "", val data: T)
 
 // News
 @Serializable data class NewsItem(@Serializable(with = FlexibleIntSerializer::class) val id: Int = 0, val title: String = "", val istop: Int = 0, val total_read: Int = 0,
-    val type: Int = 0, val publish_time: Long = 0, @Serializable(with = FlexibleStringSerializer::class) val gp_id: String = "", val http_url: String = "",
+    val type: Int = 0, @Serializable(with = FlexibleLongSerializer::class) val publish_time: Long = 0, @Serializable(with = FlexibleStringSerializer::class) val gp_id: String = "", val http_url: String = "",
     val covers: List<Cover> = emptyList(), val tags: List<Tag> = emptyList())
 @Serializable data class Cover(val path_url: String = "", val path: String = "")
 @Serializable data class Tag(val id: Int = 0, val name: String = "")

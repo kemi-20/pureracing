@@ -1,5 +1,14 @@
 package com.racingdaily
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -40,7 +49,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +57,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import com.racingdaily.data.model.ChampSeason
 import com.racingdaily.data.model.DriverInfoData
@@ -130,68 +139,71 @@ fun App(api: ApiService) {
                     }
                 ) {
                     Box(Modifier.fillMaxSize()) {
-                        when (currentScreen) {
-                            Screen.HOME -> HomeScreen(
-                                onArticleClick = { item ->
-                                    pageStack += AppPage.Article(item.id, item.title, item.http_url)
-                                },
-                                onSearchClick = {
-                                    pageStack += AppPage.Search
-                                },
-                                listState = homeListState,
-                                selectedTabId = homeSelectedTabId,
-                                onSelectedTabIdChange = { homeSelectedTabId = it },
-                                api = api
-                            )
-                            Screen.RACE -> RaceScreen(
-                                onRaceClick = { pageStack += AppPage.RaceDetail(it) },
-                                onTrackClick = { pageStack += AppPage.Track(it) },
-                                api = api
-                            )
-                            Screen.RANKINGS -> RankingScreen(
-                                api = api,
-                                onDriverClick = { chpId, seasonId, driverId, name, avatar, teamLogo, stats ->
-                                    pageStack += AppPage.DriverDetail(chpId, seasonId, driverId, name, avatar, teamLogo, stats)
-                                },
-                                onTeamClick = { chpId, seasonId, teamId, name, logo, stats ->
-                                    pageStack += AppPage.TeamDetail(chpId, seasonId, teamId, name, logo, stats)
-                                }
-                            )
-                            Screen.MORE -> MoreScreen(
-                                { cat, id ->
-                                    pageStack += AppPage.Championship(cat, id)
-                                },
-                                api
-                            )
+                        AnimatedContent(
+                            targetState = currentScreen,
+                            transitionSpec = {
+                                fadeIn(tween(180)) togetherWith fadeOut(tween(120))
+                            },
+                            label = "Main screen transition"
+                        ) { screen ->
+                            when (screen) {
+                                Screen.HOME -> HomeScreen(
+                                    onArticleClick = { item ->
+                                        pageStack += AppPage.Article(item.id, item.title, item.http_url)
+                                    },
+                                    onSearchClick = {
+                                        pageStack += AppPage.Search
+                                    },
+                                    listState = homeListState,
+                                    selectedTabId = homeSelectedTabId,
+                                    onSelectedTabIdChange = { homeSelectedTabId = it },
+                                    api = api
+                                )
+                                Screen.RACE -> RaceScreen(
+                                    onRaceClick = { pageStack += AppPage.RaceDetail(it) },
+                                    onTrackClick = { pageStack += AppPage.Track(it) },
+                                    api = api
+                                )
+                                Screen.RANKINGS -> RankingScreen(
+                                    api = api,
+                                    onDriverClick = { chpId, seasonId, driverId, name, avatar, teamLogo, stats ->
+                                        pageStack += AppPage.DriverDetail(chpId, seasonId, driverId, name, avatar, teamLogo, stats)
+                                    },
+                                    onTeamClick = { chpId, seasonId, teamId, name, logo, stats ->
+                                        pageStack += AppPage.TeamDetail(chpId, seasonId, teamId, name, logo, stats)
+                                    }
+                                )
+                                Screen.MORE -> MoreScreen(
+                                    { cat, id ->
+                                        pageStack += AppPage.Championship(cat, id)
+                                    },
+                                    api
+                                )
+                            }
                         }
                     }
                 }
 
-                when (val page = pageStack.lastOrNull()) {
-                    is AppPage.Search -> AppPageOverlay(page) {
-                        SearchScreen(
+                PageStackHost(pageStack.toList()) { page ->
+                    when (page) {
+                        is AppPage.Search -> SearchScreen(
                             onBack = goBack,
                             onArticleClick = { item ->
                                 pageStack += AppPage.Article(item.id, item.title, item.http_url)
                             },
                             api = api
                         )
-                    }
-                    is AppPage.Championship -> AppPageOverlay(page) { ChampScreen(page.category, page.id, goBack, api) }
-                    is AppPage.Track -> AppPageOverlay(page) { TrackScreen(page.id, goBack, api) }
-                    is AppPage.Article -> AppPageOverlay(page) { DetailScreen(page.id, page.title, page.url, goBack, api) }
-                    is AppPage.RaceDetail -> AppPageOverlay(page) { RaceDetailScreen(page.gp, goBack) }
-                    is AppPage.DriverDetail -> AppPageOverlay(page) {
-                        DriverDetailScreen(page, goBack, api) { item ->
+                        is AppPage.Championship -> ChampScreen(page.category, page.id, goBack, api)
+                        is AppPage.Track -> TrackScreen(page.id, goBack, api)
+                        is AppPage.Article -> DetailScreen(page.id, page.title, page.url, goBack, api)
+                        is AppPage.RaceDetail -> RaceDetailScreen(page.gp, goBack)
+                        is AppPage.DriverDetail -> DriverDetailScreen(page, goBack, api) { item ->
+                            pageStack += AppPage.Article(item.id, item.title, item.http_url)
+                        }
+                        is AppPage.TeamDetail -> TeamDetailScreen(page, goBack, api) { item ->
                             pageStack += AppPage.Article(item.id, item.title, item.http_url)
                         }
                     }
-                    is AppPage.TeamDetail -> AppPageOverlay(page) {
-                        TeamDetailScreen(page, goBack, api) { item ->
-                            pageStack += AppPage.Article(item.id, item.title, item.http_url)
-                        }
-                    }
-                    null -> Unit
                 }
             }
         }
@@ -199,30 +211,73 @@ fun App(api: ApiService) {
 }
 
 @Composable
-private fun AppPageOverlay(pageKey: AppPage, content: @Composable () -> Unit) {
-    var readyToShow by remember(pageKey) { mutableStateOf(false) }
+private fun PageStackHost(
+    pages: List<AppPage>,
+    content: @Composable (AppPage) -> Unit
+) {
+    val renderedPages = remember { mutableStateListOf<AppPage>() }
 
-    LaunchedEffect(pageKey) {
-        withFrameNanos { }
-        readyToShow = true
+    LaunchedEffect(pages) {
+        pages.forEach { page ->
+            if (page !in renderedPages) renderedPages += page
+        }
     }
 
-    Box(
-        Modifier
-            .fillMaxSize()
+    renderedPages.forEachIndexed { index, page ->
+        AppPageOverlay(
+            pageKey = page,
+            visible = page in pages,
+            modifier = Modifier.zIndex(index + 1f),
+            onHidden = { renderedPages.remove(page) }
+        ) {
+            content(page)
+        }
+    }
+}
+
+@Composable
+private fun AppPageOverlay(
+    pageKey: AppPage,
+    visible: Boolean,
+    modifier: Modifier = Modifier,
+    onHidden: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    val transitionState = remember(pageKey) { MutableTransitionState(false) }
+
+    LaunchedEffect(visible) {
+        transitionState.targetState = visible
+    }
+
+    LaunchedEffect(transitionState.isIdle, transitionState.currentState, transitionState.targetState) {
+        if (transitionState.isIdle && !transitionState.currentState && !transitionState.targetState) {
+            onHidden()
+        }
+    }
+
+    AnimatedVisibility(
+        visibleState = transitionState,
+        modifier = modifier.fillMaxSize(),
+        enter = fadeIn(tween(180)) + slideInHorizontally(tween(220)) { it / 6 },
+        exit = fadeOut(tween(140)) + slideOutHorizontally(tween(180)) { it / 8 }
     ) {
         Box(
             Modifier
                 .fillMaxSize()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {}
-                )
-                .graphicsLayer { alpha = if (readyToShow) 1f else 0f }
-                .pureRacingBackground()
         ) {
-            content()
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    )
+                    .graphicsLayer { alpha = 1f }
+                    .pureRacingBackground()
+            ) {
+                content()
+            }
         }
     }
 }

@@ -36,7 +36,7 @@ fun MoreScreen(onChampClick: (String, Int) -> Unit, api: ApiService) {
             item {
                 PreferenceGlassRow(
                     title = "PureRacing Client",
-                    subtitle = "Version 1.0.0",
+                    subtitle = "Version 1.1",
                     icon = Icons.Rounded.Info,
                     onClick = null
                 )

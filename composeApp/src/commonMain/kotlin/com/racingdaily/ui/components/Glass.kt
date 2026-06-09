@@ -392,7 +392,9 @@ private fun FallbackGlassBottomBar(
 ) {
     GlassSurface(
         modifier = modifier
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         shape = RoundedCornerShape(999.dp),
         contentPadding = PaddingValues(5.dp)
     ) {
@@ -493,30 +495,24 @@ fun <T> GlassBottomBar(
     modifier: Modifier = Modifier
 ) {
     val backdrop = LocalGlassBackdrop.current
-    Box(
-        modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 10.dp)
-            .clip(RoundedCornerShape(999.dp))
-            .background(Color.Black.copy(alpha = 0.24f))
-    ) {
-        if (backdrop != null) {
-            OriginalLiquidBottomTabs(
-                tabs = tabs,
-                selected = selected,
-                onSelected = onSelected,
-                backdrop = backdrop,
-                modifier = Modifier.fillMaxWidth()
-            )
-        } else {
-            FallbackGlassBottomBar(
-                tabs = tabs.asAnyTabs(),
-                selected = selected,
-                onSelected = { value -> @Suppress("UNCHECKED_CAST") onSelected(value as T) },
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+    if (backdrop != null) {
+        OriginalLiquidBottomTabs(
+            tabs = tabs,
+            selected = selected,
+            onSelected = onSelected,
+            backdrop = backdrop,
+            modifier = modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+        )
+    } else {
+        FallbackGlassBottomBar(
+            tabs = tabs.asAnyTabs(),
+            selected = selected,
+            onSelected = { value -> @Suppress("UNCHECKED_CAST") onSelected(value as T) },
+            modifier = modifier
+        )
     }
 }
 

@@ -45,8 +45,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -85,6 +83,7 @@ import com.racingdaily.ui.screens.race.RaceScreen
 import com.racingdaily.ui.screens.rankings.RankingScreen
 import com.racingdaily.ui.screens.search.SearchScreen
 import com.racingdaily.ui.theme.RacingDailyTheme
+import com.racingdaily.util.alpineLogoColorFilter
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -790,20 +789,6 @@ fun TeamDetailScreen(
             }
         }
     }
-}
-
-private fun alpineLogoColorFilter(teamId: Int): ColorFilter? {
-    if (teamId != 88) return null
-    return ColorFilter.colorMatrix(
-        ColorMatrix(
-            floatArrayOf(
-                -1f, 0f, 0f, 0f, 255f,
-                0f, -1f, 0f, 0f, 255f,
-                0f, 0f, -1f, 0f, 255f,
-                0f, 0f, 0f, 1f, 0f
-            )
-        )
-    )
 }
 
 @Composable

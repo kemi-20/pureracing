@@ -48,6 +48,7 @@ import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassChip
 import com.racingdaily.ui.components.GlassSurface
 import com.racingdaily.ui.components.ScreenHeader
+import com.racingdaily.util.alpineLogoColorFilter
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -225,7 +226,13 @@ private fun RankingRow(
                 fontWeight = FontWeight.Bold
             )
             if (avatar.isNotBlank()) {
-                AsyncImage(avatar, null, Modifier.size(42.dp).clip(CircleShape), contentScale = ContentScale.Fit)
+                AsyncImage(
+                    avatar,
+                    null,
+                    Modifier.size(42.dp).clip(CircleShape),
+                    contentScale = ContentScale.Fit,
+                    colorFilter = if (isDriver) null else alpineLogoColorFilter(teamId)
+                )
                 Spacer(Modifier.width(10.dp))
             }
             Column(Modifier.weight(1f)) {

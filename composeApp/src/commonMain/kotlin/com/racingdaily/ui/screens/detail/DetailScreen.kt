@@ -32,6 +32,7 @@ import com.racingdaily.platform.rememberShareLauncher
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassIconButton
 import com.racingdaily.ui.components.ScreenHeader
+import kotlinx.coroutines.delay
 
 @Composable
 fun DetailScreen(articleId: Int, initialTitle: String, initialUrl: String, onBack: () -> Unit, api: ApiService) {
@@ -46,6 +47,8 @@ fun DetailScreen(articleId: Int, initialTitle: String, initialUrl: String, onBac
     LaunchedEffect(articleId, reloadKey) {
         loading = true
         error = null
+        article = null
+        delay(240)
         runCatching { api.getNewsDetail(articleId).details }
             .onSuccess { article = it }
             .onFailure { error = it.message ?: "Unable to load article" }

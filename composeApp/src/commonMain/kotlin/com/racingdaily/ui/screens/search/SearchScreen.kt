@@ -101,26 +101,28 @@ fun SearchScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             GlassSurface(
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
             ) {
                 BasicTextField(
-                value = query,
-                onValueChange = { query = it },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Search
-                ),
-                keyboardActions = KeyboardActions(
-                    onSearch = { submittedQuery = query }
-                ),
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Text,
+                        imeAction = ImeAction.Search
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onSearch = { submittedQuery = query }
+                    ),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                     decorationBox = { innerTextField ->
                         Row(
-                            Modifier.fillMaxWidth(),
+                            Modifier.fillMaxWidth().height(56.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
@@ -135,13 +137,18 @@ fun SearchScreen(
                                 }
                                 innerTextField()
                             }
-                            if (query.isNotBlank()) {
-                                IconButton(onClick = { query = "" }) {
-                                    Icon(
-                                        Icons.Rounded.Close,
-                                        contentDescription = "Clear",
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                            Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                                if (query.isNotBlank()) {
+                                    IconButton(
+                                        onClick = { query = "" },
+                                        modifier = Modifier.size(40.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.Close,
+                                            contentDescription = "Clear",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -190,7 +197,6 @@ fun SearchScreen(
         }
     }
 }
-
 private suspend fun ApiService.searchNewsLocally(query: String): List<NewsItem> = coroutineScope {
     val tabs = getNavTabs().navbar.ifEmpty { return@coroutineScope emptyList() }
     val normalizedQuery = query.trim().lowercase()

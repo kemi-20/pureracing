@@ -71,7 +71,7 @@ fun HomeScreen(
     var reloadKey by remember { mutableIntStateOf(0) }
     var loadMoreRetryKey by remember { mutableIntStateOf(0) }
     val isChinese = Locale.current.language.startsWith("zh")
-    val appTitle = if (isChinese) "纯净赛车" else "PureRacing"
+    val appTitle = if (isChinese) "纯享赛车" else "PureRacing"
     val appSubtitle = if (isChinese) "每日 F1 新闻" else "Daily F1 News"
 
     LaunchedEffect(reloadKey) {

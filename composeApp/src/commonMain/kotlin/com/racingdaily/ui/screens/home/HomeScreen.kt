@@ -253,7 +253,7 @@ private fun NewsGlassCard(item: NewsItem, onArticleClick: (NewsItem) -> Unit) {
                         )
                     }
                     Text(
-                        if (item.publish_time > 0) item.publish_time.toString() else "News",
+                        item.publish_time.toNewsDateLabel(),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -262,3 +262,27 @@ private fun NewsGlassCard(item: NewsItem, onArticleClick: (NewsItem) -> Unit) {
         }
     }
 }
+
+private fun Long.toNewsDateLabel(): String {
+    if (this <= 0) return "News"
+    val seconds = if (this > 10_000_000_000L) this / 1000L else this
+    val localDays = (seconds + 8L * 60L * 60L) / 86_400L
+    val (year, month, day) = civilDateFromEpochDays(localDays)
+    return "$year-${month.twoDigits()}-${day.twoDigits()}"
+}
+
+private fun civilDateFromEpochDays(epochDays: Long): Triple<Int, Int, Int> {
+    val z = epochDays + 719_468L
+    val era = if (z >= 0) z / 146_097L else (z - 146_096L) / 146_097L
+    val doe = z - era * 146_097L
+    val yoe = (doe - doe / 1_460L + doe / 36_524L - doe / 146_096L) / 365L
+    val y = yoe + era * 400L
+    val doy = doe - (365L * yoe + yoe / 4L - yoe / 100L)
+    val mp = (5L * doy + 2L) / 153L
+    val day = (doy - (153L * mp + 2L) / 5L + 1L).toInt()
+    val month = (mp + if (mp < 10L) 3L else -9L).toInt()
+    val year = (y + if (month <= 2) 1L else 0L).toInt()
+    return Triple(year, month, day)
+}
+
+private fun Int.twoDigits(): String = if (this < 10) "0$this" else toString()

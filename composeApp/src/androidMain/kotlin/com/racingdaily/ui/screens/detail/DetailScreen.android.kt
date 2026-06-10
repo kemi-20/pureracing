@@ -1,7 +1,9 @@
 package com.racingdaily.ui.screens.detail
 
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.webkit.WebView
+import android.webkit.WebChromeClient
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -21,6 +23,10 @@ actual fun HtmlView(articleId: Int, html: String) {
                 WebView(ctx).apply {
                     setBackgroundColor(Color.TRANSPARENT)
                     webViewClient = WebViewClient()
+                    webChromeClient = object : WebChromeClient() {
+                        override fun getDefaultVideoPoster(): Bitmap =
+                            Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+                    }
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
                     settings.loadsImagesAutomatically = true

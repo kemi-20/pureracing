@@ -39,7 +39,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import com.racingdaily.data.model.NavTab
 import com.racingdaily.data.model.NewsItem
@@ -48,7 +47,6 @@ import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassChip
 import com.racingdaily.ui.components.GlassIconButton
 import com.racingdaily.ui.components.GlassSurface
-import com.racingdaily.ui.components.pureRacingBackground
 import com.racingdaily.ui.components.ScreenHeader
 import kotlinx.coroutines.flow.collect
 
@@ -129,7 +127,20 @@ fun HomeScreen(
                 GlassIconButton(Icons.Rounded.Search, "Search", onSearchClick)
             }
         )
-        val tabsOverlayInitialOffset = 78.dp
+        LazyRow(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(tabs) { tab ->
+                GlassChip(
+                    label = tab.name,
+                    selected = tab.id == selectedTabId,
+                    onClick = { onSelectedTabIdChange(tab.id) }
+                )
+            }
+        }
 
         Box(Modifier.fillMaxSize()) {
             when {
@@ -152,7 +163,7 @@ fun HomeScreen(
                         .fillMaxSize()
                         .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
-                    contentPadding = PaddingValues(top = tabsOverlayInitialOffset, bottom = 96.dp)
+                    contentPadding = PaddingValues(top = 12.dp, bottom = 96.dp)
                 ) {
                     items(news, key = { it.id }) { item ->
                         NewsGlassCard(item, onArticleClick)
@@ -176,28 +187,6 @@ fun HomeScreen(
                                 Text("Retry loading more", color = Color.White)
                             }
                         }
-                    }
-                }
-            }
-
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .pureRacingBackground()
-                    .padding(vertical = 8.dp)
-                    .zIndex(1f)
-            ) {
-                LazyRow(
-                    Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(tabs) { tab ->
-                        GlassChip(
-                            label = tab.name,
-                            selected = tab.id == selectedTabId,
-                            onClick = { onSelectedTabIdChange(tab.id) }
-                        )
                     }
                 }
             }

@@ -16,3 +16,4 @@ local.properties
 /ci-artifacts/
 /origin
 /.claude
+run_log.txt

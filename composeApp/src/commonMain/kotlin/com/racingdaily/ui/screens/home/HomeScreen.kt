@@ -1,6 +1,5 @@
 package com.racingdaily.ui.screens.home
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,6 +48,7 @@ import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassChip
 import com.racingdaily.ui.components.GlassIconButton
 import com.racingdaily.ui.components.GlassSurface
+import com.racingdaily.ui.components.pureRacingBackground
 import com.racingdaily.ui.components.ScreenHeader
 import kotlinx.coroutines.flow.collect
 
@@ -183,7 +183,7 @@ fun HomeScreen(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background)
+                    .pureRacingBackground()
                     .padding(vertical = 8.dp)
                     .zIndex(1f)
             ) {

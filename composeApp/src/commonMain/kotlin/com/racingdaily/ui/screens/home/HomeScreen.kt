@@ -183,7 +183,7 @@ fun HomeScreen(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .background(Color.Black.copy(alpha = 0.16f))
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(vertical = 8.dp)
                     .zIndex(1f)
             ) {

@@ -35,6 +35,7 @@ import com.racingdaily.ui.components.ScreenHeader
 import kotlinx.coroutines.delay
 
 @Composable
+@Suppress("UNUSED_PARAMETER")
 fun DetailScreen(articleId: Int, initialTitle: String, initialUrl: String, onBack: () -> Unit, api: ApiService) {
     var article by remember(articleId) { mutableStateOf<ArticleDetail?>(null) }
     var loading by remember(articleId) { mutableStateOf(true) }
@@ -42,7 +43,7 @@ fun DetailScreen(articleId: Int, initialTitle: String, initialUrl: String, onBac
     var reloadKey by remember(articleId) { mutableIntStateOf(0) }
     val shareLauncher = rememberShareLauncher()
     val title = article?.title?.ifBlank { initialTitle } ?: initialTitle.ifBlank { "News" }
-    val shareUrl = article?.source_link?.ifBlank { initialUrl } ?: initialUrl.ifBlank { "https://news.romielf.com/news.html?id=$articleId" }
+    val shareUrl = "https://news.romielf.com/news.html?id=$articleId"
 
     LaunchedEffect(articleId, reloadKey) {
         loading = true

@@ -130,7 +130,8 @@ fun HomeScreen(
         LazyRow(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 2.dp),
+                .padding(vertical = 2.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(tabs) { tab ->

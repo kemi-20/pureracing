@@ -5,6 +5,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
@@ -24,8 +25,12 @@ fun TeamLogo(
 ) {
     val localLogo = localTeamLogoResource(teamId, seasonId, teamName)
     if (localLogo != null) {
+        val darkTheme = isSystemInDarkTheme()
         val localColorFilter = when {
-            localLogo == Res.drawable.team_alpine && isSystemInDarkTheme() ->
+            localLogo == Res.drawable.team_cadillac -> ColorFilter.tint(
+                if (darkTheme) Color(0xFFE8D18A) else Color(0xFFB2863F)
+            )
+            localLogo == Res.drawable.team_alpine && darkTheme ->
                 ColorFilter.tint(MaterialTheme.colorScheme.onSurface)
             localLogo.usesContentTint() -> ColorFilter.tint(MaterialTheme.colorScheme.onSurface)
             else -> null
@@ -109,7 +114,6 @@ private fun localTeamLogoResource(teamId: Int, seasonId: Int, teamName: String):
 private fun String.containsAny(vararg values: String): Boolean = values.any(::contains)
 
 private fun DrawableResource.usesContentTint(): Boolean = this == Res.drawable.team_aston_martin ||
-    this == Res.drawable.team_mclaren ||
     this == Res.drawable.history_alfa_romeo ||
     this == Res.drawable.history_racing_point ||
     this == Res.drawable.history_sauber ||

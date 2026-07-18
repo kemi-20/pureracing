@@ -223,14 +223,28 @@ private fun NewsGlassCard(
         if (featured) {
             Column {
                 if (cover.isNotBlank()) {
-                    AsyncImage(
-                        cover,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
-                        contentScale = ContentScale.Crop
-                    )
+                    Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f)) {
+                        AsyncImage(
+                            cover,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        NewsBadges(
+                            item = item,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(14.dp)
+                        )
+                    }
                 }
-                NewsCardContent(item, titleLines = 3, featured = true, modifier = Modifier.padding(18.dp))
+                NewsCardContent(
+                    item = item,
+                    titleLines = 3,
+                    featured = true,
+                    showBadges = cover.isBlank(),
+                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 17.dp)
+                )
             }
         } else {
             Row(
@@ -249,6 +263,7 @@ private fun NewsGlassCard(
                     item = item,
                     titleLines = 2,
                     featured = false,
+                    showBadges = true,
                     modifier = Modifier.weight(1f).padding(horizontal = 15.dp, vertical = 13.dp)
                 )
             }
@@ -261,33 +276,22 @@ private fun NewsCardContent(
     item: NewsItem,
     titleLines: Int,
     featured: Boolean,
+    showBadges: Boolean,
     modifier: Modifier = Modifier
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(if (featured) 11.dp else 8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            if (item.istop == 1) {
-                InfoPill("Pinned", accent = MaterialTheme.colorScheme.primary)
-            }
-            item.tags.firstOrNull()?.let { tag -> InfoPill(tag.name) }
+        if (showBadges) {
+            NewsBadges(item)
         }
         if (featured) {
-            Row(horizontalArrangement = Arrangement.spacedBy(11.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .width(4.dp)
-                        .height(48.dp)
-                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp))
-                )
-                Text(
-                    item.title,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = titleLines,
-                    overflow = TextOverflow.Ellipsis,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            Text(
+                item.title,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = titleLines,
+                overflow = TextOverflow.Ellipsis,
+                fontWeight = FontWeight.Bold
+            )
         } else {
             Text(
                 item.title,
@@ -313,6 +317,20 @@ private fun NewsCardContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun NewsBadges(item: NewsItem, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        if (item.istop == 1) {
+            InfoPill("Pinned", accent = MaterialTheme.colorScheme.primary)
+        }
+        item.tags.firstOrNull()?.let { tag -> InfoPill(tag.name) }
     }
 }
 

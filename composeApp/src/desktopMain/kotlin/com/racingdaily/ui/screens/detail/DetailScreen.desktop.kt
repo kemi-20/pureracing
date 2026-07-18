@@ -24,11 +24,19 @@ import javax.swing.JPanel
 import kotlin.concurrent.thread
 
 @Composable
-actual fun HtmlView(articleId: Int, html: String) {
-    val document = remember(articleId, html) { buildArticleHtmlDocument(html) }
+actual fun HtmlView(articleId: Int, html: String, darkTheme: Boolean) {
+    val document = remember(articleId, html, darkTheme) { buildArticleHtmlDocument(html, darkTheme) }
     val pageUrl = remember(articleId) { "${newsReferer}news.html?id=$articleId" }
-    val canvas = remember { Canvas() }
-    val panel = remember { JPanel(BorderLayout()).apply { add(canvas, BorderLayout.CENTER) } }
+    val awtBackground = remember(darkTheme) {
+        if (darkTheme) java.awt.Color(0x1C, 0x27, 0x32) else java.awt.Color(0xEA, 0xF4, 0xF8)
+    }
+    val canvas = remember(darkTheme) { Canvas().apply { background = awtBackground } }
+    val panel = remember(darkTheme) {
+        JPanel(BorderLayout()).apply {
+            background = awtBackground
+            add(canvas, BorderLayout.CENTER)
+        }
+    }
     val shellRef = remember { AtomicReference<Shell?>() }
     val browserRef = remember { AtomicReference<Browser?>() }
 

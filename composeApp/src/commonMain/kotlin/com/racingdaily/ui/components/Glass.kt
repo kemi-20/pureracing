@@ -60,6 +60,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -162,8 +163,8 @@ fun GlassSurface(
     val primary = MaterialTheme.colorScheme.primary
     val isLightTheme = !isSystemInDarkTheme()
     val containerColor =
-        if (isLightTheme) Color.White.copy(alpha = 0.22f)
-        else Color(0xFF314450).copy(alpha = 0.24f)
+        if (isLightTheme) Color.White.copy(alpha = 0.14f)
+        else Color(0xFF314450).copy(alpha = 0.2f)
     val borderColor =
         if (selected) primary.copy(alpha = 0.58f)
         else if (isLightTheme) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f)
@@ -171,8 +172,8 @@ fun GlassSurface(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val pressScale by animateFloatAsState(
-        targetValue = if (onClick != null && isPressed) 0.985f else 1f,
-        animationSpec = spring(dampingRatio = 0.86f, stiffness = 520f),
+        targetValue = if (onClick != null && isPressed) 0.975f else 1f,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = 460f),
         label = "glass surface press"
     )
 
@@ -183,8 +184,8 @@ fun GlassSurface(
                 shape = { shape },
                 effects = {
                     vibrancy()
-                    blur(12.dp.toPx())
-                    lens(14.dp.toPx(), 20.dp.toPx())
+                    blur(14.dp.toPx())
+                    lens(16.dp.toPx(), 22.dp.toPx())
                 },
                 highlight = { Highlight.Default.copy(alpha = if (selected) 0.7f else if (isLightTheme) 0.3f else 0.42f) },
                 shadow = { Shadow(radius = 18.dp, alpha = if (isLightTheme) 0.18f else 0.48f) },
@@ -241,7 +242,7 @@ fun GlassButton(
             backdrop = backdrop,
             modifier = modifier.defaultMinSize(minHeight = 48.dp),
             selected = selected,
-            surfaceColor = if (selected) Color.Unspecified else MaterialTheme.colorScheme.surface.copy(alpha = 0.18f)
+            surfaceColor = Color.Unspecified
         ) {
             CompositionLocalProvider(LocalContentColor provides contentColor) {
                 content()
@@ -273,7 +274,7 @@ fun GlassIconButton(
             backdrop = backdrop,
             modifier = modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp),
             selected = selected,
-            surfaceColor = if (selected) Color.Unspecified else MaterialTheme.colorScheme.surface.copy(alpha = 0.16f)
+            surfaceColor = Color.Unspecified
         ) {
             CompositionLocalProvider(LocalContentColor provides contentColor) {
                 Icon(
@@ -382,7 +383,7 @@ fun GlassChip(
             backdrop = backdrop,
             modifier = modifier.defaultMinSize(minHeight = 48.dp),
             selected = selected,
-            surfaceColor = if (selected) Color.Unspecified else MaterialTheme.colorScheme.surface.copy(alpha = 0.14f)
+            surfaceColor = Color.Unspecified
         ) {
             CompositionLocalProvider(LocalContentColor provides contentColor) {
                 if (leadingIcon != null) {
@@ -419,28 +420,52 @@ fun InfoPill(
     accent: Color = MaterialTheme.colorScheme.secondary,
     leadingIcon: ImageVector? = null
 ) {
+    val backdrop = LocalGlassBackdrop.current
+    val isLightTheme = !isSystemInDarkTheme()
     val shape = RoundedCornerShape(999.dp)
-    GlassSurface(
-        modifier = modifier,
-        shape = shape,
-        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (leadingIcon != null) {
-                Icon(leadingIcon, contentDescription = null, modifier = Modifier.size(14.dp), tint = accent)
+    val glassModifier = if (backdrop != null) {
+        Modifier.drawBackdrop(
+            backdrop = backdrop,
+            shape = { shape },
+            effects = {
+                vibrancy()
+                blur(1.5.dp.toPx())
+                lens(12.dp.toPx(), 20.dp.toPx(), chromaticAberration = true)
+            },
+            highlight = { Highlight.Default.copy(alpha = if (isLightTheme) 0.82f else 0.9f) },
+            shadow = { Shadow(radius = 10.dp, alpha = if (isLightTheme) 0.24f else 0.42f) },
+            innerShadow = { InnerShadow(radius = 6.dp, alpha = if (isLightTheme) 0.24f else 0.34f) },
+            onDrawSurface = {
+                drawRect(accent, blendMode = BlendMode.Hue)
+                drawRect(Color.White.copy(alpha = if (isLightTheme) 0.07f else 0.04f))
+                drawRect(accent.copy(alpha = if (isLightTheme) 0.04f else 0.07f))
             }
-            Text(
-                label,
-                color = accent,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+        )
+    } else {
+        Modifier
+            .background(accent.copy(alpha = 0.1f), shape)
+            .border(1.dp, accent.copy(alpha = 0.2f), shape)
+    }
+
+    Row(
+        modifier
+            .then(glassModifier)
+            .clip(shape)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (leadingIcon != null) {
+            Icon(leadingIcon, contentDescription = null, modifier = Modifier.size(14.dp), tint = accent)
         }
+        Text(
+            label,
+            color = accent,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -544,18 +569,12 @@ fun ScreenHeader(
         modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = 18.dp, vertical = 14.dp),
+            .padding(horizontal = 18.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         navigationIcon()
-        Box(
-            Modifier
-                .width(4.dp)
-                .height(42.dp)
-                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp))
-        )
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Text(
                 title,
                 style = MaterialTheme.typography.headlineLarge,
@@ -565,13 +584,24 @@ fun ScreenHeader(
                 overflow = TextOverflow.Ellipsis
             )
             if (!subtitle.isNullOrBlank()) {
-                Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        Modifier
+                            .width(28.dp)
+                            .height(3.dp)
+                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp))
+                    )
+                    Text(
+                        subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = actions)
@@ -733,15 +763,12 @@ fun PreferenceGlassRow(
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) {
-                Box(
-                    Modifier
-                        .size(42.dp)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f), CircleShape)
-                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))
-                }
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
                 androidx.compose.foundation.layout.Spacer(Modifier.size(12.dp))
             }
             Column(Modifier.weight(1f)) {

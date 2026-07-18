@@ -17,8 +17,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.racingdaily.data.remote.newsReferer
 
 @Composable
-actual fun HtmlView(articleId: Int, html: String) {
-    val document = remember(articleId, html) { buildArticleHtmlDocument(html) }
+actual fun HtmlView(articleId: Int, html: String, darkTheme: Boolean) {
+    val document = remember(articleId, html, darkTheme) { buildArticleHtmlDocument(html, darkTheme) }
     val baseUrl = remember(articleId) { "${newsReferer}news.html?id=$articleId" }
     key(articleId, document) {
         AndroidView(
@@ -27,7 +27,10 @@ actual fun HtmlView(articleId: Int, html: String) {
                     var customVideoView: View? = null
                     var customVideoCallback: WebChromeClient.CustomViewCallback? = null
                     val activity = ctx.findActivity()
-                    setBackgroundColor(Color.TRANSPARENT)
+                    setBackgroundColor(
+                        if (darkTheme) Color.rgb(0x1C, 0x27, 0x32)
+                        else Color.rgb(0xEA, 0xF4, 0xF8)
+                    )
                     webViewClient = WebViewClient()
                     webChromeClient = object : WebChromeClient() {
                         override fun getDefaultVideoPoster(): Bitmap =

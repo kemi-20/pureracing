@@ -1,5 +1,7 @@
 package com.racingdaily.ui.screens.detail
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -42,6 +44,8 @@ fun DetailScreen(articleId: Int, initialTitle: String, initialUrl: String, onBac
     var error by remember(articleId) { mutableStateOf<String?>(null) }
     var reloadKey by remember(articleId) { mutableIntStateOf(0) }
     val shareLauncher = rememberShareLauncher()
+    val darkTheme = isSystemInDarkTheme()
+    val articleBackground = if (darkTheme) Color(0xFF1C2732) else Color(0xFFEAF4F8)
     val title = article?.title?.ifBlank { initialTitle } ?: initialTitle.ifBlank { "News" }
     val shareUrl = "https://news.romielf.com/news.html?id=$articleId"
 
@@ -56,7 +60,7 @@ fun DetailScreen(articleId: Int, initialTitle: String, initialUrl: String, onBac
         loading = false
     }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().background(articleBackground)) {
         ScreenHeader(
             title = title,
             subtitle = article?.temotime?.ifBlank { "Article" } ?: "Article",
@@ -77,20 +81,26 @@ fun DetailScreen(articleId: Int, initialTitle: String, initialUrl: String, onBac
                     Text(error.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(12.dp))
                     GlassButton({ reloadKey++ }) {
-                        Icon(Icons.Rounded.Refresh, null, tint = Color.White)
-                        Text("Retry", color = Color.White)
+                        Icon(Icons.Rounded.Refresh, null)
+                        Text("Retry")
                     }
                 }
-                article != null -> HtmlView(articleId, article?.htmlContent().orEmpty())
+                article != null -> HtmlView(articleId, article?.htmlContent().orEmpty(), darkTheme)
             }
         }
     }
 }
 
 @Composable
-expect fun HtmlView(articleId: Int, html: String)
+expect fun HtmlView(articleId: Int, html: String, darkTheme: Boolean)
 
-internal fun buildArticleHtmlDocument(html: String): String = """
+internal fun buildArticleHtmlDocument(html: String, darkTheme: Boolean): String {
+    val background = if (darkTheme) "#1C2732" else "#EAF4F8"
+    val foreground = if (darkTheme) "#E6EDF3" else "#17212B"
+    val mediaBackground = if (darkTheme) "#161B22" else "#D4E4EC"
+    val linkColor = if (darkTheme) "#79B8FF" else "#1769AA"
+    val colorScheme = if (darkTheme) "dark" else "light"
+    return """
 <!doctype html>
 <html lang="zh-CN">
 <head>
@@ -102,14 +112,20 @@ internal fun buildArticleHtmlDocument(html: String): String = """
     html, body {
       margin: 0;
       padding: 0;
-      background: transparent;
-      color: #E6EDF3;
+      min-height: 100%;
+      background: $background !important;
+      color: $foreground !important;
+      color-scheme: $colorScheme;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
       font-size: 16px;
       line-height: 1.65;
     }
     body { padding: 0 16px 28px; box-sizing: border-box; }
-    div, p, span, section, article { color: #E6EDF3 !important; line-height: 1.65 !important; }
+    div, p, span, section, article, h1, h2, h3, h4, h5, h6,
+    li, strong, em, blockquote, table, th, td {
+      color: $foreground !important;
+      line-height: 1.65 !important;
+    }
     p { margin: 0 0 14px; }
     img, video, iframe {
       display: block;
@@ -117,10 +133,10 @@ internal fun buildArticleHtmlDocument(html: String): String = """
       height: auto !important;
       margin: 12px auto;
       border-radius: 16px;
-      background: #161B22;
+      background: $mediaBackground;
     }
     video { width: 100% !important; object-fit: contain; }
-    a { color: #58A6FF !important; }
+    a { color: $linkColor !important; }
   </style>
 </head>
 <body>
@@ -153,6 +169,7 @@ $html
 </body>
 </html>
 """.trimIndent()
+}
 
 private fun ArticleDetail.htmlContent(): String =
     content.ifBlank {

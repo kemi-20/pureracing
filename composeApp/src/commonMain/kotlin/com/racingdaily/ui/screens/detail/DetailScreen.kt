@@ -141,6 +141,9 @@ internal fun buildArticleHtmlDocument(html: String, darkTheme: Boolean): String 
       line-height: 1.65 !important;
       overflow-wrap: anywhere;
     }
+    span[style*="background"] {
+      background: transparent !important;
+    }
     p { margin: 0 0 14px; }
     img, video, iframe {
       display: block;

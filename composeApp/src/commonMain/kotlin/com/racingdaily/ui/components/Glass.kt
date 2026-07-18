@@ -92,6 +92,7 @@ import kotlin.math.sin
 import kotlin.math.tanh
 
 val LocalGlassBackdrop = staticCompositionLocalOf<LayerBackdrop?> { null }
+val LocalNavigationGlassBackdrop = staticCompositionLocalOf<LayerBackdrop?> { null }
 
 data class GlassNavTab<T>(
     val value: T,
@@ -651,7 +652,7 @@ fun <T> GlassBottomBar(
     onSelected: (T) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val backdrop = LocalGlassBackdrop.current
+    val backdrop = LocalNavigationGlassBackdrop.current ?: LocalGlassBackdrop.current
     if (backdrop != null) {
         OriginalLiquidBottomTabs(
             tabs = tabs,

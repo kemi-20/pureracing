@@ -43,6 +43,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -61,6 +62,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.racingdaily.data.model.ChampSeason
 import com.racingdaily.data.model.DriverInfoData
 import com.racingdaily.data.model.DriverInfoTitle
@@ -85,6 +88,7 @@ import com.racingdaily.ui.components.GlassChip
 import com.racingdaily.ui.components.GlassIconButton
 import com.racingdaily.ui.components.GlassNavTab
 import com.racingdaily.ui.components.GlassSurface
+import com.racingdaily.ui.components.LocalNavigationGlassBackdrop
 import com.racingdaily.ui.components.ScreenHeader
 import com.racingdaily.ui.components.TeamLogo
 import com.racingdaily.ui.components.pureRacingBackground
@@ -121,26 +125,34 @@ fun App(api: ApiService) {
             val homeListState = rememberLazyListState()
             val pageStack = remember { mutableStateListOf<AppPage>() }
             val goBack = remember(pageStack) { { if (pageStack.isNotEmpty()) pageStack.removeAt(pageStack.lastIndex) } }
+            val navigationBackdrop = rememberLayerBackdrop()
 
             BackHandler(enabled = pageStack.isNotEmpty(), onBack = goBack)
 
-            Box(Modifier.fillMaxSize()) {
-                Scaffold(
-                    containerColor = Color.Transparent,
-                    bottomBar = {
-                        GlassBottomBar(
-                            tabs = listOf(
-                                GlassNavTab(Screen.HOME, Icons.AutoMirrored.Rounded.Article, "新闻"),
-                                GlassNavTab(Screen.RACE, Icons.Rounded.CalendarMonth, "赛事"),
-                                GlassNavTab(Screen.RANKINGS, Icons.Rounded.EmojiEvents, "排名"),
-                                GlassNavTab(Screen.MORE, Icons.Rounded.MoreHoriz, "更多")
-                            ),
-                            selected = currentScreen,
-                            onSelected = { currentScreen = it }
-                        )
-                    }
-                ) {
-                    Box(Modifier.fillMaxSize()) {
+            CompositionLocalProvider(LocalNavigationGlassBackdrop provides navigationBackdrop) {
+                Box(Modifier.fillMaxSize()) {
+                    Scaffold(
+                        containerColor = Color.Transparent,
+                        bottomBar = {
+                            GlassBottomBar(
+                                tabs = listOf(
+                                    GlassNavTab(Screen.HOME, Icons.AutoMirrored.Rounded.Article, "新闻"),
+                                    GlassNavTab(Screen.RACE, Icons.Rounded.CalendarMonth, "赛事"),
+                                    GlassNavTab(Screen.RANKINGS, Icons.Rounded.EmojiEvents, "排名"),
+                                    GlassNavTab(Screen.MORE, Icons.Rounded.MoreHoriz, "更多")
+                                ),
+                                selected = currentScreen,
+                                onSelected = { currentScreen = it }
+                            )
+                        }
+                    ) {
+                        // Keep the bottom bar outside this layer so it samples the page, never itself.
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .layerBackdrop(navigationBackdrop)
+                                .pureRacingBackground()
+                        ) {
                         AnimatedContent(
                             targetState = currentScreen,
                             transitionSpec = {
@@ -200,11 +212,11 @@ fun App(api: ApiService) {
                                 )
                             }
                         }
+                        }
                     }
-                }
 
-                PageStackHost(pageStack.toList()) { page, pageVisible ->
-                    when (page) {
+                    PageStackHost(pageStack.toList()) { page, pageVisible ->
+                        when (page) {
                         is AppPage.Search -> SearchScreen(
                             onBack = goBack,
                             onArticleClick = { item ->
@@ -228,6 +240,7 @@ fun App(api: ApiService) {
                         }
                         is AppPage.TeamDetail -> TeamDetailScreen(page, goBack, api) { item ->
                             pageStack += AppPage.Article(item.id, item.title, item.http_url)
+                        }
                         }
                     }
                 }

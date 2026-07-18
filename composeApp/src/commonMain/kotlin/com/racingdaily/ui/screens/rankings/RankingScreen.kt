@@ -123,7 +123,7 @@ fun RankingScreen(
             podiumShine.snapTo(InitialPodiumShine)
             podiumShine.animateTo(
                 targetValue = FinalPodiumShine,
-                animationSpec = tween(durationMillis = 1150, easing = FastOutSlowInEasing)
+                animationSpec = tween(durationMillis = PodiumShineDurationMillis, easing = FastOutSlowInEasing)
             )
             podiumShine.snapTo(StaticPodiumShine)
             hasPlayedPodiumShine = true
@@ -524,3 +524,4 @@ private val RacingBlue = Color(0xFF58A6FF)
 private const val InitialPodiumShine = -320f
 private const val FinalPodiumShine = 620f
 private const val StaticPodiumShine = 90f
+private const val PodiumShineDurationMillis = 1800

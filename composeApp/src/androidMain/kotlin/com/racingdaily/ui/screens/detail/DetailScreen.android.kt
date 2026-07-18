@@ -17,7 +17,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.racingdaily.data.remote.newsReferer
 
 @Composable
-actual fun HtmlView(articleId: Int, html: String, darkTheme: Boolean, visible: Boolean) {
+actual fun HtmlView(articleId: Int, html: String, darkTheme: Boolean) {
     val document = remember(articleId, html, darkTheme) { buildArticleHtmlDocument(html, darkTheme) }
     val baseUrl = remember(articleId) { "${newsReferer}news.html?id=$articleId" }
     key(articleId, document) {
@@ -31,7 +31,6 @@ actual fun HtmlView(articleId: Int, html: String, darkTheme: Boolean, visible: B
                         if (darkTheme) Color.rgb(0x1C, 0x27, 0x32)
                         else Color.rgb(0xEA, 0xF4, 0xF8)
                     )
-                    visibility = if (visible) View.VISIBLE else View.INVISIBLE
                     webViewClient = WebViewClient()
                     webChromeClient = object : WebChromeClient() {
                         override fun getDefaultVideoPoster(): Bitmap =
@@ -75,9 +74,6 @@ actual fun HtmlView(articleId: Int, html: String, darkTheme: Boolean, visible: B
                     settings.useWideViewPort = true
                     loadDataWithBaseURL(baseUrl, document, "text/html", "UTF-8", null)
                 }
-            },
-            update = { webView ->
-                webView.visibility = if (visible) View.VISIBLE else View.INVISIBLE
             },
             modifier = Modifier.fillMaxSize()
         )

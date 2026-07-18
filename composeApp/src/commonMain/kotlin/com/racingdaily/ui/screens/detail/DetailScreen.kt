@@ -92,11 +92,10 @@ fun DetailScreen(
                         Text("Retry")
                     }
                 }
-                article != null -> HtmlView(
+                article != null && pageVisible -> HtmlView(
                     articleId = articleId,
                     html = article?.htmlContent().orEmpty(),
-                    darkTheme = darkTheme,
-                    visible = pageVisible
+                    darkTheme = darkTheme
                 )
             }
         }
@@ -104,7 +103,7 @@ fun DetailScreen(
 }
 
 @Composable
-expect fun HtmlView(articleId: Int, html: String, darkTheme: Boolean, visible: Boolean)
+expect fun HtmlView(articleId: Int, html: String, darkTheme: Boolean)
 
 internal fun buildArticleHtmlDocument(html: String, darkTheme: Boolean): String {
     val background = if (darkTheme) "#1C2732" else "#EAF4F8"

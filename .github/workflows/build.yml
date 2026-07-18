@@ -22,9 +22,57 @@ jobs:
           distribution: 'microsoft'
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
+        with:
+          # Enhanced caching currently emits invalid-path warnings on Windows.
+          # https://github.com/gradle/actions/issues/1013
+          cache-provider: basic
       - name: Build Desktop distributable
-        shell: bash
-        run: bash ./gradlew :composeApp:createDistributable --stacktrace
+        shell: pwsh
+        run: .\gradlew.bat :composeApp:createDistributable --stacktrace
+      - name: Sign Windows executable
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_BASE64)) {
+            Write-Host "WINDOWS_CERTIFICATE_BASE64 is not configured; publishing an unsigned Windows build."
+            exit 0
+          }
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_PASSWORD)) {
+            throw "WINDOWS_CERTIFICATE_PASSWORD must be configured with the Windows certificate."
+          }
+
+          $certificatePath = Join-Path $env:RUNNER_TEMP "pureracing-signing.pfx"
+          [IO.File]::WriteAllBytes(
+            $certificatePath,
+            [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_BASE64)
+          )
+
+          $signTool = (Get-Command signtool.exe -ErrorAction SilentlyContinue).Source
+          if (-not $signTool) {
+            $signTool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" `
+              -Filter signtool.exe -Recurse -ErrorAction SilentlyContinue |
+              Where-Object FullName -Match '\\x64\\signtool\.exe$' |
+              Sort-Object FullName -Descending |
+              Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not $signTool) {
+            throw "signtool.exe was not found on the Windows runner."
+          }
+
+          $executable = "composeApp\build\compose\binaries\main\app\PureRacing\PureRacing.exe"
+          if (-not (Test-Path -LiteralPath $executable)) {
+            throw "PureRacing.exe was not generated at the expected path."
+          }
+
+          & $signTool sign /fd SHA256 /f $certificatePath `
+            /p $env:WINDOWS_CERTIFICATE_PASSWORD `
+            /tr "http://timestamp.digicert.com" /td SHA256 $executable
+          if ($LASTEXITCODE -ne 0) { throw "Windows executable signing failed." }
+
+          & $signTool verify /pa /v $executable
+          if ($LASTEXITCODE -ne 0) { throw "Windows executable signature verification failed." }
       - name: Upload Desktop distributable
         uses: actions/upload-artifact@v7
         with:

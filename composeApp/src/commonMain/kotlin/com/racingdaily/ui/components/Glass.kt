@@ -4,7 +4,9 @@ package com.racingdaily.ui.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -12,6 +14,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,6 +67,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -78,6 +83,9 @@ import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
+import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.shadow.InnerShadow
+import com.kyant.backdrop.shadow.Shadow
 
 val LocalGlassBackdrop = staticCompositionLocalOf<LayerBackdrop?> { null }
 
@@ -112,29 +120,28 @@ fun Modifier.pureRacingBackground(): Modifier = composed {
         .background(MaterialTheme.colorScheme.background)
         .background(
             Brush.linearGradient(
-                0f to Color(0xFF0B1220),
-                0.26f to Color(0xFF13283D),
-                0.55f to Color(0xFF14291F),
-                0.78f to Color(0xFF321316),
-                1f to Color(0xFF090D13),
+                0f to Color(0xFF07101C),
+                0.32f to Color(0xFF102332),
+                0.62f to Color(0xFF10241D),
+                0.84f to Color(0xFF281417),
+                1f to Color(0xFF080B10),
                 start = Offset.Zero,
-                end = Offset(1300f, 2100f)
+                end = Offset(1450f, 2300f)
             )
         )
-        .drawWithContent {
-            val red = Color(0xFFE10600).copy(alpha = 0.12f)
-            val cyan = Color(0xFF00D2BE).copy(alpha = 0.08f)
-            drawCircle(red, radius = size.minDimension * 0.52f, center = Offset(size.width * 0.9f, size.height * 0.1f))
-            drawCircle(cyan, radius = size.minDimension * 0.42f, center = Offset(size.width * 0.03f, size.height * 0.86f))
-            drawRect(Color.Black.copy(alpha = 0.18f))
-            drawContent()
-        }
+        .background(
+            Brush.verticalGradient(
+                0f to Color.White.copy(alpha = 0.035f),
+                0.38f to Color.Transparent,
+                1f to Color.Black.copy(alpha = 0.24f)
+            )
+        )
 }
 
 @Composable
 fun GlassSurface(
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(28.dp),
+    shape: Shape = RoundedCornerShape(22.dp),
     selected: Boolean = false,
     onClick: (() -> Unit)? = null,
     role: Role? = null,
@@ -145,11 +152,18 @@ fun GlassSurface(
     val primary = MaterialTheme.colorScheme.primary
     val isLightTheme = !isSystemInDarkTheme()
     val containerColor =
-        if (isLightTheme) Color(0xFFFAFAFA).copy(alpha = 0.4f)
-        else Color(0xFF121212).copy(alpha = 0.4f)
+        if (isLightTheme) Color(0xFFFAFAFA).copy(alpha = 0.36f)
+        else Color(0xFF101418).copy(alpha = 0.32f)
     val borderColor =
         if (selected) primary.copy(alpha = 0.58f)
-        else Color.White.copy(alpha = 0.18f)
+        else Color.White.copy(alpha = 0.14f)
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (onClick != null && isPressed) 0.985f else 1f,
+        animationSpec = spring(dampingRatio = 0.86f, stiffness = 520f),
+        label = "glass surface press"
+    )
 
     val glassModifier =
         if (backdrop != null) {
@@ -158,13 +172,16 @@ fun GlassSurface(
                 shape = { shape },
                 effects = {
                     vibrancy()
-                    blur(8.dp.toPx())
-                    lens(24.dp.toPx(), 24.dp.toPx())
+                    blur(10.dp.toPx())
+                    lens(12.dp.toPx(), 18.dp.toPx())
                 },
+                highlight = { Highlight.Default.copy(alpha = if (selected) 0.72f else 0.42f) },
+                shadow = { Shadow(radius = 18.dp, alpha = 0.7f) },
+                innerShadow = { InnerShadow(radius = 10.dp, alpha = if (selected) 0.52f else 0.28f) },
                 onDrawSurface = {
                     drawRect(containerColor)
                     if (selected) {
-                        drawRect(primary.copy(alpha = 0.16f))
+                        drawRect(primary.copy(alpha = 0.18f))
                     }
                 }
             )
@@ -174,13 +191,17 @@ fun GlassSurface(
 
     Box(
         modifier
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+            }
             .then(glassModifier)
             .clip(shape)
             .then(if (backdrop == null) Modifier.border(1.dp, borderColor, shape) else Modifier)
             .then(
                 if (onClick != null) {
                     Modifier.clickable(
-                        interactionSource = null,
+                        interactionSource = interactionSource,
                         indication = null,
                         role = role,
                         onClick = onClick
@@ -378,6 +399,58 @@ fun GlassChip(
 }
 
 @Composable
+fun InfoPill(
+    label: String,
+    modifier: Modifier = Modifier,
+    accent: Color = MaterialTheme.colorScheme.secondary,
+    leadingIcon: ImageVector? = null
+) {
+    val shape = RoundedCornerShape(999.dp)
+    Row(
+        modifier
+            .background(accent.copy(alpha = 0.12f), shape)
+            .border(1.dp, accent.copy(alpha = 0.24f), shape)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (leadingIcon != null) {
+            Icon(leadingIcon, contentDescription = null, modifier = Modifier.size(14.dp), tint = accent)
+        }
+        Text(
+            label,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+fun SectionLabel(
+    title: String,
+    subtitle: String? = null,
+    modifier: Modifier = Modifier,
+    trailing: @Composable RowScope.() -> Unit = {}
+) {
+    Row(
+        modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+            if (!subtitle.isNullOrBlank()) {
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = trailing)
+    }
+}
+
+@Composable
 private fun FallbackGlassBottomBar(
     tabs: List<GlassNavTab<Any?>>,
     selected: Any?,
@@ -454,15 +527,16 @@ fun ScreenHeader(
         modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = 18.dp, vertical = 14.dp),
+            .padding(horizontal = 18.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         navigationIcon()
-        Column(Modifier.weight(1f)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
                 title,
                 style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -470,7 +544,7 @@ fun ScreenHeader(
             if (!subtitle.isNullOrBlank()) {
                 Text(
                     subtitle,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -632,17 +706,21 @@ fun PreferenceGlassRow(
 ) {
     GlassSurface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
         onClick = onClick,
         role = if (onClick != null) Role.Button else null,
         contentPadding = PaddingValues(16.dp)
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) {
-                GlassSurface(Modifier.size(42.dp), shape = CircleShape, selected = true) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))
-                    }
+                Box(
+                    Modifier
+                        .size(42.dp)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f), CircleShape)
+                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))
                 }
                 androidx.compose.foundation.layout.Spacer(Modifier.size(12.dp))
             }

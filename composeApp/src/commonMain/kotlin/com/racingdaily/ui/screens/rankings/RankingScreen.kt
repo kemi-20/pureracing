@@ -1,6 +1,7 @@
 package com.racingdaily.ui.screens.rankings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -48,6 +49,7 @@ import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassChip
 import com.racingdaily.ui.components.GlassSurface
 import com.racingdaily.ui.components.ScreenHeader
+import com.racingdaily.ui.components.SectionLabel
 import com.racingdaily.util.alpineLogoColorFilter
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -147,14 +149,27 @@ fun RankingScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(bottom = 96.dp)
                 ) {
-                    if (remark.isNotBlank()) {
+                    item {
+                        SectionLabel(
+                            title = tab.tab_name.replace("\n", " "),
+                            subtitle = remark.ifBlank { if (isDriver) "Driver championship" else "Constructor championship" }
+                        )
+                    }
+                    if (tab.list.isNotEmpty()) {
                         item {
-                            Text(remark, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            RankingPodium(
+                                rows = tab.list.take(3),
+                                isDriver = isDriver,
+                                chpId = selectedSeason?.chp_id ?: 0,
+                                seasonId = selectedSeason?.id ?: 0,
+                                onDriverClick = onDriverClick,
+                                onTeamClick = onTeamClick
+                            )
                         }
                     }
-                    itemsIndexed(tab.list) { index, row ->
+                    itemsIndexed(tab.list.drop(3)) { index, row ->
                         RankingRow(
-                            pos = index + 1,
+                            pos = index + 4,
                             row = row,
                             isDriver = isDriver,
                             chpId = selectedSeason?.chp_id ?: 0,
@@ -186,6 +201,92 @@ fun RankingScreen(
 }
 
 @Composable
+private fun RankingPodium(
+    rows: List<JsonObject>,
+    isDriver: Boolean,
+    chpId: Int,
+    seasonId: Int,
+    onDriverClick: (chpId: Int, seasonId: Int, driverId: Int, name: String, avatar: String, teamLogo: String, stats: JsonObject) -> Unit,
+    onTeamClick: (chpId: Int, seasonId: Int, teamId: Int, name: String, logo: String, stats: JsonObject) -> Unit
+) {
+    GlassSurface(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 16.dp)
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+            listOf(1, 0, 2).forEach { sourceIndex ->
+                rows.getOrNull(sourceIndex)?.let { row ->
+                    RankingPodiumEntry(
+                        position = sourceIndex + 1,
+                        row = row,
+                        isDriver = isDriver,
+                        chpId = chpId,
+                        seasonId = seasonId,
+                        modifier = Modifier.weight(1f),
+                        onDriverClick = onDriverClick,
+                        onTeamClick = onTeamClick
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RankingPodiumEntry(
+    position: Int,
+    row: JsonObject,
+    isDriver: Boolean,
+    chpId: Int,
+    seasonId: Int,
+    modifier: Modifier,
+    onDriverClick: (chpId: Int, seasonId: Int, driverId: Int, name: String, avatar: String, teamLogo: String, stats: JsonObject) -> Unit,
+    onTeamClick: (chpId: Int, seasonId: Int, teamId: Int, name: String, logo: String, stats: JsonObject) -> Unit
+) {
+    val name = row.text("driver_abbr_chinese_name").ifBlank { row.text("team_abbr_chinese_name") }
+    val avatar = row.text("driver_avatar").ifBlank { row.text("team_logo") }
+    val teamLogo = row.text("team_logo")
+    val driverId = row.intText("driver_id").ifZero { row.intText("drivers_id") }
+    val teamId = row.intText("team_id")
+    val accent = when (position) {
+        1 -> Color(0xFFFFC94A)
+        2 -> Color(0xFFC8D0DB)
+        else -> Color(0xFFC98A60)
+    }
+    Column(
+        modifier
+            .clickable {
+                if (isDriver && driverId > 0) {
+                    onDriverClick(chpId, seasonId, driverId, name, avatar, teamLogo, row)
+                } else if (!isDriver && teamId > 0) {
+                    onTeamClick(chpId, seasonId, teamId, name, avatar, row)
+                }
+            }
+            .padding(horizontal = 4.dp, vertical = if (position == 1) 0.dp else 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        Text("#$position", color = accent, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        AsyncImage(
+            avatar,
+            null,
+            Modifier.size(if (position == 1) 72.dp else 58.dp).clip(CircleShape),
+            contentScale = ContentScale.Fit,
+            colorFilter = if (isDriver) null else alpineLogoColorFilter(teamId)
+        )
+        Text(
+            name,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(row.bestScoreText(), style = MaterialTheme.typography.titleMedium, color = accent, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
 private fun RankingRow(
     pos: Int,
     row: JsonObject,
@@ -207,7 +308,7 @@ private fun RankingRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 1.dp),
-        selected = pos <= 3,
+        selected = false,
         onClick = {
             if (isDriver && driverId > 0) {
                 onDriverClick(chpId, seasonId, driverId, name, avatar, teamLogo, row)
@@ -221,7 +322,7 @@ private fun RankingRow(
             Text(
                 "$pos",
                 style = MaterialTheme.typography.titleMedium,
-                color = if (pos <= 3) RacingYellow else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.width(34.dp),
                 fontWeight = FontWeight.Bold
             )
@@ -288,5 +389,4 @@ private fun RankingData.visibleRankingTabs() =
             it.tab_name.replace("\n", "").contains("积分走势")
     }
 
-private val RacingYellow = Color(0xFFD29922)
 private val RacingBlue = Color(0xFF58A6FF)

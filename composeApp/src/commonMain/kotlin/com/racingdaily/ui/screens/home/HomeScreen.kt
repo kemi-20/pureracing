@@ -11,14 +11,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.FiberManualRecord
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -47,6 +49,7 @@ import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassChip
 import com.racingdaily.ui.components.GlassIconButton
 import com.racingdaily.ui.components.GlassSurface
+import com.racingdaily.ui.components.InfoPill
 import com.racingdaily.ui.components.ScreenHeader
 import kotlinx.coroutines.flow.collect
 
@@ -166,8 +169,8 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                     contentPadding = PaddingValues(top = 12.dp, bottom = 96.dp)
                 ) {
-                    items(news, key = { it.id }) { item ->
-                        NewsGlassCard(item, onArticleClick)
+                    itemsIndexed(news, key = { _, item -> item.id }) { index, item ->
+                        NewsGlassCard(item, featured = index == 0, onArticleClick)
                     }
                     if (loadingMore) {
                         item(key = "loading-more") {
@@ -196,59 +199,72 @@ fun HomeScreen(
 }
 
 @Composable
-private fun NewsGlassCard(item: NewsItem, onArticleClick: (NewsItem) -> Unit) {
+private fun NewsGlassCard(item: NewsItem, featured: Boolean, onArticleClick: (NewsItem) -> Unit) {
     GlassSurface(
         modifier = Modifier.fillMaxWidth(),
         onClick = { onArticleClick(item) },
         contentPadding = PaddingValues(0.dp)
     ) {
-        Column {
-            val cover = item.covers.firstOrNull()?.path_url.orEmpty()
-            if (cover.isNotBlank()) {
-                AsyncImage(
-                    cover,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxWidth().height(186.dp),
-                    contentScale = ContentScale.Crop
-                )
-            }
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (item.istop == 1) {
-                        GlassChip("Pinned", selected = true, onClick = {})
-                    }
-                    item.tags.firstOrNull()?.let { tag ->
-                        GlassChip(tag.name, selected = false, onClick = {})
-                    }
-                }
-                Text(
-                    item.title,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Rounded.FiberManualRecord, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(9.dp))
-                        Text(
-                            "${item.total_read} reads",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Text(
-                        item.publish_time.toNewsDateLabel(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+        val cover = item.covers.firstOrNull()?.path_url.orEmpty()
+        if (featured) {
+            Column {
+                if (cover.isNotBlank()) {
+                    AsyncImage(
+                        cover,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxWidth().height(208.dp),
+                        contentScale = ContentScale.Crop
                     )
                 }
+                NewsCardContent(item, titleLines = 3, modifier = Modifier.padding(17.dp))
             }
+        } else {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                if (cover.isNotBlank()) {
+                    AsyncImage(
+                        cover,
+                        contentDescription = null,
+                        modifier = Modifier.width(132.dp).height(124.dp),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                NewsCardContent(item, titleLines = 3, modifier = Modifier.weight(1f).padding(15.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewsCardContent(item: NewsItem, titleLines: Int, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            if (item.istop == 1) {
+                InfoPill("Pinned", accent = MaterialTheme.colorScheme.primary)
+            }
+            item.tags.firstOrNull()?.let { tag -> InfoPill(tag.name) }
+        }
+        Text(
+            item.title,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = titleLines,
+            overflow = TextOverflow.Ellipsis,
+            fontWeight = FontWeight.SemiBold
+        )
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Visibility, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(15.dp))
+                Text(item.total_read.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text(
+                item.publish_time.toNewsDateLabel(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

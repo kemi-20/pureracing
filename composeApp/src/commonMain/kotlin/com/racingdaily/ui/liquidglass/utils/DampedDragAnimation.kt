@@ -3,7 +3,7 @@
  * Copyright 2025 Kyant
  *
  * Licensed under the Apache License, Version 2.0.
- * Source: https://github.com/Kyant0/AndroidLiquidGlass/tree/2.0.0-alpha03
+ * Source: https://github.com/Kyant0/AndroidLiquidGlass/tree/2.0.0
  *
  * Local changes: package path adjusted for PureRacing.
  */
@@ -20,11 +20,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.unit.IntSize
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.android.awaitFrame
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.time.Clock
 
 class DampedDragAnimation(
     private val animationScope: CoroutineScope,
@@ -138,7 +138,7 @@ class DampedDragAnimation(
 
     private fun updateVelocity() {
         velocityTracker.addPosition(
-            System.currentTimeMillis(),
+            Clock.System.now().toEpochMilliseconds(),
             Offset(value, 0f)
         )
         val targetVelocity = velocityTracker.calculateVelocity().x / (valueRange.endInclusive - valueRange.start)

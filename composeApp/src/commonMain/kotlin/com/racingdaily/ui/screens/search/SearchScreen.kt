@@ -20,9 +20,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.FiberManualRecord
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,9 +49,10 @@ import coil3.compose.AsyncImage
 import com.racingdaily.data.model.NewsItem
 import com.racingdaily.data.remote.ApiService
 import com.racingdaily.ui.components.GlassButton
-import com.racingdaily.ui.components.GlassChip
 import com.racingdaily.ui.components.GlassIconButton
 import com.racingdaily.ui.components.GlassSurface
+import com.racingdaily.ui.components.InfoPill
+import com.racingdaily.ui.components.SectionLabel
 import com.racingdaily.ui.components.ScreenHeader
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -100,68 +101,55 @@ fun SearchScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            GlassSurface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
-            ) {
-                BasicTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text,
-                        imeAction = ImeAction.Search
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onSearch = { submittedQuery = query }
-                    ),
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
-                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    decorationBox = { innerTextField ->
-                        Row(
-                            Modifier.fillMaxWidth().height(56.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Icon(
-                                Icons.Rounded.Search,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                                if (query.isBlank()) {
-                                    Text("输入关键词", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                GlassSurface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+                ) {
+                    BasicTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Text,
+                            imeAction = ImeAction.Search
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onSearch = { submittedQuery = query }
+                        ),
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        decorationBox = { innerTextField ->
+                            Row(
+                                Modifier.fillMaxWidth().height(56.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                                    if (query.isBlank()) Text("输入关键词", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    innerTextField()
                                 }
-                                innerTextField()
-                            }
-                            Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-                                if (query.isNotBlank()) {
-                                    IconButton(
-                                        onClick = { query = "" },
-                                        modifier = Modifier.size(40.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Rounded.Close,
-                                            contentDescription = "Clear",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                                    if (query.isNotBlank()) {
+                                        IconButton(onClick = { query = "" }, modifier = Modifier.size(40.dp)) {
+                                            Icon(Icons.Rounded.Close, contentDescription = "Clear", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
+                    )
+                }
+                GlassIconButton(
+                    icon = Icons.Rounded.Search,
+                    contentDescription = "Search",
+                    onClick = { submittedQuery = query },
+                    selected = true
                 )
-            }
-            GlassButton(
-                onClick = { submittedQuery = query },
-                modifier = Modifier.fillMaxWidth(),
-                selected = true
-            ) {
-                Icon(Icons.Rounded.Search, null, tint = Color.White)
-                Text("搜索", color = Color.White)
             }
         }
 
@@ -180,16 +168,25 @@ fun SearchScreen(
                 }
             }
             submittedQuery.isBlank() -> Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-                Text("搜索新闻标题和标签", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Icon(Icons.Rounded.Search, null, modifier = Modifier.size(42.dp), tint = MaterialTheme.colorScheme.secondary)
+                    Text("搜索新闻标题和标签", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium)
+                }
             }
             results.isEmpty() -> Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-                Text("没有找到相关新闻", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Icon(Icons.Rounded.Search, null, modifier = Modifier.size(42.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("没有找到相关新闻", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium)
+                }
             }
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp)
             ) {
+                item {
+                    SectionLabel("搜索结果", "${results.size} articles")
+                }
                 items(results, key = { it.id }) { item ->
                     SearchResultCard(item, onArticleClick)
                 }
@@ -243,15 +240,13 @@ private fun SearchResultCard(item: NewsItem, onArticleClick: (NewsItem) -> Unit)
                     fontWeight = FontWeight.SemiBold
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    item.tags.firstOrNull()?.let { tag ->
-                        GlassChip(tag.name, selected = false, onClick = {})
-                    }
+                    item.tags.firstOrNull()?.let { tag -> InfoPill(tag.name) }
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            Icons.Rounded.FiberManualRecord,
+                            Icons.Rounded.Visibility,
                             null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(8.dp)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(15.dp)
                         )
                         Text(
                             "${item.total_read} reads",

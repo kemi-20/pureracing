@@ -3,6 +3,7 @@ package com.racingdaily
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -142,7 +143,16 @@ fun App(api: ApiService) {
                         AnimatedContent(
                             targetState = currentScreen,
                             transitionSpec = {
-                                fadeIn(tween(180)) togetherWith fadeOut(tween(120))
+                                val forward = targetState.ordinal > initialState.ordinal
+                                val enterOffset: (Int) -> Int = { width -> if (forward) width / 10 else -width / 10 }
+                                val exitOffset: (Int) -> Int = { width -> if (forward) -width / 10 else width / 10 }
+                                (fadeIn(tween(150)) + slideInHorizontally(
+                                    animationSpec = spring(dampingRatio = 1f, stiffness = 520f),
+                                    initialOffsetX = enterOffset
+                                )) togetherWith (fadeOut(tween(120)) + slideOutHorizontally(
+                                    animationSpec = spring(dampingRatio = 1f, stiffness = 520f),
+                                    targetOffsetX = exitOffset
+                                ))
                             },
                             label = "Main screen transition"
                         ) { screen ->
@@ -258,8 +268,12 @@ private fun AppPageOverlay(
     AnimatedVisibility(
         visibleState = transitionState,
         modifier = modifier.fillMaxSize(),
-        enter = fadeIn(tween(180)) + slideInHorizontally(tween(220)) { it / 6 },
-        exit = fadeOut(tween(140)) + slideOutHorizontally(tween(180)) { it / 8 }
+        enter = fadeIn(tween(150)) + slideInHorizontally(
+            animationSpec = spring(dampingRatio = 0.92f, stiffness = 470f)
+        ) { it / 5 },
+        exit = fadeOut(tween(120)) + slideOutHorizontally(
+            animationSpec = spring(dampingRatio = 1f, stiffness = 520f)
+        ) { it / 5 }
     ) {
         Box(
             Modifier

@@ -3,15 +3,13 @@
  * Copyright 2025 Kyant
  *
  * Licensed under the Apache License, Version 2.0.
- * Source: https://github.com/Kyant0/AndroidLiquidGlass/tree/2.0.0-alpha03
+ * Source: https://github.com/Kyant0/AndroidLiquidGlass/tree/2.0.0
  *
  * Local changes: package path adjusted for PureRacing.
  */
 
 package com.racingdaily.ui.liquidglass.utils
 
-import android.graphics.RuntimeShader
-import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.VisibilityThreshold
@@ -23,9 +21,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ShaderBrush
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.util.fastCoerceIn
+import com.kyant.backdrop.RuntimeShader
+import com.kyant.backdrop.asComposeShader
+import com.kyant.backdrop.isRuntimeShaderSupported
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -49,7 +49,7 @@ class InteractiveHighlight(
     val offset: Offset get() = positionAnimation.value - startPosition
 
     private val shader =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (isRuntimeShaderSupported()) {
             RuntimeShader(
                 """
 uniform float2 size;
@@ -71,7 +71,7 @@ half4 main(float2 coord) {
         Modifier.drawWithContent {
             val progress = pressProgressAnimation.value
             if (progress > 0f) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && shader != null) {
+                if (shader != null) {
                     drawRect(
                         Color.White.copy(0.08f * progress),
                         blendMode = BlendMode.Plus
@@ -79,7 +79,7 @@ half4 main(float2 coord) {
                     shader.apply {
                         val position = position(size, positionAnimation.value)
                         setFloatUniform("size", size.width, size.height)
-                        setColorUniform("color", Color.White.copy(0.15f * progress).toArgb())
+                        setColorUniform("color", Color.White.copy(0.15f * progress))
                         setFloatUniform("radius", size.minDimension * 1.5f)
                         setFloatUniform(
                             "position",
@@ -88,7 +88,7 @@ half4 main(float2 coord) {
                         )
                     }
                     drawRect(
-                        ShaderBrush(shader),
+                        ShaderBrush(shader.asComposeShader()),
                         blendMode = BlendMode.Plus
                     )
                 } else {

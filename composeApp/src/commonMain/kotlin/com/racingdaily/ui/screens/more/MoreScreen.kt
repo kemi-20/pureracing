@@ -9,20 +9,20 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.racingdaily.data.remote.ApiService
+import com.racingdaily.ui.components.InfoPill
 import com.racingdaily.ui.components.PreferenceGlassRow
 import com.racingdaily.ui.components.ScreenHeader
+import com.racingdaily.ui.components.SectionLabel
 
 @Composable
 @Suppress("UNUSED_PARAMETER")
 fun MoreScreen(onChampClick: (String, Int) -> Unit, api: ApiService) {
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("More", "Series and app info")
+        ScreenHeader("More", "App information")
         LazyColumn(
             Modifier
                 .fillMaxSize()
@@ -31,14 +31,15 @@ fun MoreScreen(onChampClick: (String, Int) -> Unit, api: ApiService) {
             contentPadding = PaddingValues(bottom = 96.dp)
         ) {
             item {
-                Text("App", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
+                SectionLabel("Application", "PureRacing for Android and Windows")
             }
             item {
                 PreferenceGlassRow(
                     title = "PureRacing Client",
-                    subtitle = "Version 1.1",
+                    subtitle = "Daily motorsport news and championship data",
                     icon = Icons.Rounded.Info,
-                    onClick = null
+                    onClick = null,
+                    endContent = { InfoPill("1.1", accent = MaterialTheme.colorScheme.primary) }
                 )
             }
         }

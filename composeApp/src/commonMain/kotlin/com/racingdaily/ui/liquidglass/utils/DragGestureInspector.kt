@@ -3,7 +3,7 @@
  * Copyright 2025 Kyant
  *
  * Licensed under the Apache License, Version 2.0.
- * Source: https://github.com/Kyant0/AndroidLiquidGlass/tree/2.0.0-alpha03
+ * Source: https://github.com/Kyant0/AndroidLiquidGlass/tree/2.0.0
  *
  * Local changes: package path adjusted for PureRacing.
  */

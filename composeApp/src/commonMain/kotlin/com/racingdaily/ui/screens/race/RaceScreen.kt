@@ -1,6 +1,8 @@
 package com.racingdaily.ui.screens.race
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Refresh
@@ -47,6 +50,7 @@ import com.racingdaily.platform.currentLocalDateTimeParts
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassChip
 import com.racingdaily.ui.components.GlassSurface
+import com.racingdaily.ui.components.InfoPill
 import com.racingdaily.ui.components.ScreenHeader
 
 @Composable
@@ -171,7 +175,15 @@ private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClic
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                AsyncImage(gp.gp_logo, null, Modifier.size(58.dp), contentScale = ContentScale.Fit)
+                Box(
+                    Modifier
+                        .size(64.dp)
+                        .background(Color.White.copy(alpha = 0.07f), RoundedCornerShape(16.dp))
+                        .padding(8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(gp.gp_logo, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
@@ -185,10 +197,9 @@ private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClic
                     Text(gp.race_time_detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                     Text(gp.track_name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                GlassChip(
+                InfoPill(
                     label = gp.chp_name.ifBlank { "F1" },
-                    selected = true,
-                    onClick = { onRaceClick(gp) },
+                    accent = MaterialTheme.colorScheme.primary,
                     leadingIcon = Icons.Rounded.Flag
                 )
             }
@@ -202,34 +213,56 @@ private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClic
                     )
                 }
                 gp.weather?.takeIf { it.temp.isNotBlank() }?.let {
-                    GlassChip("${it.temp}C", selected = false, onClick = {})
+                    InfoPill("${it.temp}C")
                 }
             }
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(gp.session) { session ->
-                    GlassSurface(
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
-                        selected = session.race_status == 1,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 9.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                            Icon(Icons.Rounded.Timer, null, modifier = Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Column {
-                                Text(
-                                    session.session_name.firstOrNull().orEmpty(),
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    style = MaterialTheme.typography.labelMedium
-                                )
-                                Text(
-                                    session.hour.joinToString("/"),
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                            }
-                        }
-                    }
+                    RaceSessionTile(session)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RaceSessionTile(session: com.racingdaily.data.model.RaceSession) {
+    val accent = when (session.race_status) {
+        2 -> MaterialTheme.colorScheme.primary
+        1 -> MaterialTheme.colorScheme.onSurfaceVariant
+        else -> MaterialTheme.colorScheme.secondary
+    }
+    val status = when (session.race_status) {
+        2 -> "Live"
+        1 -> "Finished"
+        else -> "Upcoming"
+    }
+    val shape = RoundedCornerShape(15.dp)
+    Column(
+        Modifier
+            .width(132.dp)
+            .background(Color.Black.copy(alpha = 0.18f), shape)
+            .border(1.dp, accent.copy(alpha = 0.28f), shape)
+            .padding(horizontal = 12.dp, vertical = 11.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(Icons.Rounded.Timer, null, modifier = Modifier.size(15.dp), tint = accent)
+            Text(status, color = accent, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+        }
+        Text(
+            session.session_name.firstOrNull().orEmpty(),
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            session.hour.joinToString(" / ").ifBlank { "Time TBA" },
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }

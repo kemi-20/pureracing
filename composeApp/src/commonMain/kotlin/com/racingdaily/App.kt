@@ -130,10 +130,10 @@ fun App(api: ApiService) {
                     bottomBar = {
                         GlassBottomBar(
                             tabs = listOf(
-                                GlassNavTab(Screen.HOME, Icons.AutoMirrored.Rounded.Article, "News"),
-                                GlassNavTab(Screen.RACE, Icons.Rounded.CalendarMonth, "Race"),
-                                GlassNavTab(Screen.RANKINGS, Icons.Rounded.EmojiEvents, "Rank"),
-                                GlassNavTab(Screen.MORE, Icons.Rounded.MoreHoriz, "More")
+                                GlassNavTab(Screen.HOME, Icons.AutoMirrored.Rounded.Article, "新闻"),
+                                GlassNavTab(Screen.RACE, Icons.Rounded.CalendarMonth, "赛事"),
+                                GlassNavTab(Screen.RANKINGS, Icons.Rounded.EmojiEvents, "排名"),
+                                GlassNavTab(Screen.MORE, Icons.Rounded.MoreHoriz, "更多")
                             ),
                             selected = currentScreen,
                             onSelected = { currentScreen = it }
@@ -335,17 +335,17 @@ fun TrackScreen(trackId: Int, onBack: () -> Unit, api: ApiService) {
             track = api.getTrackInfo(trackId).track
             history = api.getTrackScore(trackId).history
         }.onFailure {
-            error = it.message ?: "Unable to load track"
+            error = it.message ?: "无法加载赛道信息"
         }
         loading = false
     }
 
     Column(Modifier.fillMaxSize()) {
         ScreenHeader(
-            title = track?.chinese_name?.ifBlank { track?.name.orEmpty() } ?: "Track",
+            title = track?.chinese_name?.ifBlank { track?.name.orEmpty() } ?: "赛道",
             subtitle = listOf(track?.country, track?.location).filterNot { it.isNullOrBlank() }.joinToString(" / "),
             navigationIcon = {
-                GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
+                GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "返回", onBack)
             }
         )
         when {
@@ -356,7 +356,7 @@ fun TrackScreen(trackId: Int, onBack: () -> Unit, api: ApiService) {
                     Spacer(Modifier.height(12.dp))
                     GlassButton({ reloadKey++ }) {
                         Icon(Icons.Rounded.Refresh, null, tint = Color.White)
-                        Text("Retry", color = Color.White)
+                        Text("重试", color = Color.White)
                     }
                 }
             }
@@ -391,7 +391,7 @@ fun TrackScreen(trackId: Int, onBack: () -> Unit, api: ApiService) {
                         }
                     }
                     Spacer(Modifier.height(16.dp))
-                    Text("History", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                    Text("历史纪录", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
                     Spacer(Modifier.height(8.dp))
                 }
                 items(history.take(20).size) { index ->
@@ -435,14 +435,14 @@ fun ChampScreen(category: String, id: Int, onBack: () -> Unit, api: ApiService) 
         }.onSuccess {
             data = it
         }.onFailure {
-            error = it.message ?: "Unable to load championship"
+            error = it.message ?: "无法加载锦标赛"
         }
         loading = false
     }
 
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("Championship", "Season table", navigationIcon = {
-            GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
+        ScreenHeader("锦标赛", "赛季积分榜", navigationIcon = {
+            GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "返回", onBack)
         })
         if (loading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -453,7 +453,7 @@ fun ChampScreen(category: String, id: Int, onBack: () -> Unit, api: ApiService) 
                     Spacer(Modifier.height(12.dp))
                     GlassButton({ reloadKey++ }) {
                         Icon(Icons.Rounded.Refresh, null, tint = Color.White)
-                        Text("Retry", color = Color.White)
+                        Text("重试", color = Color.White)
                     }
                 }
             }
@@ -493,8 +493,8 @@ fun ChampScreen(category: String, id: Int, onBack: () -> Unit, api: ApiService) 
 @Composable
 fun RaceDetailScreen(gp: RaceGp, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader(gp.gp_name.ifBlank { "Race" }, gp.track_name, navigationIcon = {
-            GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
+        ScreenHeader(gp.gp_name.ifBlank { "赛事" }, gp.track_name, navigationIcon = {
+            GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "返回", onBack)
         })
         LazyColumn(
             Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -535,7 +535,7 @@ private fun SessionCard(session: RaceSession) {
                 GlassChip(session.statusText(), selected = session.race_status == 1, onClick = {})
             }
             if (session.race_result.isEmpty()) {
-                Text("No results yet", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text("暂无比赛结果", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             } else {
                 session.race_result.take(10).forEach { result ->
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -544,7 +544,7 @@ private fun SessionCard(session: RaceSession) {
                         Spacer(Modifier.width(8.dp))
                         Text(result.dr_name, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
                         Text(
-                            result.gap.ifBlank { result.score_p.takeIf { it > 0 }?.let { "$it pts" }.orEmpty() },
+                            result.gap.ifBlank { result.score_p.takeIf { it > 0 }?.let { "$it 分" }.orEmpty() },
                             color = MaterialTheme.colorScheme.secondary,
                             style = MaterialTheme.typography.labelMedium
                         )
@@ -585,7 +585,7 @@ fun DriverDetailScreen(
                 selectedTab = info.visibleTabs().firstOrNull()?.first ?: "info"
             }
         }.onFailure {
-            error = it.message ?: "Unable to load driver profile"
+            error = it.message ?: "无法加载车手资料"
         }
         loading = false
     }
@@ -609,7 +609,7 @@ fun DriverDetailScreen(
         }.onSuccess {
             seasonScores = it
         }.onFailure {
-            scoreError = it.message ?: "Unable to load season results"
+            scoreError = it.message ?: "无法加载历年成绩"
         }
         scoreLoading = false
     }
@@ -623,8 +623,8 @@ fun DriverDetailScreen(
     val tabs = driverInfo?.visibleTabs()?.takeIf { it.isNotEmpty() } ?: listOf("info" to "资料", "score" to "成绩", "news" to "新闻")
 
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader(displayName, "Driver profile", navigationIcon = {
-            GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
+        ScreenHeader(displayName, "车手资料", navigationIcon = {
+            GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "返回", onBack)
         })
         LazyColumn(
             Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -643,7 +643,7 @@ fun DriverDetailScreen(
                         Spacer(Modifier.width(14.dp))
                         Column(Modifier.weight(1f)) {
                             Text(displayName, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.headlineMedium)
-                            Text(englishName.ifBlank { "Driver profile" }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
+                            Text(englishName.ifBlank { "车手资料" }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
                             Text(
                                 listOf(teamName, number.takeIf { it.isNotBlank() }?.let { "#$it" })
                                     .filterNotNull()
@@ -738,12 +738,12 @@ fun TeamDetailScreen(
                 teamInfo = info
                 teamNews = news
                 error = if (info == null) {
-                    officialError?.message ?: "Unable to load team profile"
+                    officialError?.message ?: "无法加载车队资料"
                 } else {
                     officialError?.message?.takeIf { page.cadillacFallbackTeamInfo() != null }
                 }
             }
-            .onFailure { error = it.message ?: "Unable to load team profile" }
+            .onFailure { error = it.message ?: "无法加载车队资料" }
         loading = false
     }
 
@@ -766,17 +766,17 @@ fun TeamDetailScreen(
         }.onSuccess {
             seasonScores = it
         }.onFailure {
-            scoreError = it.message ?: "Unable to load team season results"
+            scoreError = it.message ?: "无法加载车队历年成绩"
         }
         scoreLoading = false
     }
 
     val title = teamInfo?.chinese_name?.ifBlank { teamInfo?.name.orEmpty() }?.ifBlank { page.name } ?: page.name
-    val subtitle = teamInfo?.name?.ifBlank { "Team profile" } ?: "Team profile"
+    val subtitle = teamInfo?.name?.ifBlank { "车队资料" } ?: "车队资料"
 
     Column(Modifier.fillMaxSize()) {
         ScreenHeader(title, subtitle, navigationIcon = {
-            GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
+            GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "返回", onBack)
         })
         LazyColumn(
             Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -1023,7 +1023,7 @@ private fun DriverNewsCard(item: NewsItem, onArticleClick: (NewsItem) -> Unit) {
                     item.tags.firstOrNull()?.name?.takeIf { it.isNotBlank() }?.let {
                         Text(it, color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelMedium)
                     }
-                    Text("${item.total_read} reads", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                    Text("${item.total_read} 次阅读", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -1179,10 +1179,10 @@ private fun RankingStatsCard(title: String, stats: JsonObject) {
 }
 
 private fun RaceSession.statusText(): String = when (race_status) {
-    1 -> "Done"
-    2 -> "Live"
-    3 -> "Upcoming"
-    else -> "Status $race_status"
+    1 -> "已结束"
+    2 -> "直播中"
+    3 -> "未开始"
+    else -> "状态 $race_status"
 }
 
 private fun JsonObject.text(key: String): String =

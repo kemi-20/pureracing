@@ -53,7 +53,7 @@ fun DetailScreen(
     val shareLauncher = rememberShareLauncher()
     val darkTheme = isSystemInDarkTheme()
     val articleBackground = if (darkTheme) Color(0xFF1C2732) else Color(0xFFEAF4F8)
-    val title = article?.title?.ifBlank { initialTitle } ?: initialTitle.ifBlank { "News" }
+    val title = article?.title?.ifBlank { initialTitle } ?: initialTitle.ifBlank { "新闻" }
     val shareUrl = "https://news.romielf.com/news.html?id=$articleId"
 
     LaunchedEffect(articleId, reloadKey) {
@@ -63,19 +63,19 @@ fun DetailScreen(
         delay(240)
         runCatching { api.getNewsDetail(articleId).details }
             .onSuccess { article = it }
-            .onFailure { error = it.message ?: "Unable to load article" }
+            .onFailure { error = it.message ?: "无法加载文章" }
         loading = false
     }
 
     Column(Modifier.fillMaxSize().background(articleBackground)) {
         ScreenHeader(
             title = title,
-            subtitle = article?.temotime?.ifBlank { "Article" } ?: "Article",
+            subtitle = article?.temotime?.ifBlank { "文章" } ?: "文章",
             navigationIcon = {
-                GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
+                GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "返回", onBack)
             },
             actions = {
-                GlassIconButton(Icons.Rounded.Share, "Share", onClick = { shareLauncher.share("$title\n$shareUrl") })
+                GlassIconButton(Icons.Rounded.Share, "分享", onClick = { shareLauncher.share("$title\n$shareUrl") })
             }
         )
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -89,7 +89,7 @@ fun DetailScreen(
                     Spacer(Modifier.height(12.dp))
                     GlassButton({ reloadKey++ }) {
                         Icon(Icons.Rounded.Refresh, null)
-                        Text("Retry")
+                        Text("重试")
                     }
                 }
                 article != null && pageVisible -> HtmlView(

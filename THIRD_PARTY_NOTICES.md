@@ -24,6 +24,13 @@ manufacturer names, logos, and trademarks remain the property of their respectiv
 - McLaren Speedmark source: Wikimedia Commons, recolored to McLaren orange (`#FF8000`).
 - Red Bull and Williams identity paths: `JakobZoebl/f1-predictions`; metadata, sponsor
   names, and non-identity artwork were removed before embedding.
+- Alpine and Haas emblem paths: `JakobZoebl/f1-predictions`; only the standalone
+  constructor emblems are embedded.
+- Racing Point roundel: Wikimedia Commons (`Racing_Point.svg`).
+- Sauber standalone S mark: `zakott7876/brl-stream`; the surrounding frame and wordmark
+  were removed before embedding.
+- Mercedes three-pointed star: existing Wikimedia-derived outline with a local static
+  silver gradient for the metallic highlight.
 - Manufacturer marks: Simple Icons (CC0-1.0), including the archived Alfa Romeo mark from Simple Icons 15.0.0.
 - Sponsor names and title-partner artwork are removed or cropped from embedded team marks; only the constructor identity is displayed.
 - API identity reference: `https://api.romielf.com/rank/team`.

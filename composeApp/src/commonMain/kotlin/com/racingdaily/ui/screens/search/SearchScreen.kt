@@ -83,16 +83,16 @@ fun SearchScreen(
         error = null
         runCatching { api.searchNewsLocally(text) }
             .onSuccess { results = it }
-            .onFailure { error = it.message ?: "Unable to search news" }
+            .onFailure { error = it.message ?: "无法搜索新闻" }
         loading = false
     }
 
     Column(Modifier.fillMaxSize()) {
         ScreenHeader(
             title = "搜索",
-            subtitle = "Search news",
+            subtitle = "搜索新闻",
             navigationIcon = {
-                GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", onBack)
+                GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "返回", onBack)
             }
         )
         Column(
@@ -137,7 +137,7 @@ fun SearchScreen(
                                     if (query.isNotBlank()) {
                                         GlassIconButton(
                                             icon = Icons.Rounded.Close,
-                                            contentDescription = "Clear",
+                                            contentDescription = "清空",
                                             onClick = { query = "" },
                                             modifier = Modifier.size(48.dp)
                                         )
@@ -149,7 +149,7 @@ fun SearchScreen(
                 }
                 GlassIconButton(
                     icon = Icons.Rounded.Search,
-                    contentDescription = "Search",
+                    contentDescription = "搜索",
                     onClick = { submittedQuery = query },
                     selected = true
                 )
@@ -166,7 +166,7 @@ fun SearchScreen(
                     Spacer(Modifier.height(12.dp))
                     GlassButton({ submittedQuery = query }) {
                         Icon(Icons.Rounded.Refresh, null, tint = Color.White)
-                        Text("Retry", color = Color.White)
+                        Text("重试", color = Color.White)
                     }
                 }
             }
@@ -188,7 +188,7 @@ fun SearchScreen(
                 contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp)
             ) {
                 item {
-                    SectionLabel("搜索结果", "${results.size} articles")
+                    SectionLabel("搜索结果", "共 ${results.size} 篇文章")
                 }
                 items(results, key = { it.id }) { item ->
                     SearchResultCard(item, onArticleClick)
@@ -252,7 +252,7 @@ private fun SearchResultCard(item: NewsItem, onArticleClick: (NewsItem) -> Unit)
                             modifier = Modifier.size(15.dp)
                         )
                         Text(
-                            "${item.total_read} reads",
+                            "${item.total_read} 次阅读",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -74,7 +74,7 @@ private fun localTeamLogoResource(teamId: Int, seasonId: Int, teamName: String):
         86 -> return Res.drawable.team_haas
         87 -> return if (seasonId >= 2024) Res.drawable.team_racing_bulls else Res.drawable.history_alpha_tauri
         88 -> return Res.drawable.team_alpine
-        210004 -> return Res.drawable.history_renault_f1
+        210004 -> return Res.drawable.brand_renault
         210005 -> return Res.drawable.history_toro_rosso
         210010 -> return Res.drawable.history_force_india
         210015 -> return Res.drawable.history_sauber
@@ -115,7 +115,6 @@ private fun String.containsAny(vararg values: String): Boolean = values.any(::co
 
 private fun DrawableResource.usesContentTint(): Boolean = this == Res.drawable.team_aston_martin ||
     this == Res.drawable.history_alfa_romeo ||
-    this == Res.drawable.history_racing_point ||
     this == Res.drawable.history_sauber ||
     this == Res.drawable.brand_renault ||
     this == Res.drawable.brand_bmw ||

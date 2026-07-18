@@ -13,7 +13,7 @@ actual fun rememberShareLauncher(): ShareLauncher {
             val intent = Intent(Intent.ACTION_SEND)
                 .setType("text/plain")
                 .putExtra(Intent.EXTRA_TEXT, text)
-            context.startActivity(Intent.createChooser(intent, "Share"))
+            context.startActivity(Intent.createChooser(intent, "分享"))
         }
     }
 }

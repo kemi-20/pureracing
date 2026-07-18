@@ -70,7 +70,7 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
         error = null
         runCatching { api.getRaceSchedule() }
             .onSuccess { races = it.filter { gp -> gp.gp_id.isNotBlank() || gp.gp_name.isNotBlank() } }
-            .onFailure { error = it.message ?: "Unable to load race schedule" }
+            .onFailure { error = it.message ?: "无法加载赛历" }
         loading = false
     }
 
@@ -82,7 +82,7 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
     }
 
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("Race", "F1 sessions and results")
+        ScreenHeader("赛事", "F1 赛程与比赛结果")
         when {
             loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
@@ -93,7 +93,7 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
                     Spacer(Modifier.height(12.dp))
                     GlassButton({ reloadKey++ }) {
                         Icon(Icons.Rounded.Refresh, null, tint = Color.White)
-                        Text("Retry", color = Color.White)
+                        Text("重试", color = Color.White)
                     }
                 }
             }
@@ -201,7 +201,7 @@ private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClic
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (gp.track_id > 0) {
                     GlassChip(
-                        label = "Track",
+                        label = "赛道",
                         selected = false,
                         onClick = { onTrackClick(gp.track_id) },
                         leadingIcon = Icons.Rounded.Route
@@ -228,9 +228,9 @@ private fun RaceSessionTile(session: com.racingdaily.data.model.RaceSession) {
         else -> MaterialTheme.colorScheme.secondary
     }
     val status = when (session.race_status) {
-        2 -> "Live"
-        1 -> "Finished"
-        else -> "Upcoming"
+        2 -> "直播中"
+        1 -> "已结束"
+        else -> "未开始"
     }
     GlassSurface(
         modifier = Modifier.width(132.dp),
@@ -250,7 +250,7 @@ private fun RaceSessionTile(session: com.racingdaily.data.model.RaceSession) {
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                session.hour.joinToString(" / ").ifBlank { "Time TBA" },
+                session.hour.joinToString(" / ").ifBlank { "时间待定" },
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelSmall,
                 maxLines = 1,

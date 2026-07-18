@@ -86,7 +86,7 @@ fun HomeScreen(
     LaunchedEffect(reloadKey) {
         runCatching { api.getNavTabs().navbar }
             .onSuccess { tabs = it }
-            .onFailure { error = it.message ?: "Unable to load tabs" }
+            .onFailure { error = it.message ?: "无法加载新闻分类" }
     }
 
     LaunchedEffect(selectedTabId, reloadKey) {
@@ -100,7 +100,7 @@ fun HomeScreen(
                 news = it.list
                 nextPage = it.next_page
             }
-            .onFailure { error = it.message ?: "Unable to load news" }
+            .onFailure { error = it.message ?: "无法加载新闻" }
         loading = false
     }
 
@@ -125,7 +125,7 @@ fun HomeScreen(
                     news = news + data.list.filter { it.id !in existingIds }
                     nextPage = data.next_page
                 }
-                .onFailure { loadMoreError = it.message ?: "Unable to load more news" }
+                .onFailure { loadMoreError = it.message ?: "无法加载更多新闻" }
             loadingMore = false
         }
     }
@@ -135,7 +135,7 @@ fun HomeScreen(
             title = appTitle,
             subtitle = appSubtitle,
             actions = {
-                GlassIconButton(Icons.Rounded.Search, "Search", onSearchClick)
+                GlassIconButton(Icons.Rounded.Search, "搜索", onSearchClick)
             }
         )
         Box(Modifier.fillMaxSize()) {
@@ -149,7 +149,7 @@ fun HomeScreen(
                         Spacer(Modifier.height(12.dp))
                         GlassButton({ reloadKey++ }) {
                             Icon(Icons.Rounded.Refresh, null, tint = Color.White)
-                            Text("Retry", color = Color.White)
+                            Text("重试", color = Color.White)
                         }
                     }
                 }
@@ -184,7 +184,7 @@ fun HomeScreen(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Icon(Icons.Rounded.Refresh, null, tint = Color.White)
-                                Text("Retry loading more", color = Color.White)
+                                Text("重试加载更多", color = Color.White)
                             }
                         }
                     }
@@ -351,14 +351,14 @@ private fun NewsBadges(item: NewsItem, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(7.dp)
     ) {
         if (item.istop == 1) {
-            InfoPill("Pinned", accent = MaterialTheme.colorScheme.primary)
+            InfoPill("置顶", accent = MaterialTheme.colorScheme.primary)
         }
         item.tags.firstOrNull()?.let { tag -> InfoPill(tag.name) }
     }
 }
 
 private fun Long.toNewsDateLabel(): String {
-    if (this <= 0) return "News"
+    if (this <= 0) return "新闻"
     val seconds = if (this > 10_000_000_000L) this / 1000L else this
     val localDays = (seconds + 8L * 60L * 60L) / 86_400L
     val (year, month, day) = civilDateFromEpochDays(localDays)

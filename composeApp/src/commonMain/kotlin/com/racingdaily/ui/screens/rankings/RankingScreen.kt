@@ -90,7 +90,7 @@ fun RankingScreen(
                 seasons = it
                 selectedSeason = it.firstOrNull { option -> option.id == 2026 } ?: it.firstOrNull()
             }
-            .onFailure { error = it.message ?: "Unable to load seasons" }
+            .onFailure { error = it.message ?: "无法加载赛季" }
         if (selectedSeason == null) loading = false
     }
 
@@ -104,7 +104,7 @@ fun RankingScreen(
             data = it
             selectedSubTab = it.visibleRankingTabs().firstOrNull()?.tab_key.orEmpty()
         }.onFailure {
-            error = it.message ?: "Unable to load rankings"
+            error = it.message ?: "无法加载排行榜"
         }
         loading = false
     }
@@ -131,15 +131,15 @@ fun RankingScreen(
     }
 
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("Rankings", selectedSeason?.name?.ifBlank { "Championship standings" } ?: "Championship standings")
+        ScreenHeader("排行榜", selectedSeason?.name?.ifBlank { "锦标赛积分榜" } ?: "锦标赛积分榜")
         Row(
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            GlassChip("Driver", selected = isDriver, onClick = { isDriver = true }, leadingIcon = Icons.Rounded.Person)
-            GlassChip("Constructor", selected = !isDriver, onClick = { isDriver = false }, leadingIcon = Icons.Rounded.Groups)
+            GlassChip("车手", selected = isDriver, onClick = { isDriver = true }, leadingIcon = Icons.Rounded.Person)
+            GlassChip("车队", selected = !isDriver, onClick = { isDriver = false }, leadingIcon = Icons.Rounded.Groups)
         }
         LazyRow(
             Modifier
@@ -184,7 +184,7 @@ fun RankingScreen(
                     item {
                         SectionLabel(
                             title = tab.tab_name.replace("\n", " "),
-                            subtitle = remark.ifBlank { if (isDriver) "Driver championship" else "Constructor championship" }
+                            subtitle = remark.ifBlank { if (isDriver) "车手锦标赛" else "车队锦标赛" }
                         )
                     }
                     if (tab.list.isNotEmpty()) {
@@ -225,7 +225,7 @@ fun RankingScreen(
                     Spacer(Modifier.height(12.dp))
                     GlassButton({ reloadKey++ }) {
                         Icon(Icons.Rounded.Refresh, null, tint = Color.White)
-                        Text("Retry", color = Color.White)
+                        Text("重试", color = Color.White)
                     }
                 }
             }
@@ -510,9 +510,18 @@ private fun MetallicText(
 
 private fun RankingData.visibleRankingTabs() =
     list.filterNot {
-        it.tab_key in setOf("score_movements", "t_score_movements") ||
+        it.tab_key in setOf(
+            "score_movements",
+            "t_score_movements",
+            "gp_q_avg_rank_percent",
+            "gp_race_avg_rank_percent"
+        ) ||
             it.tab_key.contains("score_trend") ||
-            it.tab_name.replace("\n", "").contains("积分走势")
+            it.tab_name.replace("\n", "").let { name ->
+                name.contains("积分走势") ||
+                    name.contains("排位赛平均排名") ||
+                    name.contains("正赛平均排名")
+            }
     }
 
 private val RacingBlue = Color(0xFF58A6FF)

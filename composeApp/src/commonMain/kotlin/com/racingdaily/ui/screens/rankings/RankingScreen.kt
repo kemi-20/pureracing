@@ -318,10 +318,8 @@ private fun RankingPodiumEntry(
                 )
             } else {
                 TeamLogo(
-                    teamId = teamId,
-                    seasonId = seasonId,
                     teamName = name,
-                    fallbackUrl = teamLogo,
+                    url = teamLogo,
                     modifier = Modifier.size(if (position == 1) 72.dp else 58.dp)
                 )
             }
@@ -398,10 +396,8 @@ private fun RankingRow(
                 }
             } else {
                 TeamLogo(
-                    teamId = teamId,
-                    seasonId = seasonId,
                     teamName = name,
-                    fallbackUrl = teamLogo,
+                    url = teamLogo,
                     modifier = Modifier.size(42.dp)
                 )
                 Spacer(Modifier.width(10.dp))

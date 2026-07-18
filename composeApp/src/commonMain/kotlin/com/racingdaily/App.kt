@@ -787,10 +787,8 @@ fun TeamDetailScreen(
                 GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         TeamLogo(
-                            teamId = page.teamId,
-                            seasonId = page.seasonId,
                             teamName = title,
-                            fallbackUrl = teamInfo?.logo?.ifBlank { page.logo } ?: page.logo,
+                            url = teamInfo?.logo?.ifBlank { page.logo } ?: page.logo,
                             modifier = Modifier.size(74.dp)
                         )
                         Spacer(Modifier.width(14.dp))

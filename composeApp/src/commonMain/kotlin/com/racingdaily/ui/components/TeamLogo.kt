@@ -110,6 +110,9 @@ private fun String.containsAny(vararg values: String): Boolean = values.any(::co
 
 private fun DrawableResource.usesContentTint(): Boolean = this == Res.drawable.team_aston_martin ||
     this == Res.drawable.team_mclaren ||
+    this == Res.drawable.history_alfa_romeo ||
+    this == Res.drawable.history_racing_point ||
+    this == Res.drawable.history_sauber ||
     this == Res.drawable.brand_renault ||
     this == Res.drawable.brand_bmw ||
     this == Res.drawable.brand_ford ||

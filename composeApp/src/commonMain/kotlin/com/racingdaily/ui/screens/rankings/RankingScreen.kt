@@ -1,10 +1,7 @@
 package com.racingdaily.ui.screens.rankings
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,6 +35,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -79,6 +77,10 @@ fun RankingScreen(
     var selectedSubTab by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var reloadKey by remember { mutableIntStateOf(0) }
+    var hasPlayedPodiumShine by rememberSaveable { mutableStateOf(false) }
+    val podiumShine = remember {
+        Animatable(if (hasPlayedPodiumShine) StaticPodiumShine else InitialPodiumShine)
+    }
 
     LaunchedEffect(reloadKey) {
         loading = true
@@ -105,6 +107,27 @@ fun RankingScreen(
             error = it.message ?: "Unable to load rankings"
         }
         loading = false
+    }
+
+    LaunchedEffect(data, selectedSubTab, hasPlayedPodiumShine) {
+        if (hasPlayedPodiumShine) {
+            podiumShine.snapTo(StaticPodiumShine)
+            return@LaunchedEffect
+        }
+        val podiumRows = data
+            ?.visibleRankingTabs()
+            ?.firstOrNull { it.tab_key == selectedSubTab }
+            ?.list
+            .orEmpty()
+        if (podiumRows.isNotEmpty()) {
+            podiumShine.snapTo(InitialPodiumShine)
+            podiumShine.animateTo(
+                targetValue = FinalPodiumShine,
+                animationSpec = tween(durationMillis = 1150, easing = FastOutSlowInEasing)
+            )
+            podiumShine.snapTo(StaticPodiumShine)
+            hasPlayedPodiumShine = true
+        }
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -171,6 +194,7 @@ fun RankingScreen(
                                 isDriver = isDriver,
                                 chpId = selectedSeason?.chp_id ?: 0,
                                 seasonId = selectedSeason?.id ?: 0,
+                                shineOffset = podiumShine.value,
                                 onDriverClick = onDriverClick,
                                 onTeamClick = onTeamClick
                             )
@@ -215,6 +239,7 @@ private fun RankingPodium(
     isDriver: Boolean,
     chpId: Int,
     seasonId: Int,
+    shineOffset: Float,
     onDriverClick: (chpId: Int, seasonId: Int, driverId: Int, name: String, avatar: String, teamLogo: String, stats: JsonObject) -> Unit,
     onTeamClick: (chpId: Int, seasonId: Int, teamId: Int, name: String, logo: String, stats: JsonObject) -> Unit
 ) {
@@ -227,6 +252,7 @@ private fun RankingPodium(
                     isDriver = isDriver,
                     chpId = chpId,
                     seasonId = seasonId,
+                    shineOffset = shineOffset,
                     modifier = Modifier.weight(1f),
                     onDriverClick = onDriverClick,
                     onTeamClick = onTeamClick
@@ -243,6 +269,7 @@ private fun RankingPodiumEntry(
     isDriver: Boolean,
     chpId: Int,
     seasonId: Int,
+    shineOffset: Float,
     modifier: Modifier,
     onDriverClick: (chpId: Int, seasonId: Int, driverId: Int, name: String, avatar: String, teamLogo: String, stats: JsonObject) -> Unit,
     onTeamClick: (chpId: Int, seasonId: Int, teamId: Int, name: String, logo: String, stats: JsonObject) -> Unit
@@ -253,19 +280,10 @@ private fun RankingPodiumEntry(
     val driverId = row.intText("driver_id").ifZero { row.intText("drivers_id") }
     val teamId = row.intText("team_id")
     val metal = podiumMetal(position)
-    val reflection by rememberInfiniteTransition(label = "Podium metal $position").animateFloat(
-        initialValue = -260f,
-        targetValue = 620f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2600 + position * 180, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "Podium reflection $position"
-    )
     val metalBrush = Brush.linearGradient(
         colors = listOf(metal.edge, metal.base, metal.light, metal.glint, metal.light, metal.base, metal.edge),
-        start = Offset(reflection, -70f),
-        end = Offset(reflection + 300f, 120f)
+        start = Offset(shineOffset, -70f),
+        end = Offset(shineOffset + 300f, 120f)
     )
     GlassSurface(
         modifier = modifier.padding(horizontal = 4.dp, vertical = if (position == 1) 0.dp else 10.dp),
@@ -498,3 +516,6 @@ private fun RankingData.visibleRankingTabs() =
     }
 
 private val RacingBlue = Color(0xFF58A6FF)
+private const val InitialPodiumShine = -320f
+private const val FinalPodiumShine = 620f
+private const val StaticPodiumShine = 90f

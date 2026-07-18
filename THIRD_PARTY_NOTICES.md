@@ -19,7 +19,8 @@ PureRacing embeds vector marks only to identify championship entries. Team names
 manufacturer names, logos, and trademarks remain the property of their respective owners.
 
 - Current and historical Formula 1 team marks: Wikimedia Commons and Wikipedia file archives.
-- Manufacturer marks: Simple Icons (CC0-1.0) and archived original vector marks.
+- Manufacturer marks: Simple Icons (CC0-1.0), including the archived Alfa Romeo mark from Simple Icons 15.0.0.
+- Sponsor names and title-partner artwork are removed or cropped from embedded team marks; only the constructor identity is displayed.
 - API identity reference: `https://api.romielf.com/rank/team`.
 
 Logo selection uses both `team_id` and season because the API reuses IDs across rebrands,

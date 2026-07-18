@@ -3,8 +3,6 @@
 package com.racingdaily.ui.components
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -52,6 +50,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,6 +71,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.fastCoerceAtMost
+import androidx.compose.ui.util.lerp
 import androidx.compose.ui.zIndex
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -83,6 +84,12 @@ import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
+import com.racingdaily.ui.liquidglass.utils.InteractiveHighlight
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.tanh
 
 val LocalGlassBackdrop = staticCompositionLocalOf<LayerBackdrop?> { null }
 
@@ -171,11 +178,10 @@ fun GlassSurface(
         else Color.White.copy(alpha = 0.16f)
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    val pressScale by animateFloatAsState(
-        targetValue = if (onClick != null && isPressed) 0.975f else 1f,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = 460f),
-        label = "glass surface press"
-    )
+    val animationScope = rememberCoroutineScope()
+    val interactiveHighlight = remember(animationScope) {
+        InteractiveHighlight(animationScope = animationScope)
+    }
 
     val glassModifier =
         if (backdrop != null) {
@@ -186,6 +192,31 @@ fun GlassSurface(
                     vibrancy()
                     blur(14.dp.toPx())
                     lens(16.dp.toPx(), 22.dp.toPx())
+                },
+                // Keep large interactive surfaces physically consistent with Kyant's LiquidButton.
+                layerBlock = if (onClick != null) {
+                    {
+                        val width = size.width
+                        val height = size.height
+                        val progress = interactiveHighlight.pressProgress
+                        val scale = lerp(1f, 1f + 4.dp.toPx() / height, progress)
+
+                        val maxOffset = size.minDimension
+                        val offset = interactiveHighlight.offset
+                        translationX = maxOffset * tanh(0.05f * offset.x / maxOffset)
+                        translationY = maxOffset * tanh(0.05f * offset.y / maxOffset)
+
+                        val maxDragScale = 4.dp.toPx() / height
+                        val offsetAngle = atan2(offset.y, offset.x)
+                        scaleX = scale +
+                            maxDragScale * abs(cos(offsetAngle) * offset.x / size.maxDimension) *
+                            (width / height).fastCoerceAtMost(1f)
+                        scaleY = scale +
+                            maxDragScale * abs(sin(offsetAngle) * offset.y / size.maxDimension) *
+                            (height / width).fastCoerceAtMost(1f)
+                    }
+                } else {
+                    null
                 },
                 highlight = { Highlight.Default.copy(alpha = if (selected) 0.7f else if (isLightTheme) 0.3f else 0.42f) },
                 shadow = { Shadow(radius = 18.dp, alpha = if (isLightTheme) 0.18f else 0.48f) },
@@ -204,16 +235,20 @@ fun GlassSurface(
     Box(
         modifier
             .graphicsLayer {
-                scaleX = pressScale
-                scaleY = pressScale
+                if (backdrop == null && onClick != null) {
+                    val scale = if (isPressed) 0.975f else 1f
+                    scaleX = scale
+                    scaleY = scale
+                }
             }
             .then(glassModifier)
+            .then(if (backdrop != null && onClick != null) interactiveHighlight.modifier else Modifier)
             .clip(shape)
             .border(1.dp, borderColor, shape)
             .then(
                 if (onClick != null) {
                     Modifier.clickable(
-                        interactionSource = interactionSource,
+                        interactionSource = if (backdrop == null) interactionSource else null,
                         indication = null,
                         role = role,
                         onClick = onClick
@@ -222,6 +257,7 @@ fun GlassSurface(
                     Modifier
                 }
             )
+            .then(if (backdrop != null && onClick != null) interactiveHighlight.gestureModifier else Modifier)
             .padding(contentPadding),
         content = content
     )

@@ -4,9 +4,10 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -144,13 +145,21 @@ fun App(api: ApiService) {
                             targetState = currentScreen,
                             transitionSpec = {
                                 val forward = targetState.ordinal > initialState.ordinal
-                                val enterOffset: (Int) -> Int = { width -> if (forward) width / 10 else -width / 10 }
-                                val exitOffset: (Int) -> Int = { width -> if (forward) -width / 10 else width / 10 }
-                                (fadeIn(tween(150)) + slideInHorizontally(
-                                    animationSpec = spring(dampingRatio = 1f, stiffness = 520f),
+                                val enterOffset: (Int) -> Int = { width -> if (forward) width / 18 else -width / 18 }
+                                val exitOffset: (Int) -> Int = { width -> if (forward) -width / 18 else width / 18 }
+                                (fadeIn(spring(dampingRatio = 1f, stiffness = 620f)) +
+                                    scaleIn(
+                                        animationSpec = spring(dampingRatio = 1f, stiffness = 520f),
+                                        initialScale = 0.99f
+                                    ) + slideInHorizontally(
+                                    animationSpec = spring(dampingRatio = 1f, stiffness = 460f),
                                     initialOffsetX = enterOffset
-                                )) togetherWith (fadeOut(tween(120)) + slideOutHorizontally(
-                                    animationSpec = spring(dampingRatio = 1f, stiffness = 520f),
+                                )) togetherWith (fadeOut(spring(dampingRatio = 1f, stiffness = 680f)) +
+                                    scaleOut(
+                                        animationSpec = spring(dampingRatio = 1f, stiffness = 560f),
+                                        targetScale = 0.99f
+                                    ) + slideOutHorizontally(
+                                    animationSpec = spring(dampingRatio = 1f, stiffness = 480f),
                                     targetOffsetX = exitOffset
                                 ))
                             },
@@ -268,12 +277,20 @@ private fun AppPageOverlay(
     AnimatedVisibility(
         visibleState = transitionState,
         modifier = modifier.fillMaxSize(),
-        enter = fadeIn(tween(150)) + slideInHorizontally(
-            animationSpec = spring(dampingRatio = 0.92f, stiffness = 470f)
-        ) { it / 5 },
-        exit = fadeOut(tween(120)) + slideOutHorizontally(
-            animationSpec = spring(dampingRatio = 1f, stiffness = 520f)
-        ) { it / 5 }
+        enter = fadeIn(spring(dampingRatio = 1f, stiffness = 600f)) +
+            scaleIn(
+                animationSpec = spring(dampingRatio = 1f, stiffness = 430f),
+                initialScale = 0.98f
+            ) + slideInHorizontally(
+                animationSpec = spring(dampingRatio = 0.9f, stiffness = 430f)
+            ) { it / 6 },
+        exit = fadeOut(spring(dampingRatio = 1f, stiffness = 680f)) +
+            scaleOut(
+                animationSpec = spring(dampingRatio = 1f, stiffness = 500f),
+                targetScale = 0.985f
+            ) + slideOutHorizontally(
+                animationSpec = spring(dampingRatio = 1f, stiffness = 500f)
+            ) { it / 6 }
     ) {
         Box(
             Modifier

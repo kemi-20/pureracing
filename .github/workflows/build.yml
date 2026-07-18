@@ -42,6 +42,8 @@ jobs:
         with:
           java-version: '17'
           distribution: 'microsoft'
+      - name: Install Android SDK 37
+        run: sdkmanager "platforms;android-37"
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
       - name: Decode Android signing key

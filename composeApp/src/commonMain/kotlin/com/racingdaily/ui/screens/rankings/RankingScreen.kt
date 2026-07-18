@@ -1,5 +1,11 @@
 package com.racingdaily.ui.screens.rankings
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,8 +41,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -49,7 +59,7 @@ import com.racingdaily.ui.components.GlassChip
 import com.racingdaily.ui.components.GlassSurface
 import com.racingdaily.ui.components.ScreenHeader
 import com.racingdaily.ui.components.SectionLabel
-import com.racingdaily.util.alpineLogoColorFilter
+import com.racingdaily.ui.components.TeamLogo
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -242,11 +252,21 @@ private fun RankingPodiumEntry(
     val teamLogo = row.text("team_logo")
     val driverId = row.intText("driver_id").ifZero { row.intText("drivers_id") }
     val teamId = row.intText("team_id")
-    val accent = when (position) {
-        1 -> Color(0xFFFFC94A)
-        2 -> Color(0xFFC8D0DB)
-        else -> Color(0xFFC98A60)
-    }
+    val metal = podiumMetal(position)
+    val reflection by rememberInfiniteTransition(label = "Podium metal $position").animateFloat(
+        initialValue = -260f,
+        targetValue = 620f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2600 + position * 180, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "Podium reflection $position"
+    )
+    val metalBrush = Brush.linearGradient(
+        colors = listOf(metal.edge, metal.base, metal.light, metal.glint, metal.light, metal.base, metal.edge),
+        start = Offset(reflection, -70f),
+        end = Offset(reflection + 300f, 120f)
+    )
     GlassSurface(
         modifier = modifier.padding(horizontal = 4.dp, vertical = if (position == 1) 0.dp else 10.dp),
         onClick = {
@@ -263,23 +283,47 @@ private fun RankingPodiumEntry(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(7.dp)
         ) {
-            Text("#$position", color = accent, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-            AsyncImage(
-                avatar,
-                null,
-                Modifier.size(if (position == 1) 72.dp else 58.dp).clip(CircleShape),
-                contentScale = ContentScale.Fit,
-                colorFilter = if (isDriver) null else alpineLogoColorFilter(teamId)
-            )
-            Text(
-                name,
+            MetallicText(
+                text = "#$position",
+                brush = metalBrush,
+                shadow = metal.shadow,
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
+            )
+            if (isDriver) {
+                AsyncImage(
+                    avatar,
+                    null,
+                    Modifier.size(if (position == 1) 72.dp else 58.dp).clip(CircleShape),
+                    contentScale = ContentScale.Fit
+                )
+            } else {
+                TeamLogo(
+                    teamId = teamId,
+                    seasonId = seasonId,
+                    teamName = name,
+                    fallbackUrl = teamLogo,
+                    modifier = Modifier.size(if (position == 1) 72.dp else 58.dp)
+                )
+            }
+            MetallicText(
+                text = name,
+                brush = metalBrush,
+                shadow = metal.shadow,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Text(row.bestScoreText(), style = MaterialTheme.typography.titleMedium, color = accent, fontWeight = FontWeight.Bold)
+            MetallicText(
+                text = row.bestScoreText(),
+                brush = metalBrush,
+                shadow = metal.shadow,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
+            )
         }
     }
 }
@@ -324,13 +368,23 @@ private fun RankingRow(
                 modifier = Modifier.width(34.dp),
                 fontWeight = FontWeight.Bold
             )
-            if (avatar.isNotBlank()) {
-                AsyncImage(
-                    avatar,
-                    null,
-                    Modifier.size(42.dp).clip(CircleShape),
-                    contentScale = ContentScale.Fit,
-                    colorFilter = if (isDriver) null else alpineLogoColorFilter(teamId)
+            if (isDriver) {
+                if (avatar.isNotBlank()) {
+                    AsyncImage(
+                        avatar,
+                        null,
+                        Modifier.size(42.dp).clip(CircleShape),
+                        contentScale = ContentScale.Fit
+                    )
+                    Spacer(Modifier.width(10.dp))
+                }
+            } else {
+                TeamLogo(
+                    teamId = teamId,
+                    seasonId = seasonId,
+                    teamName = name,
+                    fallbackUrl = teamLogo,
+                    modifier = Modifier.size(42.dp)
                 )
                 Spacer(Modifier.width(10.dp))
             }
@@ -379,6 +433,62 @@ private fun String.cleanRankingRemark(): String =
         .trim()
 
 private inline fun Int.ifZero(block: () -> Int): Int = if (this == 0) block() else this
+
+private data class PodiumMetal(
+    val edge: Color,
+    val base: Color,
+    val light: Color,
+    val glint: Color,
+    val shadow: Color
+)
+
+private fun podiumMetal(position: Int): PodiumMetal = when (position) {
+    1 -> PodiumMetal(
+        edge = Color(0xFF7A4A00),
+        base = Color(0xFFD99B16),
+        light = Color(0xFFFFE08A),
+        glint = Color(0xFFFFFBDF),
+        shadow = Color(0x88704800)
+    )
+    2 -> PodiumMetal(
+        edge = Color(0xFF596473),
+        base = Color(0xFFAEB8C6),
+        light = Color(0xFFE7EDF4),
+        glint = Color.White,
+        shadow = Color(0x88616B78)
+    )
+    else -> PodiumMetal(
+        edge = Color(0xFF71391F),
+        base = Color(0xFFB96F46),
+        light = Color(0xFFE6A77D),
+        glint = Color(0xFFFFE4D1),
+        shadow = Color(0x88603623)
+    )
+}
+
+@Composable
+private fun MetallicText(
+    text: String,
+    brush: Brush,
+    shadow: Color,
+    style: TextStyle,
+    fontWeight: FontWeight,
+    maxLines: Int,
+    overflow: TextOverflow = TextOverflow.Clip
+) {
+    Text(
+        text = text,
+        style = style.merge(
+            TextStyle(
+                brush = brush,
+                fontWeight = fontWeight,
+                shadow = Shadow(color = shadow, offset = Offset(0f, 1.5f), blurRadius = 2.5f)
+            )
+        ),
+        maxLines = maxLines,
+        overflow = overflow
+    )
+}
 
 private fun RankingData.visibleRankingTabs() =
     list.filterNot {

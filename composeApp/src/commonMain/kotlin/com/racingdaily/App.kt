@@ -86,6 +86,7 @@ import com.racingdaily.ui.components.GlassIconButton
 import com.racingdaily.ui.components.GlassNavTab
 import com.racingdaily.ui.components.GlassSurface
 import com.racingdaily.ui.components.ScreenHeader
+import com.racingdaily.ui.components.TeamLogo
 import com.racingdaily.ui.components.pureRacingBackground
 import com.racingdaily.ui.screens.detail.DetailScreen
 import com.racingdaily.ui.screens.home.HomeScreen
@@ -94,7 +95,6 @@ import com.racingdaily.ui.screens.race.RaceScreen
 import com.racingdaily.ui.screens.rankings.RankingScreen
 import com.racingdaily.ui.screens.search.SearchScreen
 import com.racingdaily.ui.theme.RacingDailyTheme
-import com.racingdaily.util.alpineLogoColorFilter
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -786,11 +786,12 @@ fun TeamDetailScreen(
             item {
                 GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        AsyncImage(
-                            teamInfo?.logo?.ifBlank { page.logo } ?: page.logo,
-                            null,
-                            Modifier.size(74.dp),
-                            colorFilter = alpineLogoColorFilter(page.teamId)
+                        TeamLogo(
+                            teamId = page.teamId,
+                            seasonId = page.seasonId,
+                            teamName = title,
+                            fallbackUrl = teamInfo?.logo?.ifBlank { page.logo } ?: page.logo,
+                            modifier = Modifier.size(74.dp)
                         )
                         Spacer(Modifier.width(14.dp))
                         Column(Modifier.weight(1f)) {

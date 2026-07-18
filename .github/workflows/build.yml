@@ -27,8 +27,8 @@ jobs:
           # https://github.com/gradle/actions/issues/1013
           cache-provider: basic
       - name: Build Desktop distributable
-        shell: pwsh
-        run: .\gradlew.bat :composeApp:createDistributable --stacktrace
+        shell: bash
+        run: bash ./gradlew :composeApp:createDistributable --stacktrace
       - name: Sign Windows executable
         shell: pwsh
         env:

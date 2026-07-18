@@ -38,7 +38,14 @@ import kotlinx.coroutines.delay
 
 @Composable
 @Suppress("UNUSED_PARAMETER")
-fun DetailScreen(articleId: Int, initialTitle: String, initialUrl: String, onBack: () -> Unit, api: ApiService) {
+fun DetailScreen(
+    articleId: Int,
+    initialTitle: String,
+    initialUrl: String,
+    onBack: () -> Unit,
+    api: ApiService,
+    pageVisible: Boolean
+) {
     var article by remember(articleId) { mutableStateOf<ArticleDetail?>(null) }
     var loading by remember(articleId) { mutableStateOf(true) }
     var error by remember(articleId) { mutableStateOf<String?>(null) }
@@ -85,14 +92,19 @@ fun DetailScreen(articleId: Int, initialTitle: String, initialUrl: String, onBac
                         Text("Retry")
                     }
                 }
-                article != null -> HtmlView(articleId, article?.htmlContent().orEmpty(), darkTheme)
+                article != null -> HtmlView(
+                    articleId = articleId,
+                    html = article?.htmlContent().orEmpty(),
+                    darkTheme = darkTheme,
+                    visible = pageVisible
+                )
             }
         }
     }
 }
 
 @Composable
-expect fun HtmlView(articleId: Int, html: String, darkTheme: Boolean)
+expect fun HtmlView(articleId: Int, html: String, darkTheme: Boolean, visible: Boolean)
 
 internal fun buildArticleHtmlDocument(html: String, darkTheme: Boolean): String {
     val background = if (darkTheme) "#1C2732" else "#EAF4F8"
@@ -113,6 +125,8 @@ internal fun buildArticleHtmlDocument(html: String, darkTheme: Boolean): String 
       margin: 0;
       padding: 0;
       min-height: 100%;
+      width: 100%;
+      overflow-x: hidden;
       background: $background !important;
       color: $foreground !important;
       color-scheme: $colorScheme;
@@ -120,11 +134,13 @@ internal fun buildArticleHtmlDocument(html: String, darkTheme: Boolean): String 
       font-size: 16px;
       line-height: 1.65;
     }
+    *, *::before, *::after { box-sizing: border-box; }
     body { padding: 0 16px 28px; box-sizing: border-box; }
     div, p, span, section, article, h1, h2, h3, h4, h5, h6,
     li, strong, em, blockquote, table, th, td {
       color: $foreground !important;
       line-height: 1.65 !important;
+      overflow-wrap: anywhere;
     }
     p { margin: 0 0 14px; }
     img, video, iframe {
@@ -136,6 +152,8 @@ internal fun buildArticleHtmlDocument(html: String, darkTheme: Boolean): String 
       background: $mediaBackground;
     }
     video { width: 100% !important; object-fit: contain; }
+    table { width: 100% !important; table-layout: fixed; }
+    pre, code { white-space: pre-wrap; overflow-wrap: anywhere; }
     a { color: $linkColor !important; }
   </style>
 </head>

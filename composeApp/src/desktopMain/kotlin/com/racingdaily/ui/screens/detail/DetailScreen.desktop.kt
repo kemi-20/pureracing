@@ -3,6 +3,7 @@ package com.racingdaily.ui.screens.detail
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
@@ -24,7 +25,7 @@ import javax.swing.JPanel
 import kotlin.concurrent.thread
 
 @Composable
-actual fun HtmlView(articleId: Int, html: String, darkTheme: Boolean) {
+actual fun HtmlView(articleId: Int, html: String, darkTheme: Boolean, visible: Boolean) {
     val document = remember(articleId, html, darkTheme) { buildArticleHtmlDocument(html, darkTheme) }
     val pageUrl = remember(articleId) { "${newsReferer}news.html?id=$articleId" }
     val awtBackground = remember(darkTheme) {
@@ -39,6 +40,14 @@ actual fun HtmlView(articleId: Int, html: String, darkTheme: Boolean) {
     }
     val shellRef = remember { AtomicReference<Shell?>() }
     val browserRef = remember { AtomicReference<Browser?>() }
+
+    LaunchedEffect(visible) {
+        shellRef.get()?.let { shell ->
+            SwtThread.async {
+                if (!shell.isDisposed) shell.setVisible(visible)
+            }
+        }
+    }
 
     DisposableEffect(articleId, document) {
         var initialized = false
@@ -64,7 +73,7 @@ actual fun HtmlView(articleId: Int, html: String, darkTheme: Boolean) {
                 browserRef.set(browser)
                 browser.loadArticleDocument(pageUrl, document)
                 shell.setSize(canvas.width.coerceAtLeast(1), canvas.height.coerceAtLeast(1))
-                shell.open()
+                if (visible) shell.open()
             }
         }
 

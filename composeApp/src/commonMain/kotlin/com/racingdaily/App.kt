@@ -203,7 +203,7 @@ fun App(api: ApiService) {
                     }
                 }
 
-                PageStackHost(pageStack.toList()) { page ->
+                PageStackHost(pageStack.toList()) { page, pageVisible ->
                     when (page) {
                         is AppPage.Search -> SearchScreen(
                             onBack = goBack,
@@ -214,7 +214,14 @@ fun App(api: ApiService) {
                         )
                         is AppPage.Championship -> ChampScreen(page.category, page.id, goBack, api)
                         is AppPage.Track -> TrackScreen(page.id, goBack, api)
-                        is AppPage.Article -> DetailScreen(page.id, page.title, page.url, goBack, api)
+                        is AppPage.Article -> DetailScreen(
+                            articleId = page.id,
+                            initialTitle = page.title,
+                            initialUrl = page.url,
+                            onBack = goBack,
+                            api = api,
+                            pageVisible = pageVisible
+                        )
                         is AppPage.RaceDetail -> RaceDetailScreen(page.gp, goBack)
                         is AppPage.DriverDetail -> DriverDetailScreen(page, goBack, api) { item ->
                             pageStack += AppPage.Article(item.id, item.title, item.http_url)
@@ -232,7 +239,7 @@ fun App(api: ApiService) {
 @Composable
 private fun PageStackHost(
     pages: List<AppPage>,
-    content: @Composable (AppPage) -> Unit
+    content: @Composable (AppPage, Boolean) -> Unit
 ) {
     val renderedPages = remember { mutableStateListOf<AppPage>() }
 
@@ -249,7 +256,7 @@ private fun PageStackHost(
             modifier = Modifier.zIndex(index + 1f),
             onHidden = { renderedPages.remove(page) }
         ) {
-            content(page)
+            content(page, page in pages)
         }
     }
 }

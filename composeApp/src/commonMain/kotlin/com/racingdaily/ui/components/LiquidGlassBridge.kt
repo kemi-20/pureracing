@@ -12,6 +12,8 @@ expect fun OriginalLiquidButton(
     backdrop: Backdrop,
     modifier: Modifier = Modifier,
     selected: Boolean = false,
+    tint: Color = Color.Unspecified,
+    surfaceColor: Color = Color.Unspecified,
     content: @Composable RowScope.() -> Unit
 )
 

@@ -114,35 +114,35 @@ fun Modifier.pureRacingBackground(): Modifier = composed {
     val isLightTheme = !isSystemInDarkTheme()
     val mainGradient = if (isLightTheme) {
         listOf(
-            0f to Color(0xFFF8FCFF),
-            0.32f to Color(0xFFDCECF5),
-            0.62f to Color(0xFFE2F0EA),
-            0.84f to Color(0xFFF6E5E6),
-            1f to Color(0xFFEAF1F7)
+            Color(0xFFF4FAFD),
+            Color(0xFFCDE8F3),
+            Color(0xFFD7EFE6),
+            Color(0xFFF5DADD),
+            Color(0xFFE4EDF4)
         )
     } else {
         listOf(
-            0f to Color(0xFF1A2B3B),
-            0.32f to Color(0xFF24485B),
-            0.62f to Color(0xFF274B42),
-            0.84f to Color(0xFF553138),
-            1f to Color(0xFF1B2530)
+            Color(0xFF203448),
+            Color(0xFF2A566B),
+            Color(0xFF315B4E),
+            Color(0xFF643842),
+            Color(0xFF22303D)
         )
     }
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
     this
         .background(MaterialTheme.colorScheme.background)
         .background(
-            Brush.linearGradient(
-                *mainGradient.toTypedArray(),
-                start = Offset.Zero,
-                end = Offset(1450f, 2300f)
-            )
+            Brush.verticalGradient(mainGradient)
         )
         .background(
-            Brush.verticalGradient(
-                0f to Color.White.copy(alpha = if (isLightTheme) 0.4f else 0.12f),
-                0.38f to Color.Transparent,
-                1f to Color.Black.copy(alpha = if (isLightTheme) 0.04f else 0.12f)
+            Brush.horizontalGradient(
+                listOf(
+                    primary.copy(alpha = if (isLightTheme) 0.07f else 0.12f),
+                    Color.Transparent,
+                    secondary.copy(alpha = if (isLightTheme) 0.09f else 0.12f)
+                )
             )
         )
 }
@@ -161,11 +161,12 @@ fun GlassSurface(
     val primary = MaterialTheme.colorScheme.primary
     val isLightTheme = !isSystemInDarkTheme()
     val containerColor =
-        if (isLightTheme) Color.White.copy(alpha = 0.42f)
-        else Color(0xFF273640).copy(alpha = 0.38f)
+        if (isLightTheme) Color.White.copy(alpha = 0.22f)
+        else Color(0xFF314450).copy(alpha = 0.24f)
     val borderColor =
         if (selected) primary.copy(alpha = 0.58f)
-        else Color.White.copy(alpha = 0.14f)
+        else if (isLightTheme) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f)
+        else Color.White.copy(alpha = 0.16f)
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val pressScale by animateFloatAsState(
@@ -181,12 +182,12 @@ fun GlassSurface(
                 shape = { shape },
                 effects = {
                     vibrancy()
-                    blur(10.dp.toPx())
-                    lens(12.dp.toPx(), 18.dp.toPx())
+                    blur(12.dp.toPx())
+                    lens(14.dp.toPx(), 20.dp.toPx())
                 },
-                highlight = { Highlight.Default.copy(alpha = if (selected) 0.72f else 0.42f) },
-                shadow = { Shadow(radius = 18.dp, alpha = 0.7f) },
-                innerShadow = { InnerShadow(radius = 10.dp, alpha = if (selected) 0.52f else 0.28f) },
+                highlight = { Highlight.Default.copy(alpha = if (selected) 0.7f else if (isLightTheme) 0.3f else 0.42f) },
+                shadow = { Shadow(radius = 18.dp, alpha = if (isLightTheme) 0.18f else 0.48f) },
+                innerShadow = { InnerShadow(radius = 10.dp, alpha = if (selected) 0.48f else if (isLightTheme) 0.16f else 0.26f) },
                 onDrawSurface = {
                     drawRect(containerColor)
                     if (selected) {
@@ -206,7 +207,7 @@ fun GlassSurface(
             }
             .then(glassModifier)
             .clip(shape)
-            .then(if (backdrop == null) Modifier.border(1.dp, borderColor, shape) else Modifier)
+            .border(1.dp, borderColor, shape)
             .then(
                 if (onClick != null) {
                     Modifier.clickable(
@@ -228,7 +229,7 @@ fun GlassSurface(
 fun GlassButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    selected: Boolean = false,
+    selected: Boolean = true,
     content: @Composable RowScope.() -> Unit
 ) {
     val backdrop = LocalGlassBackdrop.current
@@ -238,7 +239,8 @@ fun GlassButton(
             onClick = onClick,
             backdrop = backdrop,
             modifier = modifier.defaultMinSize(minHeight = 48.dp),
-            selected = selected
+            selected = selected,
+            surfaceColor = if (selected) Color.Unspecified else MaterialTheme.colorScheme.surface.copy(alpha = 0.18f)
         ) {
             CompositionLocalProvider(LocalContentColor provides contentColor) {
                 content()
@@ -269,7 +271,8 @@ fun GlassIconButton(
             onClick = onClick,
             backdrop = backdrop,
             modifier = modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp),
-            selected = selected
+            selected = selected,
+            surfaceColor = if (selected) Color.Unspecified else MaterialTheme.colorScheme.surface.copy(alpha = 0.16f)
         ) {
             CompositionLocalProvider(LocalContentColor provides contentColor) {
                 Icon(
@@ -377,7 +380,8 @@ fun GlassChip(
             onClick = onClick,
             backdrop = backdrop,
             modifier = modifier.defaultMinSize(minHeight = 48.dp),
-            selected = selected
+            selected = selected,
+            surfaceColor = if (selected) Color.Unspecified else MaterialTheme.colorScheme.surface.copy(alpha = 0.14f)
         ) {
             CompositionLocalProvider(LocalContentColor provides contentColor) {
                 if (leadingIcon != null) {
@@ -415,25 +419,27 @@ fun InfoPill(
     leadingIcon: ImageVector? = null
 ) {
     val shape = RoundedCornerShape(999.dp)
-    Row(
-        modifier
-            .background(accent.copy(alpha = 0.12f), shape)
-            .border(1.dp, accent.copy(alpha = 0.24f), shape)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically
+    GlassSurface(
+        modifier = modifier,
+        shape = shape,
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
     ) {
-        if (leadingIcon != null) {
-            Icon(leadingIcon, contentDescription = null, modifier = Modifier.size(14.dp), tint = accent)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (leadingIcon != null) {
+                Icon(leadingIcon, contentDescription = null, modifier = Modifier.size(14.dp), tint = accent)
+            }
+            Text(
+                label,
+                color = accent,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
-        Text(
-            label,
-            color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
     }
 }
 
@@ -483,6 +489,7 @@ private fun FallbackGlassBottomBar(
         ) {
             tabs.forEach { tab ->
                 val isSelected = tab.value == selected
+                val contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                 GlassSurface(
                     modifier = Modifier
                         .weight(1f)
@@ -501,7 +508,7 @@ private fun FallbackGlassBottomBar(
                             tab.icon,
                             contentDescription = tab.label,
                             modifier = Modifier.size(21.dp),
-                            tint = Color.White
+                            tint = contentColor
                         )
                         Text(
                             tab.label,
@@ -509,7 +516,7 @@ private fun FallbackGlassBottomBar(
                             lineHeight = 14.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            color = Color.White,
+                            color = contentColor,
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                             textAlign = TextAlign.Center
                         )
@@ -536,11 +543,17 @@ fun ScreenHeader(
         modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = 18.dp, vertical = 16.dp),
+            .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         navigationIcon()
+        Box(
+            Modifier
+                .width(4.dp)
+                .height(42.dp)
+                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp))
+        )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
                 title,

@@ -23,6 +23,8 @@ actual fun OriginalLiquidButton(
     backdrop: Backdrop,
     modifier: Modifier,
     selected: Boolean,
+    tint: Color,
+    surfaceColor: Color,
     content: @Composable RowScope.() -> Unit
 ) {
     LiquidButton(
@@ -30,8 +32,12 @@ actual fun OriginalLiquidButton(
         backdrop = backdrop,
         modifier = modifier,
         isInteractive = true,
-        tint = if (selected) MaterialTheme.colorScheme.primary else Color.Unspecified,
-        surfaceColor = Color.Unspecified,
+        tint = when {
+            tint != Color.Unspecified -> tint
+            selected -> MaterialTheme.colorScheme.primary
+            else -> Color.Unspecified
+        },
+        surfaceColor = surfaceColor,
         content = content
     )
 }
@@ -62,15 +68,18 @@ actual fun <T> OriginalLiquidBottomTabs(
         },
         backdrop = backdrop,
         tabsCount = tabs.size,
+        accentColor = MaterialTheme.colorScheme.primary,
+        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.28f),
         modifier = modifier
     ) {
+        val contentColor = MaterialTheme.colorScheme.onSurfaceVariant
         tabs.forEachIndexed { index, tab ->
             LiquidBottomTab(onClick = {
                 selectedIndexState.intValue = index
                 onSelected(tab.value)
             }) {
-                Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(22.dp), tint = Color.White)
-                Text(tab.label, style = MaterialTheme.typography.labelSmall, color = Color.White)
+                Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(22.dp), tint = contentColor)
+                Text(tab.label, style = MaterialTheme.typography.labelSmall, color = contentColor)
             }
         }
     }

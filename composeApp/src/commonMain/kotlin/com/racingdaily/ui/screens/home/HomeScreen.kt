@@ -1,6 +1,8 @@
 package com.racingdaily.ui.screens.home
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -18,6 +20,8 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.animateItem
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
@@ -134,9 +138,9 @@ fun HomeScreen(
         LazyRow(
             Modifier
                 .fillMaxWidth()
-                .padding(vertical = 2.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(vertical = 5.dp),
+            contentPadding = PaddingValues(horizontal = 18.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(tabs) { tab ->
                 GlassChip(
@@ -167,11 +171,16 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                    contentPadding = PaddingValues(top = 12.dp, bottom = 96.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(top = 16.dp, bottom = 104.dp)
                 ) {
                     itemsIndexed(news, key = { _, item -> item.id }) { index, item ->
-                        NewsGlassCard(item, featured = index == 0, onArticleClick)
+                        NewsGlassCard(
+                            item = item,
+                            featured = index == 0,
+                            onArticleClick = onArticleClick,
+                            modifier = Modifier.animateItem()
+                        )
                     }
                     if (loadingMore) {
                         item(key = "loading-more") {
@@ -200,9 +209,15 @@ fun HomeScreen(
 }
 
 @Composable
-private fun NewsGlassCard(item: NewsItem, featured: Boolean, onArticleClick: (NewsItem) -> Unit) {
+private fun NewsGlassCard(
+    item: NewsItem,
+    featured: Boolean,
+    onArticleClick: (NewsItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
     GlassSurface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(if (featured) 24.dp else 20.dp),
         onClick = { onArticleClick(item) },
         contentPadding = PaddingValues(0.dp)
     ) {
@@ -213,48 +228,78 @@ private fun NewsGlassCard(item: NewsItem, featured: Boolean, onArticleClick: (Ne
                     AsyncImage(
                         cover,
                         contentDescription = null,
-                        modifier = Modifier.fillMaxWidth().height(208.dp),
+                        modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
                         contentScale = ContentScale.Crop
                     )
                 }
-                NewsCardContent(item, titleLines = 3, modifier = Modifier.padding(17.dp))
+                NewsCardContent(item, titleLines = 3, featured = true, modifier = Modifier.padding(18.dp))
             }
         } else {
             Row(
-                Modifier.fillMaxWidth().height(142.dp),
+                Modifier.fillMaxWidth().height(134.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (cover.isNotBlank()) {
                     AsyncImage(
                         cover,
                         contentDescription = null,
-                        modifier = Modifier.width(138.dp).fillMaxHeight(),
+                        modifier = Modifier.width(132.dp).fillMaxHeight(),
                         contentScale = ContentScale.Crop
                     )
                 }
-                NewsCardContent(item, titleLines = 2, modifier = Modifier.weight(1f).padding(15.dp))
+                NewsCardContent(
+                    item = item,
+                    titleLines = 2,
+                    featured = false,
+                    modifier = Modifier.weight(1f).padding(horizontal = 15.dp, vertical = 13.dp)
+                )
             }
         }
     }
 }
 
 @Composable
-private fun NewsCardContent(item: NewsItem, titleLines: Int, modifier: Modifier = Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+private fun NewsCardContent(
+    item: NewsItem,
+    titleLines: Int,
+    featured: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(if (featured) 11.dp else 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
             if (item.istop == 1) {
                 InfoPill("Pinned", accent = MaterialTheme.colorScheme.primary)
             }
             item.tags.firstOrNull()?.let { tag -> InfoPill(tag.name) }
         }
-        Text(
-            item.title,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = titleLines,
-            overflow = TextOverflow.Ellipsis,
-            fontWeight = FontWeight.SemiBold
-        )
+        if (featured) {
+            Row(horizontalArrangement = Arrangement.spacedBy(11.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .width(4.dp)
+                        .height(48.dp)
+                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp))
+                )
+                Text(
+                    item.title,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = titleLines,
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        } else {
+            Text(
+                item.title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = titleLines,
+                overflow = TextOverflow.Ellipsis,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,

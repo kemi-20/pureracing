@@ -72,16 +72,26 @@ fun LiquidBottomTabs(
     onTabSelected: (index: Int) -> Unit,
     backdrop: Backdrop,
     tabsCount: Int,
+    accentColor: Color = Color.Unspecified,
+    containerColor: Color = Color.Unspecified,
     modifier: Modifier = Modifier,
     content: @Composable RowScope.() -> Unit
 ) {
     val isLightTheme = !isSystemInDarkTheme()
-    val accentColor =
-        if (isLightTheme) Color(0xFF0088FF)
-        else Color(0xFF0091FF)
-    val containerColor =
-        if (isLightTheme) Color(0xFFFAFAFA).copy(0.4f)
-        else Color(0xFF2B3A46).copy(0.42f)
+    val resolvedAccentColor = if (accentColor != Color.Unspecified) {
+        accentColor
+    } else if (isLightTheme) {
+        Color(0xFF0088FF)
+    } else {
+        Color(0xFF0091FF)
+    }
+    val resolvedContainerColor = if (containerColor != Color.Unspecified) {
+        containerColor
+    } else if (isLightTheme) {
+        Color(0xFFFAFAFA).copy(0.32f)
+    } else {
+        Color(0xFF2B3A46).copy(0.36f)
+    }
 
     val tabsBackdrop = rememberLayerBackdrop()
 
@@ -187,7 +197,7 @@ fun LiquidBottomTabs(
                         scaleX = scale
                         scaleY = scale
                     },
-                    onDrawSurface = { drawRect(containerColor) }
+                    onDrawSurface = { drawRect(resolvedContainerColor) }
                 )
                 .then(interactiveHighlight.modifier)
                 .height(64f.dp)
@@ -226,13 +236,13 @@ fun LiquidBottomTabs(
                             val progress = dampedDragAnimation.pressProgress
                             Highlight.Default.copy(alpha = progress)
                         },
-                        onDrawSurface = { drawRect(containerColor) }
+                        onDrawSurface = { drawRect(resolvedContainerColor) }
                     )
                     .then(interactiveHighlight.modifier)
                     .height(56f.dp)
                     .fillMaxWidth()
                     .padding(horizontal = 4f.dp)
-                    .graphicsLayer(colorFilter = ColorFilter.tint(accentColor)),
+                    .graphicsLayer(colorFilter = ColorFilter.tint(resolvedAccentColor)),
                 verticalAlignment = Alignment.CenterVertically,
                 content = content
             )

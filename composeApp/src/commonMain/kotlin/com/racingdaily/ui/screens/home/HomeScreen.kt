@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Refresh
@@ -178,8 +177,7 @@ fun HomeScreen(
                         NewsGlassCard(
                             item = item,
                             featured = index == 0,
-                            onArticleClick = onArticleClick,
-                            modifier = Modifier.animateItem()
+                            onArticleClick = onArticleClick
                         )
                     }
                     if (loadingMore) {

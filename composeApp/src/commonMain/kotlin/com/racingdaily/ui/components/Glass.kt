@@ -3,14 +3,11 @@
 package com.racingdaily.ui.components
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,11 +39,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarColors
@@ -116,24 +111,38 @@ fun GlassBackdropHost(content: @Composable BoxScope.() -> Unit) {
 }
 
 fun Modifier.pureRacingBackground(): Modifier = composed {
+    val isLightTheme = !isSystemInDarkTheme()
+    val mainGradient = if (isLightTheme) {
+        listOf(
+            0f to Color(0xFFF8FCFF),
+            0.32f to Color(0xFFDCECF5),
+            0.62f to Color(0xFFE2F0EA),
+            0.84f to Color(0xFFF6E5E6),
+            1f to Color(0xFFEAF1F7)
+        )
+    } else {
+        listOf(
+            0f to Color(0xFF1A2B3B),
+            0.32f to Color(0xFF24485B),
+            0.62f to Color(0xFF274B42),
+            0.84f to Color(0xFF553138),
+            1f to Color(0xFF1B2530)
+        )
+    }
     this
         .background(MaterialTheme.colorScheme.background)
         .background(
             Brush.linearGradient(
-                0f to Color(0xFF07101C),
-                0.32f to Color(0xFF102332),
-                0.62f to Color(0xFF10241D),
-                0.84f to Color(0xFF281417),
-                1f to Color(0xFF080B10),
+                *mainGradient.toTypedArray(),
                 start = Offset.Zero,
                 end = Offset(1450f, 2300f)
             )
         )
         .background(
             Brush.verticalGradient(
-                0f to Color.White.copy(alpha = 0.035f),
+                0f to Color.White.copy(alpha = if (isLightTheme) 0.4f else 0.12f),
                 0.38f to Color.Transparent,
-                1f to Color.Black.copy(alpha = 0.24f)
+                1f to Color.Black.copy(alpha = if (isLightTheme) 0.04f else 0.12f)
             )
         )
 }
@@ -152,8 +161,8 @@ fun GlassSurface(
     val primary = MaterialTheme.colorScheme.primary
     val isLightTheme = !isSystemInDarkTheme()
     val containerColor =
-        if (isLightTheme) Color(0xFFFAFAFA).copy(alpha = 0.36f)
-        else Color(0xFF101418).copy(alpha = 0.32f)
+        if (isLightTheme) Color.White.copy(alpha = 0.42f)
+        else Color(0xFF273640).copy(alpha = 0.38f)
     val borderColor =
         if (selected) primary.copy(alpha = 0.58f)
         else Color.White.copy(alpha = 0.14f)
@@ -676,23 +685,20 @@ fun EnhancedIconButton(
     icon: ImageVector,
     contentDescription: String? = null
 ) {
-    val container by animateColorAsState(
-        if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
-        else Color.Transparent
-    )
-    val border by animateDpAsState(if (enabled) 1.dp else 0.dp)
-    OutlinedIconButton(
-        onClick = onClick,
-        modifier = modifier.size(48.dp),
-        enabled = enabled,
-        shape = CircleShape,
-        border = BorderStroke(border, Color.White.copy(alpha = if (selected) 0.35f else 0.18f)),
-        colors = IconButtonDefaults.outlinedIconButtonColors(
-            containerColor = container,
-            contentColor = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
+    if (enabled) {
+        GlassIconButton(
+            icon = icon,
+            contentDescription = contentDescription,
+            onClick = onClick,
+            modifier = modifier,
+            selected = selected
         )
-    ) {
-        Icon(icon, contentDescription, modifier = Modifier.size(22.dp))
+    } else {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)) {
+            Box(modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription, modifier = Modifier.size(22.dp))
+            }
+        }
     }
 }
 

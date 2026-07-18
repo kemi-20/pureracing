@@ -114,3 +114,8 @@ compose.desktop {
         }
     }
 }
+
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "com.racingdaily.resources"
+}

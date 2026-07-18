@@ -1,8 +1,7 @@
 package com.racingdaily.ui.screens.race
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -37,12 +36,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.racingdaily.resources.*
 import com.racingdaily.data.model.RaceGp
 import com.racingdaily.data.remote.ApiService
 import com.racingdaily.platform.LocalDateTimeParts
@@ -52,6 +53,8 @@ import com.racingdaily.ui.components.GlassChip
 import com.racingdaily.ui.components.GlassSurface
 import com.racingdaily.ui.components.InfoPill
 import com.racingdaily.ui.components.ScreenHeader
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: ApiService) {
@@ -175,15 +178,7 @@ private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClic
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .size(64.dp)
-                        .background(Color.White.copy(alpha = 0.07f), RoundedCornerShape(16.dp))
-                        .padding(8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AsyncImage(gp.gp_logo, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-                }
+                RaceFlag(gp)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
@@ -237,32 +232,91 @@ private fun RaceSessionTile(session: com.racingdaily.data.model.RaceSession) {
         1 -> "Finished"
         else -> "Upcoming"
     }
-    val shape = RoundedCornerShape(15.dp)
-    Column(
-        Modifier
-            .width(132.dp)
-            .background(Color.Black.copy(alpha = 0.18f), shape)
-            .border(1.dp, accent.copy(alpha = 0.28f), shape)
-            .padding(horizontal = 12.dp, vertical = 11.dp),
-        verticalArrangement = Arrangement.spacedBy(5.dp)
+    GlassSurface(
+        modifier = Modifier.width(132.dp),
+        shape = RoundedCornerShape(15.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 11.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Icon(Icons.Rounded.Timer, null, modifier = Modifier.size(15.dp), tint = accent)
-            Text(status, color = accent, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Rounded.Timer, null, modifier = Modifier.size(15.dp), tint = accent)
+                Text(status, color = accent, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+            }
+            Text(
+                session.session_name.firstOrNull().orEmpty(),
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                session.hour.joinToString(" / ").ifBlank { "Time TBA" },
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
-        Text(
-            session.session_name.firstOrNull().orEmpty(),
-            color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.labelLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+    }
+}
+
+@Composable
+private fun RaceFlag(gp: RaceGp) {
+    val modifier = Modifier
+        .width(68.dp)
+        .height(51.dp)
+        .clip(RoundedCornerShape(8.dp))
+
+    val localFlag = gp.localFlagResource()
+    if (localFlag != null) {
+        Image(
+            painter = painterResource(localFlag),
+            contentDescription = gp.gp_name,
+            modifier = modifier,
+            contentScale = ContentScale.Crop
         )
-        Text(
-            session.hour.joinToString(" / ").ifBlank { "Time TBA" },
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+    } else {
+        AsyncImage(
+            model = gp.gp_logo,
+            contentDescription = gp.gp_name,
+            modifier = modifier,
+            contentScale = ContentScale.Crop
         )
     }
 }
+
+private fun RaceGp.localFlagResource(): DrawableResource? {
+    val identity = "$gp_name $track_name".lowercase()
+    return when {
+        identity.containsAny("australia", "melbourne", "澳大利亚") -> Res.drawable.flag_au
+        identity.containsAny("china", "chinese", "shanghai", "中国", "上海") -> Res.drawable.flag_cn
+        identity.containsAny("japan", "japanese", "suzuka", "日本", "铃鹿") -> Res.drawable.flag_jp
+        identity.containsAny("bahrain", "sakhir", "巴林") -> Res.drawable.flag_bh
+        identity.containsAny("saudi", "jeddah", "沙特", "吉达") -> Res.drawable.flag_sa
+        identity.containsAny("emilia", "imola", "italian", "monza", "意大利", "伊莫拉", "蒙扎") -> Res.drawable.flag_it
+        identity.containsAny("monaco", "monte carlo", "摩纳哥") -> Res.drawable.flag_mc
+        identity.containsAny("spain", "spanish", "barcelona", "madrid", "西班牙", "巴塞罗那", "马德里") -> Res.drawable.flag_es
+        identity.containsAny("canada", "canadian", "montreal", "加拿大", "蒙特利尔") -> Res.drawable.flag_ca
+        identity.containsAny("austria", "austrian", "spielberg", "奥地利") -> Res.drawable.flag_at
+        identity.containsAny("britain", "british", "silverstone", "united kingdom", "英国", "银石") -> Res.drawable.flag_gb
+        identity.containsAny("belgium", "belgian", "spa-francorchamps", "spa ", "比利时", "斯帕") -> Res.drawable.flag_be
+        identity.containsAny("hungary", "hungarian", "budapest", "匈牙利", "布达佩斯") -> Res.drawable.flag_hu
+        identity.containsAny("netherlands", "dutch", "zandvoort", "荷兰", "赞德沃特") -> Res.drawable.flag_nl
+        identity.containsAny("azerbaijan", "baku", "阿塞拜疆", "巴库") -> Res.drawable.flag_az
+        identity.containsAny("singapore", "marina bay", "新加坡", "滨海湾") -> Res.drawable.flag_sg
+        identity.containsAny("mexico", "mexican", "墨西哥") -> Res.drawable.flag_mx
+        identity.containsAny("brazil", "brazilian", "sao paulo", "interlagos", "巴西", "圣保罗") -> Res.drawable.flag_br
+        identity.containsAny("qatar", "lusail", "卡塔尔", "卢赛尔") -> Res.drawable.flag_qa
+        identity.containsAny("abu dhabi", "yas marina", "united arab emirates", "阿布扎比", "亚斯码头") -> Res.drawable.flag_ae
+        identity.containsAny("miami", "las vegas", "austin", "united states", "american", "美国", "迈阿密", "拉斯维加斯", "奥斯汀") -> Res.drawable.flag_us
+        identity.containsAny("france", "french", "paul ricard", "法国") -> Res.drawable.flag_fr
+        identity.containsAny("germany", "german", "hockenheim", "nurburgring", "德国") -> Res.drawable.flag_de
+        identity.containsAny("malaysia", "sepang", "马来西亚", "雪邦") -> Res.drawable.flag_my
+        identity.containsAny("turkey", "turkish", "istanbul", "土耳其", "伊斯坦布尔") -> Res.drawable.flag_tr
+        identity.containsAny("russia", "russian", "sochi", "俄罗斯", "索契") -> Res.drawable.flag_ru
+        identity.containsAny("south africa", "kyalami", "南非") -> Res.drawable.flag_za
+        else -> null
+    }
+}
+
+private fun String.containsAny(vararg candidates: String): Boolean = candidates.any(::contains)

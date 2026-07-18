@@ -1,7 +1,6 @@
 package com.racingdaily.ui.screens.rankings
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -209,24 +208,19 @@ private fun RankingPodium(
     onDriverClick: (chpId: Int, seasonId: Int, driverId: Int, name: String, avatar: String, teamLogo: String, stats: JsonObject) -> Unit,
     onTeamClick: (chpId: Int, seasonId: Int, teamId: Int, name: String, logo: String, stats: JsonObject) -> Unit
 ) {
-    GlassSurface(
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 16.dp)
-    ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-            listOf(1, 0, 2).forEach { sourceIndex ->
-                rows.getOrNull(sourceIndex)?.let { row ->
-                    RankingPodiumEntry(
-                        position = sourceIndex + 1,
-                        row = row,
-                        isDriver = isDriver,
-                        chpId = chpId,
-                        seasonId = seasonId,
-                        modifier = Modifier.weight(1f),
-                        onDriverClick = onDriverClick,
-                        onTeamClick = onTeamClick
-                    )
-                }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+        listOf(1, 0, 2).forEach { sourceIndex ->
+            rows.getOrNull(sourceIndex)?.let { row ->
+                RankingPodiumEntry(
+                    position = sourceIndex + 1,
+                    row = row,
+                    isDriver = isDriver,
+                    chpId = chpId,
+                    seasonId = seasonId,
+                    modifier = Modifier.weight(1f),
+                    onDriverClick = onDriverClick,
+                    onTeamClick = onTeamClick
+                )
             }
         }
     }
@@ -253,36 +247,40 @@ private fun RankingPodiumEntry(
         2 -> Color(0xFFC8D0DB)
         else -> Color(0xFFC98A60)
     }
-    Column(
-        modifier
-            .clickable {
-                if (isDriver && driverId > 0) {
-                    onDriverClick(chpId, seasonId, driverId, name, avatar, teamLogo, row)
-                } else if (!isDriver && teamId > 0) {
-                    onTeamClick(chpId, seasonId, teamId, name, avatar, row)
-                }
+    GlassSurface(
+        modifier = modifier.padding(horizontal = 4.dp, vertical = if (position == 1) 0.dp else 10.dp),
+        onClick = {
+            if (isDriver && driverId > 0) {
+                onDriverClick(chpId, seasonId, driverId, name, avatar, teamLogo, row)
+            } else if (!isDriver && teamId > 0) {
+                onTeamClick(chpId, seasonId, teamId, name, avatar, row)
             }
-            .padding(horizontal = 4.dp, vertical = if (position == 1) 0.dp else 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(7.dp)
+        },
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 14.dp)
     ) {
-        Text("#$position", color = accent, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-        AsyncImage(
-            avatar,
-            null,
-            Modifier.size(if (position == 1) 72.dp else 58.dp).clip(CircleShape),
-            contentScale = ContentScale.Fit,
-            colorFilter = if (isDriver) null else alpineLogoColorFilter(teamId)
-        )
-        Text(
-            name,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Text(row.bestScoreText(), style = MaterialTheme.typography.titleMedium, color = accent, fontWeight = FontWeight.Bold)
+        Column(
+            Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Text("#$position", color = accent, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            AsyncImage(
+                avatar,
+                null,
+                Modifier.size(if (position == 1) 72.dp else 58.dp).clip(CircleShape),
+                contentScale = ContentScale.Fit,
+                colorFilter = if (isDriver) null else alpineLogoColorFilter(teamId)
+            )
+            Text(
+                name,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(row.bestScoreText(), style = MaterialTheme.typography.titleMedium, color = accent, fontWeight = FontWeight.Bold)
+        }
     }
 }
 

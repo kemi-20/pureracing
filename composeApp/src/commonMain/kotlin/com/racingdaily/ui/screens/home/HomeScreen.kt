@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -219,16 +220,19 @@ private fun NewsGlassCard(item: NewsItem, featured: Boolean, onArticleClick: (Ne
                 NewsCardContent(item, titleLines = 3, modifier = Modifier.padding(17.dp))
             }
         } else {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.fillMaxWidth().height(142.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 if (cover.isNotBlank()) {
                     AsyncImage(
                         cover,
                         contentDescription = null,
-                        modifier = Modifier.width(132.dp).height(124.dp),
+                        modifier = Modifier.width(138.dp).fillMaxHeight(),
                         contentScale = ContentScale.Crop
                     )
                 }
-                NewsCardContent(item, titleLines = 3, modifier = Modifier.weight(1f).padding(15.dp))
+                NewsCardContent(item, titleLines = 2, modifier = Modifier.weight(1f).padding(15.dp))
             }
         }
     }

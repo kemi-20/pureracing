@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -25,7 +26,6 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -133,11 +133,14 @@ fun SearchScreen(
                                     if (query.isBlank()) Text("输入关键词", color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     innerTextField()
                                 }
-                                Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                                     if (query.isNotBlank()) {
-                                        IconButton(onClick = { query = "" }, modifier = Modifier.size(40.dp)) {
-                                            Icon(Icons.Rounded.Close, contentDescription = "Clear", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        }
+                                        GlassIconButton(
+                                            icon = Icons.Rounded.Close,
+                                            contentDescription = "Clear",
+                                            onClick = { query = "" },
+                                            modifier = Modifier.size(48.dp)
+                                        )
                                     }
                                 }
                             }
@@ -220,13 +223,13 @@ private fun SearchResultCard(item: NewsItem, onArticleClick: (NewsItem) -> Unit)
         onClick = { onArticleClick(item) },
         contentPadding = PaddingValues(0.dp)
     ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().height(112.dp), verticalAlignment = Alignment.CenterVertically) {
             val cover = item.covers.firstOrNull()?.path_url.orEmpty()
             if (cover.isNotBlank()) {
                 AsyncImage(
                     cover,
                     contentDescription = null,
-                    modifier = Modifier.width(118.dp).height(92.dp),
+                    modifier = Modifier.width(124.dp).fillMaxHeight(),
                     contentScale = ContentScale.Crop
                 )
             }
@@ -235,7 +238,7 @@ private fun SearchResultCard(item: NewsItem, onArticleClick: (NewsItem) -> Unit)
                     item.title,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 3,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     fontWeight = FontWeight.SemiBold
                 )

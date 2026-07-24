@@ -111,7 +111,10 @@ fun RankingScreen(
 
     LaunchedEffect(data, selectedSubTab, hasPlayedPodiumShine) {
         if (hasPlayedPodiumShine) {
-            podiumShine.snapTo(StaticPodiumShine)
+            // Already played once in this process: stay on the static metallic frame.
+            if (podiumShine.value != StaticPodiumShine) {
+                podiumShine.snapTo(StaticPodiumShine)
+            }
             return@LaunchedEffect
         }
         val podiumRows = data
@@ -120,12 +123,12 @@ fun RankingScreen(
             ?.list
             .orEmpty()
         if (podiumRows.isNotEmpty()) {
+            // Sweep once, and finish exactly on the static metallic highlight.
             podiumShine.snapTo(InitialPodiumShine)
             podiumShine.animateTo(
-                targetValue = FinalPodiumShine,
+                targetValue = StaticPodiumShine,
                 animationSpec = tween(durationMillis = PodiumShineDurationMillis, easing = FastOutSlowInEasing)
             )
-            podiumShine.snapTo(StaticPodiumShine)
             hasPlayedPodiumShine = true
         }
     }
@@ -164,7 +167,7 @@ fun RankingScreen(
             ) {
                 items(tabs) { tab ->
                     GlassChip(
-                        label = tab.tab_name.replace("\n", " "),
+                        label = tab.tab_name.cleanRankingLabel(),
                         selected = tab.tab_key == selectedSubTab,
                         onClick = { selectedSubTab = tab.tab_key }
                     )
@@ -183,7 +186,7 @@ fun RankingScreen(
                 ) {
                     item {
                         SectionLabel(
-                            title = tab.tab_name.replace("\n", " "),
+                            title = tab.tab_name.cleanRankingLabel(),
                             subtitle = remark.ifBlank { if (isDriver) "车手锦标赛" else "车队锦标赛" }
                         )
                     }
@@ -440,6 +443,12 @@ private fun JsonObject.bestScoreText(): String {
     return "-"
 }
 
+private fun String.cleanRankingLabel(): String =
+    replace("\\n", " ")
+        .replace("\n", " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+
 private fun String.cleanRankingRemark(): String =
     replace("\\n", "\n")
         .lines()
@@ -513,15 +522,16 @@ private fun RankingData.visibleRankingTabs() =
             "gp_race_avg_rank_percent"
         ) ||
             it.tab_key.contains("score_trend") ||
-            it.tab_name.replace("\n", "").let { name ->
+            it.tab_name.cleanRankingLabel().let { name ->
                 name.contains("积分走势") ||
                     name.contains("排位赛平均排名") ||
-                    name.contains("正赛平均排名")
+                    name.contains("正赛平均排名") ||
+                    name.contains("排位赛 平均排名") ||
+                    name.contains("正赛 平均排名")
             }
     }
 
 private val RacingBlue = Color(0xFF58A6FF)
-private const val InitialPodiumShine = -320f
-private const val FinalPodiumShine = 620f
+private const val InitialPodiumShine = -280f
 private const val StaticPodiumShine = 90f
-private const val PodiumShineDurationMillis = 1800
+private const val PodiumShineDurationMillis = 2200

@@ -1,5 +1,6 @@
 package com.racingdaily.ui.screens.race
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -47,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.racingdaily.resources.*
 import com.racingdaily.data.model.RaceGp
 import com.racingdaily.data.model.RaceSession
 import com.racingdaily.data.remote.ApiService
@@ -55,6 +57,8 @@ import com.racingdaily.platform.currentLocalDateTimeParts
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.LightweightSurface
 import com.racingdaily.ui.components.ScreenHeader
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: ApiService) {
@@ -199,7 +203,7 @@ private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClic
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                RaceLogo(gp)
+                RaceFlag(gp)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
@@ -313,12 +317,24 @@ private fun RaceSessionTile(session: RaceSession) {
 }
 
 @Composable
-private fun RaceLogo(gp: RaceGp) {
+private fun RaceFlag(gp: RaceGp) {
     val modifier = Modifier
         .width(68.dp)
         .height(51.dp)
         .clip(RoundedCornerShape(8.dp))
         .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.18f))
+
+    // Prefer high-res bundled SVG flags; fall back to API logo only when no mapping exists.
+    val localFlag = gp.localFlagResource()
+    if (localFlag != null) {
+        Image(
+            painter = painterResource(localFlag),
+            contentDescription = gp.gp_name,
+            modifier = modifier,
+            contentScale = ContentScale.Crop
+        )
+        return
+    }
 
     val logo = gp.gp_logo.takeIf { it.isNotBlank() } ?: gp.chp_logo
     if (logo.isNotBlank()) {
@@ -338,6 +354,42 @@ private fun RaceLogo(gp: RaceGp) {
         }
     }
 }
+
+private fun RaceGp.localFlagResource(): DrawableResource? {
+    val identity = "$gp_name $track_name".lowercase()
+    return when {
+        identity.containsAny("australia", "melbourne", "澳大利亚") -> Res.drawable.flag_au
+        identity.containsAny("china", "chinese", "shanghai", "中国", "上海") -> Res.drawable.flag_cn
+        identity.containsAny("japan", "japanese", "suzuka", "日本", "铃鹿") -> Res.drawable.flag_jp
+        identity.containsAny("bahrain", "sakhir", "巴林") -> Res.drawable.flag_bh
+        identity.containsAny("saudi", "jeddah", "沙特", "吉达") -> Res.drawable.flag_sa
+        identity.containsAny("emilia", "imola", "italian", "monza", "意大利", "伊莫拉", "蒙扎") -> Res.drawable.flag_it
+        identity.containsAny("monaco", "monte carlo", "摩纳哥") -> Res.drawable.flag_mc
+        identity.containsAny("spain", "spanish", "barcelona", "madrid", "西班牙", "巴塞罗那", "马德里") -> Res.drawable.flag_es
+        identity.containsAny("canada", "canadian", "montreal", "加拿大", "蒙特利尔") -> Res.drawable.flag_ca
+        identity.containsAny("austria", "austrian", "spielberg", "奥地利") -> Res.drawable.flag_at
+        identity.containsAny("britain", "british", "silverstone", "united kingdom", "英国", "银石") -> Res.drawable.flag_gb
+        identity.containsAny("belgium", "belgian", "spa-francorchamps", "spa ", "比利时", "斯帕") -> Res.drawable.flag_be
+        identity.containsAny("hungary", "hungarian", "budapest", "匈牙利", "布达佩斯") -> Res.drawable.flag_hu
+        identity.containsAny("netherlands", "dutch", "zandvoort", "荷兰", "赞德沃特") -> Res.drawable.flag_nl
+        identity.containsAny("azerbaijan", "baku", "阿塞拜疆", "巴库") -> Res.drawable.flag_az
+        identity.containsAny("singapore", "marina bay", "新加坡", "滨海湾") -> Res.drawable.flag_sg
+        identity.containsAny("mexico", "mexican", "墨西哥") -> Res.drawable.flag_mx
+        identity.containsAny("brazil", "brazilian", "sao paulo", "interlagos", "巴西", "圣保罗") -> Res.drawable.flag_br
+        identity.containsAny("qatar", "lusail", "卡塔尔", "卢赛尔", "罗塞尔") -> Res.drawable.flag_qa
+        identity.containsAny("abu dhabi", "yas marina", "united arab emirates", "阿布扎比", "亚斯码头") -> Res.drawable.flag_ae
+        identity.containsAny("miami", "las vegas", "austin", "united states", "american", "美国", "迈阿密", "拉斯维加斯", "奥斯汀", "美洲赛道") -> Res.drawable.flag_us
+        identity.containsAny("france", "french", "paul ricard", "法国") -> Res.drawable.flag_fr
+        identity.containsAny("germany", "german", "hockenheim", "nurburgring", "德国") -> Res.drawable.flag_de
+        identity.containsAny("malaysia", "sepang", "马来西亚", "雪邦") -> Res.drawable.flag_my
+        identity.containsAny("turkey", "turkish", "istanbul", "土耳其", "伊斯坦布尔") -> Res.drawable.flag_tr
+        identity.containsAny("russia", "russian", "sochi", "俄罗斯", "索契") -> Res.drawable.flag_ru
+        identity.containsAny("south africa", "kyalami", "南非") -> Res.drawable.flag_za
+        else -> null
+    }
+}
+
+private fun String.containsAny(vararg candidates: String): Boolean = candidates.any(::contains)
 
 @Composable
 private fun SoftPill(

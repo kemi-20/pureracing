@@ -75,25 +75,34 @@ fun LiquidButton(
                         val width = size.width
                         val height = size.height
 
-                        val progress = interactiveHighlight.pressProgress
-                        val scale = lerp(1f, 1f + 4f.dp.toPx() / size.height, progress)
+                        // Guard against zero-size measurement passes on Android.
+                        if (width > 0.5f && height > 0.5f) {
+                            val progress = interactiveHighlight.pressProgress
+                            val scale = lerp(1f, 1f + 4f.dp.toPx() / height, progress)
 
-                        val maxOffset = size.minDimension
-                        val initialDerivative = 0.05f
-                        val offset = interactiveHighlight.offset
-                        translationX = maxOffset * tanh(initialDerivative * offset.x / maxOffset)
-                        translationY = maxOffset * tanh(initialDerivative * offset.y / maxOffset)
+                            val maxOffset = size.minDimension.coerceAtLeast(1f)
+                            val initialDerivative = 0.05f
+                            val offset = interactiveHighlight.offset
+                            translationX = maxOffset * tanh(initialDerivative * offset.x / maxOffset)
+                            translationY = maxOffset * tanh(initialDerivative * offset.y / maxOffset)
 
-                        val maxDragScale = 4f.dp.toPx() / size.height
-                        val offsetAngle = atan2(offset.y, offset.x)
-                        scaleX =
-                            scale +
-                                    maxDragScale * abs(cos(offsetAngle) * offset.x / size.maxDimension) *
-                                    (width / height).fastCoerceAtMost(1f)
-                        scaleY =
-                            scale +
-                                    maxDragScale * abs(sin(offsetAngle) * offset.y / size.maxDimension) *
-                                    (height / width).fastCoerceAtMost(1f)
+                            val maxDragScale = 4f.dp.toPx() / height
+                            val offsetAngle = atan2(offset.y, offset.x)
+                            val maxDimension = size.maxDimension.coerceAtLeast(1f)
+                            scaleX =
+                                scale +
+                                        maxDragScale * abs(cos(offsetAngle) * offset.x / maxDimension) *
+                                        (width / height).fastCoerceAtMost(1f)
+                            scaleY =
+                                scale +
+                                        maxDragScale * abs(sin(offsetAngle) * offset.y / maxDimension) *
+                                        (height / width).fastCoerceAtMost(1f)
+                        } else {
+                            scaleX = 1f
+                            scaleY = 1f
+                            translationX = 0f
+                            translationY = 0f
+                        }
                     }
                 } else {
                     null

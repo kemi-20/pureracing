@@ -77,7 +77,8 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
     LaunchedEffect(loading, error, races) {
         if (!loading && error == null && races.isNotEmpty() && !didAutoScroll) {
             didAutoScroll = true
-            listState.scrollToItem(races.nearestRaceIndex())
+            val targetIndex = races.nearestRaceIndex().coerceIn(0, races.lastIndex)
+            listState.scrollToItem(targetIndex)
         }
     }
 
@@ -105,7 +106,18 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 96.dp)
             ) {
-                items(races, key = { "${it.gp_id}-${it.race_time}-${it.session.firstOrNull()?.session_id}" }) { gp ->
+                items(
+                    races,
+                    key = { gp ->
+                        listOf(
+                            gp.gp_id,
+                            gp.race_time,
+                            gp.gp_name,
+                            gp.session.firstOrNull()?.session_id?.toString().orEmpty(),
+                            gp.session.firstOrNull()?.session_name?.firstOrNull().orEmpty()
+                        ).joinToString("|")
+                    }
+                ) { gp ->
                     RaceGlassCard(gp, onRaceClick, onTrackClick)
                 }
             }
@@ -267,22 +279,26 @@ private fun RaceFlag(gp: RaceGp) {
         .height(51.dp)
         .clip(RoundedCornerShape(8.dp))
 
-    val localFlag = gp.localFlagResource()
+    // Prefer simple bundled flags, but never crash the Race tab if a resource fails to decode.
+    val localFlag = runCatching { gp.localFlagResource() }.getOrNull()
     if (localFlag != null) {
-        Image(
-            painter = painterResource(localFlag),
-            contentDescription = gp.gp_name,
-            modifier = modifier,
-            contentScale = ContentScale.Crop
-        )
-    } else {
-        AsyncImage(
-            model = gp.gp_logo,
-            contentDescription = gp.gp_name,
-            modifier = modifier,
-            contentScale = ContentScale.Crop
-        )
+        val painter = runCatching { painterResource(localFlag) }.getOrNull()
+        if (painter != null) {
+            Image(
+                painter = painter,
+                contentDescription = gp.gp_name,
+                modifier = modifier,
+                contentScale = ContentScale.Crop
+            )
+            return
+        }
     }
+    AsyncImage(
+        model = gp.gp_logo,
+        contentDescription = gp.gp_name,
+        modifier = modifier,
+        contentScale = ContentScale.Crop
+    )
 }
 
 private fun RaceGp.localFlagResource(): DrawableResource? {

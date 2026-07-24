@@ -48,6 +48,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import coil3.svg.SvgDecoder
 import com.racingdaily.resources.Res
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import com.racingdaily.data.model.RaceGp
@@ -324,24 +327,39 @@ private fun RaceFlag(gp: RaceGp) {
         .clip(RoundedCornerShape(8.dp))
         .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.18f))
 
-    // Keep high-res SVG sources, but load them through Coil's SVG decoder instead of
-    // Compose Resources painterResource (Android's resource SVG path is fragile).
+    // Keep high-res SVG sources. Prefer raw SVG bytes through Coil's SVG decoder so we avoid
+    // Compose Resources painterResource / unsupported resource URIs. Fall back to API logos.
     val localFlagPath = remember(gp.gp_name, gp.track_name) { gp.localFlagPath() }
-    val localFlagUri by produceState<String?>(initialValue = null, localFlagPath) {
+    val localFlagBytes by produceState<ByteArray?>(initialValue = null, localFlagPath) {
         value = localFlagPath?.let { path ->
-            runCatching { Res.getUri(path) }.getOrNull()
+            runCatching { Res.readBytes(path) }.getOrNull()
         }
     }
-    val model = localFlagUri
-        ?: gp.gp_logo.takeIf { it.isNotBlank() }
-        ?: gp.chp_logo.takeIf { it.isNotBlank() }
+    val remoteLogo = gp.gp_logo.takeIf { it.isNotBlank() } ?: gp.chp_logo.takeIf { it.isNotBlank() }
+    var useRemote by remember(localFlagPath, remoteLogo) { mutableStateOf(false) }
+    val platformContext = LocalPlatformContext.current
+    val model = when {
+        !useRemote && localFlagBytes != null -> ImageRequest.Builder(platformContext)
+            .data(localFlagBytes)
+            .decoderFactory(SvgDecoder.Factory())
+            .memoryCacheKey(localFlagPath)
+            .diskCacheKey(localFlagPath)
+            .build()
+        remoteLogo != null -> remoteLogo
+        else -> null
+    }
 
     if (model != null) {
         AsyncImage(
             model = model,
             contentDescription = gp.gp_name,
             modifier = modifier,
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
+            onError = {
+                if (!useRemote && remoteLogo != null && localFlagBytes != null) {
+                    useRemote = true
+                }
+            }
         )
     } else {
         Box(modifier, contentAlignment = Alignment.Center) {

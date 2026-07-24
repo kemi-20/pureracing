@@ -165,9 +165,14 @@ fun GlassSurface(
     onClick: (() -> Unit)? = null,
     role: Role? = null,
     contentPadding: PaddingValues = PaddingValues(0.dp),
+    /**
+     * Heavy Backdrop sampling is expensive and can crash Android when many surfaces
+     * are composed inside Lazy lists. Race/list cards should set this to false.
+     */
+    useBackdrop: Boolean = true,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val backdrop = LocalGlassBackdrop.current
+    val backdrop = if (useBackdrop) LocalGlassBackdrop.current else null
     val primary = MaterialTheme.colorScheme.primary
     val isLightTheme = !isSystemInDarkTheme()
     val containerColor =
@@ -269,6 +274,29 @@ fun GlassSurface(
             )
             .then(if (backdrop != null && onClick != null) interactiveHighlight.gestureModifier else Modifier)
             .padding(contentPadding),
+        content = content
+    )
+}
+
+
+@Composable
+fun LightweightSurface(
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(22.dp),
+    selected: Boolean = false,
+    onClick: (() -> Unit)? = null,
+    role: Role? = null,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
+    content: @Composable BoxScope.() -> Unit
+) {
+    GlassSurface(
+        modifier = modifier,
+        shape = shape,
+        selected = selected,
+        onClick = onClick,
+        role = role,
+        contentPadding = contentPadding,
+        useBackdrop = false,
         content = content
     )
 }

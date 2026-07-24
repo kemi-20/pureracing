@@ -2,6 +2,7 @@ package com.racingdaily.ui.screens.race
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,9 +53,7 @@ import com.racingdaily.data.remote.ApiService
 import com.racingdaily.platform.LocalDateTimeParts
 import com.racingdaily.platform.currentLocalDateTimeParts
 import com.racingdaily.ui.components.GlassButton
-import com.racingdaily.ui.components.GlassChip
-import com.racingdaily.ui.components.GlassSurface
-import com.racingdaily.ui.components.InfoPill
+import com.racingdaily.ui.components.LightweightSurface
 import com.racingdaily.ui.components.ScreenHeader
 
 @Composable
@@ -84,6 +84,7 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
             val targetIndex = runCatching { races.nearestRaceIndex() }
                 .getOrDefault(0)
                 .coerceIn(0, races.lastIndex)
+            // Delay one frame so LazyColumn has real item metrics before scrolling.
             runCatching { listState.scrollToItem(targetIndex) }
         }
     }
@@ -134,11 +135,13 @@ private fun List<RaceGp>.nearestRaceIndex(): Int {
     val liveIndex = indexOfFirst { gp -> gp.session.any { it.race_status == 2 } }
     if (liveIndex >= 0) return liveIndex
 
-    val now = currentLocalDateTimeParts().toSortableMinutes()
-    val nextTimedRace = mapIndexedNotNull { index, gp ->
-        gp.nextSessionMinutesAfter(now)?.let { index to it }
-    }.minByOrNull { it.second }
-    if (nextTimedRace != null) return nextTimedRace.first
+    val now = runCatching { currentLocalDateTimeParts().toSortableMinutes() }.getOrNull()
+    if (now != null) {
+        val nextTimedRace = mapIndexedNotNull { index, gp ->
+            gp.nextSessionMinutesAfter(now)?.let { index to it }
+        }.minByOrNull { it.second }
+        if (nextTimedRace != null) return nextTimedRace.first
+    }
 
     val upcomingIndex = indexOfFirst { gp -> gp.session.any { it.race_status != 1 } }
     if (upcomingIndex >= 0) return upcomingIndex
@@ -188,9 +191,8 @@ private fun String.parseRaceHour(): Pair<Int, Int>? {
 
 @Composable
 private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit) {
-    // Only the outer card uses liquid glass. Nested session tiles stay lightweight to avoid
-    // Android crashes from stacking too many Backdrop surfaces in one LazyColumn item.
-    GlassSurface(
+    // Critical Android stability: never stack real Backdrop glass inside Race list items.
+    LightweightSurface(
         modifier = Modifier.fillMaxWidth(),
         contentPadding = PaddingValues(16.dp),
         onClick = { onRaceClick(gp) }
@@ -223,7 +225,7 @@ private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClic
                         )
                     }
                 }
-                InfoPill(
+                SoftPill(
                     label = gp.chp_name.ifBlank { "F1" },
                     accent = MaterialTheme.colorScheme.primary,
                     leadingIcon = Icons.Rounded.Flag
@@ -234,15 +236,14 @@ private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClic
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (gp.track_id > 0) {
-                    GlassChip(
+                    SoftActionChip(
                         label = "赛道",
-                        selected = false,
                         onClick = { onTrackClick(gp.track_id) },
                         leadingIcon = Icons.Rounded.Route
                     )
                 }
                 gp.weather?.temp?.takeIf { it.isNotBlank() }?.let { temp ->
-                    InfoPill("${temp}C")
+                    SoftPill(label = "${temp}C")
                 }
             }
             if (gp.session.isNotEmpty()) {
@@ -335,5 +336,66 @@ private fun RaceLogo(gp: RaceGp) {
                 tint = MaterialTheme.colorScheme.primary
             )
         }
+    }
+}
+
+@Composable
+private fun SoftPill(
+    label: String,
+    accent: Color = MaterialTheme.colorScheme.secondary,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null
+) {
+    val shape = RoundedCornerShape(999.dp)
+    Row(
+        modifier = Modifier
+            .background(accent.copy(alpha = 0.12f), shape)
+            .border(1.dp, accent.copy(alpha = 0.22f), shape)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (leadingIcon != null) {
+            Icon(leadingIcon, contentDescription = null, modifier = Modifier.size(14.dp), tint = accent)
+        }
+        Text(
+            label,
+            color = accent,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun SoftActionChip(
+    label: String,
+    onClick: () -> Unit,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null
+) {
+    val shape = RoundedCornerShape(999.dp)
+    val accent = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        modifier = Modifier
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.22f), shape)
+            .border(1.dp, accent.copy(alpha = 0.18f), shape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (leadingIcon != null) {
+            Icon(leadingIcon, contentDescription = null, modifier = Modifier.size(15.dp), tint = accent)
+        }
+        Text(
+            label,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }

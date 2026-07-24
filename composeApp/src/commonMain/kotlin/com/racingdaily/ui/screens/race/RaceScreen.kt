@@ -1,6 +1,8 @@
 package com.racingdaily.ui.screens.race
 
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,9 +16,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Flag
@@ -43,8 +45,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.racingdaily.resources.*
 import com.racingdaily.data.model.RaceGp
+import com.racingdaily.data.model.RaceSession
 import com.racingdaily.data.remote.ApiService
 import com.racingdaily.platform.LocalDateTimeParts
 import com.racingdaily.platform.currentLocalDateTimeParts
@@ -53,8 +55,6 @@ import com.racingdaily.ui.components.GlassChip
 import com.racingdaily.ui.components.GlassSurface
 import com.racingdaily.ui.components.InfoPill
 import com.racingdaily.ui.components.ScreenHeader
-import org.jetbrains.compose.resources.DrawableResource
-import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: ApiService) {
@@ -69,7 +69,11 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
         loading = true
         error = null
         runCatching { api.getRaceSchedule() }
-            .onSuccess { races = it.filter { gp -> gp.gp_id.isNotBlank() || gp.gp_name.isNotBlank() } }
+            .onSuccess { payload ->
+                races = payload.filter { gp ->
+                    gp.gp_id.isNotBlank() || gp.gp_name.isNotBlank() || gp.race_time.isNotBlank()
+                }
+            }
             .onFailure { error = it.message ?: "无法加载赛历" }
         loading = false
     }
@@ -77,8 +81,10 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
     LaunchedEffect(loading, error, races) {
         if (!loading && error == null && races.isNotEmpty() && !didAutoScroll) {
             didAutoScroll = true
-            val targetIndex = races.nearestRaceIndex().coerceIn(0, races.lastIndex)
-            listState.scrollToItem(targetIndex)
+            val targetIndex = runCatching { races.nearestRaceIndex() }
+                .getOrDefault(0)
+                .coerceIn(0, races.lastIndex)
+            runCatching { listState.scrollToItem(targetIndex) }
         }
     }
 
@@ -98,6 +104,9 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
                     }
                 }
             }
+            races.isEmpty() -> Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                Text("暂无赛事数据", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             else -> LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -106,18 +115,12 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 96.dp)
             ) {
-                items(
+                itemsIndexed(
                     races,
-                    key = { gp ->
-                        listOf(
-                            gp.gp_id,
-                            gp.race_time,
-                            gp.gp_name,
-                            gp.session.firstOrNull()?.session_id?.toString().orEmpty(),
-                            gp.session.firstOrNull()?.session_name?.firstOrNull().orEmpty()
-                        ).joinToString("|")
+                    key = { index, gp ->
+                        "${index}|${gp.gp_id}|${gp.race_time}|${gp.session.firstOrNull()?.session_id ?: 0}"
                     }
-                ) { gp ->
+                ) { _, gp ->
                     RaceGlassCard(gp, onRaceClick, onTrackClick)
                 }
             }
@@ -126,6 +129,8 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
 }
 
 private fun List<RaceGp>.nearestRaceIndex(): Int {
+    if (isEmpty()) return 0
+
     val liveIndex = indexOfFirst { gp -> gp.session.any { it.race_status == 2 } }
     if (liveIndex >= 0) return liveIndex
 
@@ -183,6 +188,8 @@ private fun String.parseRaceHour(): Pair<Int, Int>? {
 
 @Composable
 private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit) {
+    // Only the outer card uses liquid glass. Nested session tiles stay lightweight to avoid
+    // Android crashes from stacking too many Backdrop surfaces in one LazyColumn item.
     GlassSurface(
         modifier = Modifier.fillMaxWidth(),
         contentPadding = PaddingValues(16.dp),
@@ -190,19 +197,31 @@ private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClic
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                RaceFlag(gp)
+                RaceLogo(gp)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        gp.gp_name.ifBlank { gp.race_time_detail },
+                        gp.gp_name.ifBlank { gp.race_time_detail.ifBlank { "赛事" } },
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(gp.race_time_detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-                    Text(gp.track_name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (gp.race_time_detail.isNotBlank()) {
+                        Text(
+                            gp.race_time_detail,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                    if (gp.track_name.isNotBlank()) {
+                        Text(
+                            gp.track_name,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 InfoPill(
                     label = gp.chp_name.ifBlank { "F1" },
@@ -210,7 +229,10 @@ private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClic
                     leadingIcon = Icons.Rounded.Flag
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 if (gp.track_id > 0) {
                     GlassChip(
                         label = "赛道",
@@ -219,13 +241,20 @@ private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClic
                         leadingIcon = Icons.Rounded.Route
                     )
                 }
-                gp.weather?.takeIf { it.temp.isNotBlank() }?.let {
-                    InfoPill("${it.temp}C")
+                gp.weather?.temp?.takeIf { it.isNotBlank() }?.let { temp ->
+                    InfoPill("${temp}C")
                 }
             }
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(gp.session) { session ->
-                    RaceSessionTile(session)
+            if (gp.session.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    gp.session.forEach { session ->
+                        RaceSessionTile(session)
+                    }
                 }
             }
         }
@@ -233,7 +262,7 @@ private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClic
 }
 
 @Composable
-private fun RaceSessionTile(session: com.racingdaily.data.model.RaceSession) {
+private fun RaceSessionTile(session: RaceSession) {
     val accent = when (session.race_status) {
         2 -> MaterialTheme.colorScheme.primary
         1 -> MaterialTheme.colorScheme.onSurfaceVariant
@@ -244,92 +273,67 @@ private fun RaceSessionTile(session: com.racingdaily.data.model.RaceSession) {
         1 -> "已结束"
         else -> "未开始"
     }
-    GlassSurface(
-        modifier = Modifier.width(132.dp),
-        shape = RoundedCornerShape(15.dp),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 11.dp)
+    val shape = RoundedCornerShape(15.dp)
+    Column(
+        Modifier
+            .width(132.dp)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.22f), shape)
+            .border(1.dp, accent.copy(alpha = 0.28f), shape)
+            .padding(horizontal = 12.dp, vertical = 11.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(Icons.Rounded.Timer, null, modifier = Modifier.size(15.dp), tint = accent)
-                Text(status, color = accent, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
-            }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(Icons.Rounded.Timer, null, modifier = Modifier.size(15.dp), tint = accent)
             Text(
-                session.session_name.firstOrNull().orEmpty(),
-                color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.labelLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                session.hour.joinToString(" / ").ifBlank { "时间待定" },
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                status,
+                color = accent,
                 style = MaterialTheme.typography.labelSmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                fontWeight = FontWeight.SemiBold
             )
         }
+        Text(
+            session.session_name.firstOrNull().orEmpty().ifBlank { "分节" },
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            session.hour.joinToString(" / ").ifBlank { "时间待定" },
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
 @Composable
-private fun RaceFlag(gp: RaceGp) {
+private fun RaceLogo(gp: RaceGp) {
     val modifier = Modifier
         .width(68.dp)
         .height(51.dp)
         .clip(RoundedCornerShape(8.dp))
+        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.18f))
 
-    // Prefer simplified bundled flags; fall back to API logo when no local mapping exists.
-    val localFlag = gp.localFlagResource()
-    if (localFlag != null) {
-        Image(
-            painter = painterResource(localFlag),
+    val logo = gp.gp_logo.takeIf { it.isNotBlank() } ?: gp.chp_logo
+    if (logo.isNotBlank()) {
+        AsyncImage(
+            model = logo,
             contentDescription = gp.gp_name,
             modifier = modifier,
             contentScale = ContentScale.Crop
         )
     } else {
-        AsyncImage(
-            model = gp.gp_logo,
-            contentDescription = gp.gp_name,
-            modifier = modifier,
-            contentScale = ContentScale.Crop
-        )
+        Box(modifier, contentAlignment = Alignment.Center) {
+            Icon(
+                Icons.Rounded.Flag,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
     }
 }
-
-private fun RaceGp.localFlagResource(): DrawableResource? {
-    val identity = "$gp_name $track_name".lowercase()
-    return when {
-        identity.containsAny("australia", "melbourne", "澳大利亚") -> Res.drawable.flag_au
-        identity.containsAny("china", "chinese", "shanghai", "中国", "上海") -> Res.drawable.flag_cn
-        identity.containsAny("japan", "japanese", "suzuka", "日本", "铃鹿") -> Res.drawable.flag_jp
-        identity.containsAny("bahrain", "sakhir", "巴林") -> Res.drawable.flag_bh
-        identity.containsAny("saudi", "jeddah", "沙特", "吉达") -> Res.drawable.flag_sa
-        identity.containsAny("emilia", "imola", "italian", "monza", "意大利", "伊莫拉", "蒙扎") -> Res.drawable.flag_it
-        identity.containsAny("monaco", "monte carlo", "摩纳哥") -> Res.drawable.flag_mc
-        identity.containsAny("spain", "spanish", "barcelona", "madrid", "西班牙", "巴塞罗那", "马德里") -> Res.drawable.flag_es
-        identity.containsAny("canada", "canadian", "montreal", "加拿大", "蒙特利尔") -> Res.drawable.flag_ca
-        identity.containsAny("austria", "austrian", "spielberg", "奥地利") -> Res.drawable.flag_at
-        identity.containsAny("britain", "british", "silverstone", "united kingdom", "英国", "银石") -> Res.drawable.flag_gb
-        identity.containsAny("belgium", "belgian", "spa-francorchamps", "spa ", "比利时", "斯帕") -> Res.drawable.flag_be
-        identity.containsAny("hungary", "hungarian", "budapest", "匈牙利", "布达佩斯") -> Res.drawable.flag_hu
-        identity.containsAny("netherlands", "dutch", "zandvoort", "荷兰", "赞德沃特") -> Res.drawable.flag_nl
-        identity.containsAny("azerbaijan", "baku", "阿塞拜疆", "巴库") -> Res.drawable.flag_az
-        identity.containsAny("singapore", "marina bay", "新加坡", "滨海湾") -> Res.drawable.flag_sg
-        identity.containsAny("mexico", "mexican", "墨西哥") -> Res.drawable.flag_mx
-        identity.containsAny("brazil", "brazilian", "sao paulo", "interlagos", "巴西", "圣保罗") -> Res.drawable.flag_br
-        identity.containsAny("qatar", "lusail", "卡塔尔", "卢赛尔") -> Res.drawable.flag_qa
-        identity.containsAny("abu dhabi", "yas marina", "united arab emirates", "阿布扎比", "亚斯码头") -> Res.drawable.flag_ae
-        identity.containsAny("miami", "las vegas", "austin", "united states", "american", "美国", "迈阿密", "拉斯维加斯", "奥斯汀") -> Res.drawable.flag_us
-        identity.containsAny("france", "french", "paul ricard", "法国") -> Res.drawable.flag_fr
-        identity.containsAny("germany", "german", "hockenheim", "nurburgring", "德国") -> Res.drawable.flag_de
-        identity.containsAny("malaysia", "sepang", "马来西亚", "雪邦") -> Res.drawable.flag_my
-        identity.containsAny("turkey", "turkish", "istanbul", "土耳其", "伊斯坦布尔") -> Res.drawable.flag_tr
-        identity.containsAny("russia", "russian", "sochi", "俄罗斯", "索契") -> Res.drawable.flag_ru
-        identity.containsAny("south africa", "kyalami", "南非") -> Res.drawable.flag_za
-        else -> null
-    }
-}
-
-private fun String.containsAny(vararg candidates: String): Boolean = candidates.any(::contains)

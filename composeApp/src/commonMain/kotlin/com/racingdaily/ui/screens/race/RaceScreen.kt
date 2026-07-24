@@ -324,16 +324,20 @@ private fun RaceFlag(gp: RaceGp) {
         .clip(RoundedCornerShape(8.dp))
         .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.18f))
 
-    // Prefer high-res bundled SVG flags; fall back to API logo only when no mapping exists.
-    val localFlag = gp.localFlagResource()
+    // Prefer high-res bundled flags (pre-rendered PNG from source SVG).
+    // Fall back to API logo only when no mapping exists or resource load fails.
+    val localFlag = runCatching { gp.localFlagResource() }.getOrNull()
     if (localFlag != null) {
-        Image(
-            painter = painterResource(localFlag),
-            contentDescription = gp.gp_name,
-            modifier = modifier,
-            contentScale = ContentScale.Crop
-        )
-        return
+        val painter = runCatching { painterResource(localFlag) }.getOrNull()
+        if (painter != null) {
+            Image(
+                painter = painter,
+                contentDescription = gp.gp_name,
+                modifier = modifier,
+                contentScale = ContentScale.Crop
+            )
+            return
+        }
     }
 
     val logo = gp.gp_logo.takeIf { it.isNotBlank() } ?: gp.chp_logo

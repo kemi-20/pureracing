@@ -18,3 +18,4 @@ local.properties
 /.claude
 run_log.txt
 .codex-preview/
+.tmp-flag-convert/

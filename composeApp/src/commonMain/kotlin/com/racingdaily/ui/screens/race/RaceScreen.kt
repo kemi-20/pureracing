@@ -279,26 +279,23 @@ private fun RaceFlag(gp: RaceGp) {
         .height(51.dp)
         .clip(RoundedCornerShape(8.dp))
 
-    // Prefer simple bundled flags, but never crash the Race tab if a resource fails to decode.
-    val localFlag = runCatching { gp.localFlagResource() }.getOrNull()
+    // Prefer simplified bundled flags; fall back to API logo when no local mapping exists.
+    val localFlag = gp.localFlagResource()
     if (localFlag != null) {
-        val painter = runCatching { painterResource(localFlag) }.getOrNull()
-        if (painter != null) {
-            Image(
-                painter = painter,
-                contentDescription = gp.gp_name,
-                modifier = modifier,
-                contentScale = ContentScale.Crop
-            )
-            return
-        }
+        Image(
+            painter = painterResource(localFlag),
+            contentDescription = gp.gp_name,
+            modifier = modifier,
+            contentScale = ContentScale.Crop
+        )
+    } else {
+        AsyncImage(
+            model = gp.gp_logo,
+            contentDescription = gp.gp_name,
+            modifier = modifier,
+            contentScale = ContentScale.Crop
+        )
     }
-    AsyncImage(
-        model = gp.gp_logo,
-        contentDescription = gp.gp_name,
-        modifier = modifier,
-        contentScale = ContentScale.Crop
-    )
 }
 
 private fun RaceGp.localFlagResource(): DrawableResource? {

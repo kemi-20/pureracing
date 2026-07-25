@@ -554,7 +554,7 @@ private fun SessionCard(session: RaceSession) {
             if (session.race_result.isEmpty()) {
                 Text("暂无比赛结果", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             } else {
-                session.race_result.take(10).forEach { result ->
+                session.race_result.forEach { result ->
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text("${result.rank}", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(28.dp))
                         AsyncImage(result.team_logo, null, Modifier.size(24.dp))

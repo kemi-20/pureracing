@@ -55,6 +55,7 @@ import com.racingdaily.resources.Res
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import com.racingdaily.data.model.RaceGp
 import com.racingdaily.data.model.RaceSession
+import com.racingdaily.data.model.StationItem
 import com.racingdaily.data.remote.ApiService
 import com.racingdaily.platform.LocalDateTimeParts
 import com.racingdaily.platform.currentLocalDateTimeParts
@@ -74,7 +75,14 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
     LaunchedEffect(reloadKey) {
         loading = true
         error = null
-        runCatching { api.getRaceSchedule() }
+        runCatching {
+            val schedule = api.getRaceSchedule()
+            val currentYear = currentLocalDateTimeParts().year
+            val completedStations = runCatching {
+                api.getStationList(chpId = 6, seasonId = currentYear).tmp
+            }.getOrDefault(emptyList())
+            schedule.withCompletedStations(completedStations)
+        }
             .onSuccess { payload ->
                 races = payload.filter { gp ->
                     gp.gp_id.isNotBlank() || gp.gp_name.isNotBlank() || gp.race_time.isNotBlank()
@@ -133,6 +141,27 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
             }
         }
     }
+}
+
+private fun List<RaceGp>.withCompletedStations(stations: List<StationItem>): List<RaceGp> {
+    if (stations.isEmpty()) return this
+
+    val scheduledIds = mapTo(mutableSetOf()) { it.gp_id }
+    val missingCompleted = stations
+        .asSequence()
+        .filter { it.gp_id > 0 && it.gp_id.toString() !in scheduledIds }
+        .sortedBy { it.number.toIntOrNull() ?: Int.MAX_VALUE }
+        .map { station ->
+            RaceGp(
+                gp_id = station.gp_id.toString(),
+                gp_name = station.chinese_name,
+                chp_name = "F1",
+                race_time_detail = station.number.toIntOrNull()?.let { "第 $it 站 · 已结束" }.orEmpty()
+            )
+        }
+        .toList()
+
+    return missingCompleted + this
 }
 
 private fun List<RaceGp>.nearestRaceIndex(): Int {

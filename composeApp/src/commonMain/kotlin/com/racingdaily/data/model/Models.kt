@@ -109,7 +109,11 @@ object FlexibleLongSerializer : KSerializer<Long> {
     val list: List<kotlinx.serialization.json.JsonObject> = emptyList())
 
 // Station
-@Serializable data class StationItem(val gp_id: Int = 0, val chinese_name: String = "", val number: String = "")
+@Serializable data class StationItem(
+    val gp_id: Int = 0,
+    val chinese_name: String = "",
+    @Serializable(with = FlexibleStringSerializer::class) val number: String = ""
+)
 @Serializable data class StationData(val tmp: List<StationItem> = emptyList())
 @Serializable data class StationRankData(val navbar: List<StationNavItem> = emptyList())
 @Serializable data class StationNavItem(val id: Int = 0, val key_name: String = "", val name: String = "")

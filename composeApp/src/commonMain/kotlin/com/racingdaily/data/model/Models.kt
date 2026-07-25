@@ -92,6 +92,14 @@ object FlexibleLongSerializer : KSerializer<Long> {
     @Serializable(with = FlexibleStringSerializer::class) val gp_id: String = "", val gp_name: String = "", val chp_name: String = "", val chp_logo: String = "",
     val gp_logo: String = "", val track_name: String = "", val track_id: Int = 0,
     val weather: WeatherInfo? = null, val session: List<RaceSession> = emptyList())
+@Serializable data class RaceListItem(
+    val gp_name: String = "",
+    val track_name: String = "",
+    val track_id: Int = 0,
+    val status: Int = 0,
+    val status_name: String = "",
+    val time: String = ""
+)
 @Serializable data class WeatherInfo(val temp: String = "", val icon: String = "")
 @Serializable data class RaceSession(val session_id: Int = 0, val session_name: List<String> = emptyList(),
     val session_type: Int = 0, val hour: List<String> = emptyList(), val race_status: Int = 0,

@@ -54,6 +54,7 @@ import coil3.svg.SvgDecoder
 import com.racingdaily.resources.Res
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import com.racingdaily.data.model.RaceGp
+import com.racingdaily.data.model.RaceListItem
 import com.racingdaily.data.model.RaceSession
 import com.racingdaily.data.model.StationItem
 import com.racingdaily.data.remote.ApiService
@@ -81,7 +82,10 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
             val completedStations = runCatching {
                 api.getStationList(chpId = 6, seasonId = currentYear).tmp
             }.getOrDefault(emptyList())
-            schedule.withCompletedStations(completedStations)
+            val seasonList = runCatching {
+                api.getRaceList(chpId = 6, seasonId = currentYear)
+            }.getOrDefault(emptyList())
+            schedule.withCompletedStations(completedStations, seasonList, currentYear)
         }
             .onSuccess { payload ->
                 races = payload.filter { gp ->
@@ -143,7 +147,11 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
     }
 }
 
-private fun List<RaceGp>.withCompletedStations(stations: List<StationItem>): List<RaceGp> {
+private fun List<RaceGp>.withCompletedStations(
+    stations: List<StationItem>,
+    seasonList: List<RaceListItem>,
+    seasonYear: Int
+): List<RaceGp> {
     if (stations.isEmpty()) return this
 
     val scheduledIds = mapTo(mutableSetOf()) { it.gp_id }
@@ -152,16 +160,46 @@ private fun List<RaceGp>.withCompletedStations(stations: List<StationItem>): Lis
         .filter { it.gp_id > 0 && it.gp_id.toString() !in scheduledIds }
         .sortedBy { it.number.toIntOrNull() ?: Int.MAX_VALUE }
         .map { station ->
+            val details = seasonList.firstOrNull { it.gp_name.sameRaceNameAs(station.chinese_name) }
+            val status = details?.statusName().orEmpty().ifBlank { "已结束" }
             RaceGp(
+                race_time = details?.time?.firstDateOfRace(seasonYear).orEmpty(),
+                race_time_detail = details?.time?.let { "$it · $status" }
+                    ?.takeIf { it.isNotBlank() }
+                    ?: station.number.toIntOrNull()?.let { "第 $it 站 · $status" }.orEmpty(),
                 gp_id = station.gp_id.toString(),
                 gp_name = station.chinese_name,
                 chp_name = "F1",
-                race_time_detail = station.number.toIntOrNull()?.let { "第 $it 站 · 已结束" }.orEmpty()
+                track_name = details?.track_name.orEmpty(),
+                track_id = details?.track_id ?: 0
             )
         }
         .toList()
 
     return missingCompleted + this
+}
+
+private fun String.sameRaceNameAs(other: String): Boolean =
+    trim().removeSuffix("（取消）").removeSuffix("(取消)") ==
+        other.trim().removeSuffix("（取消）").removeSuffix("(取消)")
+
+private fun RaceListItem.statusName(): String =
+    status_name.ifBlank {
+        when (status) {
+            1 -> "完赛"
+            4 -> "取消"
+            else -> ""
+        }
+    }
+
+private fun String.firstDateOfRace(year: Int): String? {
+    val first = substringBefore("~").trim()
+    val parts = first.split("月", "日")
+    if (parts.size < 2) return null
+    val month = parts[0].filter(Char::isDigit).toIntOrNull() ?: return null
+    val day = parts[1].filter(Char::isDigit).toIntOrNull() ?: return null
+    if (month !in 1..12 || day !in 1..31) return null
+    return "${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}"
 }
 
 private fun List<RaceGp>.nearestRaceIndex(): Int {

@@ -26,6 +26,12 @@ class ApiService(private val client: HttpClient) {
     suspend fun getRaceSchedule() =
         client.get("race/index").body<ApiResponse<List<RaceGp>>>().requireData()
 
+    suspend fun getRaceList(chpId: Int, seasonId: Int) =
+        client.get("race/list") {
+            parameter("chp_id", chpId)
+            parameter("season_id", seasonId)
+        }.body<ApiResponse<List<RaceListItem>>>().requireData()
+
     suspend fun getRankingNav() =
         client.get("rank/navigationv2").body<ApiResponse<RankingNavData>>().requireData()
 

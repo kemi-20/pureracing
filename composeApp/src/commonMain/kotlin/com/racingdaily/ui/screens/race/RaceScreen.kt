@@ -56,6 +56,8 @@ import org.jetbrains.compose.resources.ExperimentalResourceApi
 import com.racingdaily.data.model.RaceGp
 import com.racingdaily.data.model.RaceListItem
 import com.racingdaily.data.model.RaceSession
+import com.racingdaily.data.model.RankingData
+import com.racingdaily.data.model.SessionResult
 import com.racingdaily.data.model.StationItem
 import com.racingdaily.data.remote.ApiService
 import com.racingdaily.platform.LocalDateTimeParts
@@ -63,6 +65,11 @@ import com.racingdaily.platform.currentLocalDateTimeParts
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.LightweightSurface
 import com.racingdaily.ui.components.ScreenHeader
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 
 @Composable
 fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: ApiService) {
@@ -85,7 +92,10 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
             val seasonList = runCatching {
                 api.getRaceList(chpId = 6, seasonId = currentYear)
             }.getOrDefault(emptyList())
-            schedule.withCompletedStations(completedStations, seasonList, currentYear)
+            val ranking = runCatching {
+                api.getDriverRanking(chpId = 6, seasonId = currentYear)
+            }.getOrNull()
+            buildSeasonRaceSchedule(schedule, completedStations, seasonList, ranking, currentYear)
         }
             .onSuccess { payload ->
                 races = payload.filter { gp ->
@@ -147,41 +157,306 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
     }
 }
 
-private fun List<RaceGp>.withCompletedStations(
+private fun buildSeasonRaceSchedule(
+    schedule: List<RaceGp>,
     stations: List<StationItem>,
     seasonList: List<RaceListItem>,
+    ranking: RankingData?,
     seasonYear: Int
 ): List<RaceGp> {
-    if (stations.isEmpty()) return this
+    val historicalResults = ranking.historicalRaceResults()
+    val scheduleByGp = schedule
+        .groupBy { it.gp_id.trim() }
+        .filterKeys { it.isNotBlank() && it != "0" }
 
-    val scheduledIds = mapTo(mutableSetOf()) { it.gp_id }
-    val missingCompleted = stations
+    // Prefer official full-season list so early completed races are never dropped.
+    if (seasonList.isNotEmpty()) {
+        val stationByName = stations.associateBy { it.chinese_name.normalizedRaceName() }
+        return seasonList.map { seasonItem ->
+            val station = stationByName[seasonItem.gp_name.normalizedRaceName()]
+            val gpId = station?.gp_id?.takeIf { it > 0 }?.toString()
+                ?: scheduleByGp.keys.firstOrNull { key ->
+                    scheduleByGp[key].orEmpty().any { day -> day.gp_name.sameRaceNameAs(seasonItem.gp_name) }
+                }
+                .orEmpty()
+            val days = when {
+                gpId.isNotBlank() -> scheduleByGp[gpId].orEmpty()
+                else -> schedule.filter { it.gp_name.sameRaceNameAs(seasonItem.gp_name) }
+            }
+            days.mergedRaceCard(
+                fallbackName = seasonItem.gp_name,
+                fallbackTrackName = seasonItem.track_name,
+                fallbackTrackId = seasonItem.track_id,
+                fallbackGpId = gpId,
+                seasonItem = seasonItem,
+                station = station,
+                seasonYear = seasonYear,
+                historicalResults = historicalResults
+            )
+        }
+    }
+
+    // Fallback: rolling schedule + missing station entries.
+    val scheduledIds = schedule.mapTo(mutableSetOf()) { it.gp_id }
+    val mergedSchedule = schedule
+        .groupBy { it.gp_id.ifBlank { it.gp_name } }
+        .map { (_, days) ->
+            days.mergedRaceCard(
+                fallbackName = days.firstOrNull()?.gp_name.orEmpty(),
+                fallbackTrackName = days.firstOrNull()?.track_name.orEmpty(),
+                fallbackTrackId = days.firstOrNull()?.track_id ?: 0,
+                fallbackGpId = days.firstOrNull()?.gp_id.orEmpty(),
+                seasonItem = null,
+                station = null,
+                seasonYear = seasonYear,
+                historicalResults = historicalResults
+            )
+        }
+    val missing = stations
         .asSequence()
         .filter { it.gp_id > 0 && it.gp_id.toString() !in scheduledIds }
         .sortedBy { it.number.toIntOrNull() ?: Int.MAX_VALUE }
         .map { station ->
             val details = seasonList.firstOrNull { it.gp_name.sameRaceNameAs(station.chinese_name) }
-            val status = details?.statusName().orEmpty().ifBlank { "已结束" }
-            RaceGp(
-                race_time = details?.time?.firstDateOfRace(seasonYear).orEmpty(),
-                race_time_detail = details?.time?.let { "$it · $status" }
-                    ?.takeIf { it.isNotBlank() }
-                    ?: station.number.toIntOrNull()?.let { "第 $it 站 · $status" }.orEmpty(),
-                gp_id = station.gp_id.toString(),
-                gp_name = station.chinese_name,
-                chp_name = "F1",
-                track_name = details?.track_name.orEmpty(),
-                track_id = details?.track_id ?: 0
+            emptyList<RaceGp>().mergedRaceCard(
+                fallbackName = station.chinese_name,
+                fallbackTrackName = details?.track_name.orEmpty(),
+                fallbackTrackId = details?.track_id ?: 0,
+                fallbackGpId = station.gp_id.toString(),
+                seasonItem = details,
+                station = station,
+                seasonYear = seasonYear,
+                historicalResults = historicalResults
             )
         }
         .toList()
+    return missing + mergedSchedule
+}
 
-    return missingCompleted + this
+private fun List<RaceGp>.mergedRaceCard(
+    fallbackName: String,
+    fallbackTrackName: String,
+    fallbackTrackId: Int,
+    fallbackGpId: String,
+    seasonItem: RaceListItem?,
+    station: StationItem?,
+    seasonYear: Int,
+    historicalResults: Map<String, List<SessionResult>>
+): RaceGp {
+    val orderedDays = sortedBy { it.race_time }
+    val sample = orderedDays.firstOrNull()
+    val gpId = fallbackGpId.ifBlank { sample?.gp_id.orEmpty() }
+    val status = seasonItem?.statusName().orEmpty()
+        .ifBlank {
+            when {
+                orderedDays.any { day -> day.session.any { it.race_status == 2 } } -> "进行中"
+                orderedDays.any { day -> day.session.any { it.race_status != 1 && it.race_status != 4 } } -> "未赛"
+                orderedDays.isNotEmpty() -> "完赛"
+                else -> "已结束"
+            }
+        }
+    val sessionsFromSchedule = orderedDays.flatMap { day ->
+        day.session.map { session ->
+            val dayLabel = day.race_time_detail.substringAfter(" ").ifBlank {
+                day.race_time_detail.ifBlank { day.race_time }
+            }
+            val hours = session.hour.map { hour ->
+                if (dayLabel.isBlank() || hour.contains(dayLabel)) hour else "$dayLabel $hour"
+            }.ifEmpty {
+                listOf(dayLabel.ifBlank { "时间待定" })
+            }
+            session.copy(hour = hours)
+        }
+    }
+    val raceResults = historicalResults[gpId].orEmpty().ifEmpty {
+        historicalResults.entries.firstOrNull { (key, _) ->
+            key.sameRaceNameAs(fallbackName) || key.sameRaceNameAs(sample?.gp_name.orEmpty())
+        }?.value.orEmpty()
+    }
+    val sessions = when {
+        sessionsFromSchedule.isNotEmpty() -> {
+            if (raceResults.isEmpty()) {
+                sessionsFromSchedule
+            } else {
+                var attached = false
+                val mapped = sessionsFromSchedule.map { session ->
+                    val isRaceSession = session.session_type == 5 ||
+                        session.session_name.any { name -> name.contains("正赛") }
+                    if (!attached && isRaceSession && session.race_result.isEmpty()) {
+                        attached = true
+                        session.copy(race_result = raceResults, race_status = 1)
+                    } else {
+                        session
+                    }
+                }
+                if (attached) {
+                    mapped
+                } else {
+                    mapped + RaceSession(
+                        session_id = -1,
+                        session_name = listOf("正赛成绩"),
+                        session_type = 5,
+                        hour = listOf(
+                            seasonItem?.time?.substringAfter("~")?.trim().orEmpty().ifBlank { "完赛" }
+                        ),
+                        race_status = 1,
+                        race_result = raceResults
+                    )
+                }
+            }
+        }
+        raceResults.isNotEmpty() -> listOf(
+            RaceSession(
+                session_id = -1,
+                session_name = listOf("正赛"),
+                session_type = 5,
+                hour = listOf(seasonItem?.time.orEmpty().ifBlank { "完赛" }),
+                race_status = 1,
+                race_result = raceResults
+            )
+        )
+        seasonItem != null || station != null -> listOf(
+            RaceSession(
+                session_id = 0,
+                session_name = listOf(status.ifBlank { "赛程" }),
+                session_type = 0,
+                hour = listOf(seasonItem?.time.orEmpty().ifBlank { "详见分站" }),
+                race_status = when (seasonItem?.status) {
+                    1 -> 1
+                    4 -> 4
+                    else -> 0
+                },
+                race_result = emptyList()
+            )
+        )
+        else -> emptyList()
+    }
+
+    val detail = seasonItem?.time?.let { range ->
+        if (status.isBlank()) range else "$range · $status"
+    }.orEmpty().ifBlank {
+        orderedDays.map { it.race_time_detail }.filter { it.isNotBlank() }.distinct()
+            .joinToString(" / ")
+            .ifBlank {
+                station?.number?.toIntOrNull()?.let { "第 $it 站 · $status" }.orEmpty()
+            }
+    }
+
+    return RaceGp(
+        race_time = orderedDays.firstOrNull()?.race_time
+            ?: seasonItem?.time?.firstDateOfRace(seasonYear).orEmpty(),
+        race_time_detail = detail,
+        gp_id = gpId,
+        gp_name = sample?.gp_name?.takeIf { it.isNotBlank() } ?: fallbackName,
+        chp_name = sample?.chp_name?.ifBlank { "F1" } ?: "F1",
+        chp_logo = sample?.chp_logo.orEmpty(),
+        gp_logo = sample?.gp_logo.orEmpty(),
+        track_name = sample?.track_name?.ifBlank { fallbackTrackName } ?: fallbackTrackName,
+        track_id = (sample?.track_id ?: 0).takeIf { it > 0 } ?: fallbackTrackId,
+        weather = sample?.weather,
+        session = sessions
+    )
+}
+
+private fun RankingData?.historicalRaceResults(): Map<String, List<SessionResult>> {
+    val tabs = this?.list.orEmpty()
+    val trendTab = tabs.firstOrNull { it.tab_key == "gp_p_trend" } ?: return emptyMap()
+    val scoreTab = tabs.firstOrNull { it.tab_key == "gp_score_trend" }
+    val profileTab = tabs.firstOrNull { it.tab_key == "total_score" }
+
+    data class DriverRow(
+        val name: String,
+        val driverId: String,
+        val teamId: String,
+        val teamLogo: String,
+        val ranks: Map<String, Int>
+    )
+
+    fun JsonObject.text(key: String): String =
+        (this[key] as? JsonPrimitive)?.contentOrNull.orEmpty()
+
+    fun JsonObject.intValue(key: String): Int =
+        text(key).toIntOrNull()
+            ?: (this[key] as? JsonPrimitive)?.contentOrNull?.toIntOrNull()
+            ?: 0
+
+    val profiles = profileTab?.list.orEmpty().associateBy { row ->
+        row.text("driver_abbr_chinese_name").ifBlank { row.text("driver_name") }
+    }
+
+    val drivers = trendTab.list.mapNotNull { row ->
+        val ranks = linkedMapOf<String, Int>()
+        row["site_rank"]?.jsonArray?.forEach { item ->
+            val obj = item.jsonObject
+            val gpId = obj.text("gp_id")
+            val order = obj.intValue("display_order")
+            if (gpId.isNotBlank() && order > 0) ranks[gpId] = order
+            val gpName = obj.text("gp_chinese_name")
+            if (gpName.isNotBlank() && order > 0) ranks[gpName] = order
+        }
+        if (ranks.isEmpty()) return@mapNotNull null
+        val name = row.text("driver_abbr_chinese_name").ifBlank { row.text("driver_name") }
+        val profile = profiles[name]
+        DriverRow(
+            name = name,
+            driverId = profile?.text("driver_id").orEmpty().ifBlank { row.text("driver_id") },
+            teamId = profile?.text("team_id").orEmpty().ifBlank { row.text("team_id") },
+            teamLogo = profile?.text("team_logo").orEmpty().ifBlank { row.text("team_logo") },
+            ranks = ranks
+        )
+    }
+    if (drivers.isEmpty()) return emptyMap()
+
+    val pointsByDriverGp = mutableMapOf<String, MutableMap<String, Int>>()
+    scoreTab?.list?.forEach { row ->
+        val name = row.text("driver_abbr_chinese_name").ifBlank { row.text("driver_name") }
+        val points = linkedMapOf<String, Int>()
+        var previous = 0
+        row["site_point"]?.jsonArray?.forEach { item ->
+            val obj = item.jsonObject
+            val gpId = obj.text("gp_id")
+            val total = obj.intValue("total_point")
+            val delta = (total - previous).coerceAtLeast(0)
+            previous = total
+            if (gpId.isNotBlank()) points[gpId] = delta
+            val gpName = obj.text("gp_chinese_name")
+            if (gpName.isNotBlank()) points[gpName] = delta
+        }
+        pointsByDriverGp[name] = points
+    }
+
+    val allGpKeys = drivers.flatMap { it.ranks.keys }.toSet()
+    val out = linkedMapOf<String, List<SessionResult>>()
+    allGpKeys.forEach { gpKey ->
+        val ranked = drivers.mapNotNull { driver ->
+            val rank = driver.ranks[gpKey] ?: return@mapNotNull null
+            val points = pointsByDriverGp[driver.name]?.get(gpKey) ?: 0
+            rank to SessionResult(
+                rank = rank,
+                driverid = driver.driverId,
+                dr_name = driver.name,
+                teamid = driver.teamId,
+                team_logo = driver.teamLogo,
+                gap = "",
+                score_p = points,
+                is_fast = 0
+            )
+        }.sortedBy { it.first }.map { it.second }
+        if (ranked.isNotEmpty()) out[gpKey] = ranked
+    }
+    return out
 }
 
 private fun String.sameRaceNameAs(other: String): Boolean =
-    trim().removeSuffix("（取消）").removeSuffix("(取消)") ==
-        other.trim().removeSuffix("（取消）").removeSuffix("(取消)")
+    normalizedRaceName() == other.normalizedRaceName()
+
+private fun String.normalizedRaceName(): String =
+    trim()
+        .removeSuffix("（取消）")
+        .removeSuffix("(取消)")
+        .removeSuffix("大奖赛")
+        .replace(" ", "")
+        .lowercase()
 
 private fun RaceListItem.statusName(): String =
     status_name.ifBlank {
@@ -216,7 +491,7 @@ private fun List<RaceGp>.nearestRaceIndex(): Int {
         if (nextTimedRace != null) return nextTimedRace.first
     }
 
-    val upcomingIndex = indexOfFirst { gp -> gp.session.any { it.race_status != 1 } }
+    val upcomingIndex = indexOfFirst { gp -> gp.session.any { it.race_status != 1 && it.race_status != 4 } }
     if (upcomingIndex >= 0) return upcomingIndex
 
     return lastIndex.coerceAtLeast(0)
@@ -340,11 +615,13 @@ private fun RaceSessionTile(session: RaceSession) {
     val accent = when (session.race_status) {
         2 -> MaterialTheme.colorScheme.primary
         1 -> MaterialTheme.colorScheme.onSurfaceVariant
+        4 -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.secondary
     }
     val status = when (session.race_status) {
         2 -> "直播中"
         1 -> "已结束"
+        4 -> "取消"
         else -> "未开始"
     }
     val shape = RoundedCornerShape(15.dp)

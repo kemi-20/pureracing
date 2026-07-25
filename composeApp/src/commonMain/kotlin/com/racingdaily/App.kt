@@ -95,6 +95,7 @@ import com.racingdaily.ui.components.pureRacingBackground
 import com.racingdaily.ui.screens.detail.DetailScreen
 import com.racingdaily.ui.screens.home.HomeScreen
 import com.racingdaily.ui.screens.more.MoreScreen
+import com.racingdaily.ui.screens.race.RaceFlag
 import com.racingdaily.ui.screens.race.RaceScreen
 import com.racingdaily.ui.screens.rankings.RankingScreen
 import com.racingdaily.ui.screens.search.SearchScreen
@@ -517,7 +518,10 @@ fun RaceDetailScreen(gp: RaceGp, onBack: () -> Unit) {
             item {
                 GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        AsyncImage(gp.gp_logo, null, Modifier.size(58.dp))
+                        RaceFlag(
+                            gp = gp,
+                            modifier = Modifier.width(72.dp).height(54.dp)
+                        )
                         Spacer(Modifier.width(14.dp))
                         Column(Modifier.weight(1f)) {
                             Text(gp.race_time_detail, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium)

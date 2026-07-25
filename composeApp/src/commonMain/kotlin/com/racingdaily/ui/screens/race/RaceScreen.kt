@@ -320,10 +320,11 @@ private fun RaceSessionTile(session: RaceSession) {
 
 @OptIn(ExperimentalResourceApi::class)
 @Composable
-private fun RaceFlag(gp: RaceGp) {
-    val modifier = Modifier
-        .width(68.dp)
-        .height(51.dp)
+internal fun RaceFlag(
+    gp: RaceGp,
+    modifier: Modifier = Modifier.width(68.dp).height(51.dp)
+) {
+    val imageModifier = modifier
         .clip(RoundedCornerShape(8.dp))
         .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.18f))
 
@@ -353,7 +354,7 @@ private fun RaceFlag(gp: RaceGp) {
         AsyncImage(
             model = model,
             contentDescription = gp.gp_name,
-            modifier = modifier,
+            modifier = imageModifier,
             contentScale = ContentScale.Crop,
             onError = {
                 if (!useRemote && remoteLogo != null && localFlagBytes != null) {
@@ -362,7 +363,7 @@ private fun RaceFlag(gp: RaceGp) {
             }
         )
     } else {
-        Box(modifier, contentAlignment = Alignment.Center) {
+        Box(imageModifier, contentAlignment = Alignment.Center) {
             Icon(
                 Icons.Rounded.Flag,
                 contentDescription = null,

@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CloudDone
 import androidx.compose.material.icons.rounded.DarkMode
@@ -36,10 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.intl.Locale
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.racingdaily.data.model.ChampSub
 import com.racingdaily.data.remote.ApiService
@@ -134,7 +130,7 @@ fun MoreScreen(
             item {
                 SectionLabel(
                     title = if (isChinese) "外观" else "Appearance",
-                    subtitle = if (isChinese) "选择最适合当前环境的显示方式" else "Choose how PureRacing should look"
+                    subtitle = if (isChinese) "即时切换，不中断当前浏览" else "Switch instantly without losing your place"
                 )
             }
             item {
@@ -148,7 +144,7 @@ fun MoreScreen(
             item {
                 SectionLabel(
                     title = if (isChinese) "其他赛事" else "More series",
-                    subtitle = if (isChinese) "快速进入常用锦标赛" else "Jump into another championship"
+                    subtitle = if (isChinese) "摩托车、房车与独立锦标赛" else "Motorcycle, touring car and independent series"
                 )
             }
 
@@ -222,36 +218,13 @@ private fun ThemeModeSelector(
     ) {
         choices.forEach { (mode, icon, label) ->
             val active = mode == selected
-            GlassSurface(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(82.dp),
-                shape = RoundedCornerShape(20.dp),
-                selected = active,
+            GlassButton(
                 onClick = { onSelected(mode) },
-                role = Role.RadioButton,
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
+                modifier = Modifier.weight(1f),
+                selected = active,
             ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterVertically)
-                ) {
-                    Icon(
-                        icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(23.dp),
-                        tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                        fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                Icon(icon, contentDescription = null, modifier = Modifier.size(19.dp))
+                Text(text = label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
             }
         }
     }

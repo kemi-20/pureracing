@@ -1,5 +1,6 @@
 package com.racingdaily.ui.screens.home
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
@@ -38,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -52,6 +54,7 @@ import com.racingdaily.data.remote.ApiService
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassChip
 import com.racingdaily.ui.components.GlassIconButton
+import com.racingdaily.ui.components.GlassMaterial
 import com.racingdaily.ui.components.GlassSurface
 import com.racingdaily.ui.components.InfoPill
 import com.racingdaily.ui.components.ScreenHeader
@@ -155,7 +158,7 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
                     contentPadding = PaddingValues(top = 82.dp, bottom = 104.dp)
                 ) {
                     itemsIndexed(news, key = { _, item -> item.id }) { index, item ->
@@ -219,47 +222,75 @@ private fun NewsGlassCard(
         modifier = modifier
             .fillMaxWidth()
             .newsCardReveal(item.id),
-        shape = RoundedCornerShape(if (featured) 24.dp else 20.dp),
+        shape = RoundedCornerShape(if (featured) 24.dp else 18.dp),
+        material = if (featured) GlassMaterial.FLOATING else GlassMaterial.THIN,
         onClick = { onArticleClick(item) },
         contentPadding = PaddingValues(0.dp)
     ) {
         val cover = item.covers.firstOrNull()?.path_url.orEmpty()
-        if (featured) {
-            Column {
-                if (cover.isNotBlank()) {
-                    Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f)) {
-                        AsyncImage(
-                            cover,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
+        if (featured && cover.isNotBlank()) {
+            Box(Modifier.fillMaxWidth().aspectRatio(1.36f)) {
+                AsyncImage(
+                    cover,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                0f to Color.Transparent,
+                                0.48f to Color.Black.copy(alpha = 0.08f),
+                                1f to Color.Black.copy(alpha = 0.84f)
+                            )
                         )
-                        NewsBadges(
-                            item = item,
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .padding(14.dp)
-                        )
-                    }
+                )
+                NewsBadges(
+                    item = item,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(14.dp)
+                )
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 17.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        item.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Color.White,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        fontWeight = FontWeight.Bold
+                    )
+                    NewsMetadata(item = item, onImage = true)
                 }
+            }
+        } else if (featured) {
+            Column {
                 NewsCardContent(
                     item = item,
                     titleLines = 3,
                     featured = true,
-                    showBadges = cover.isBlank(),
+                    showBadges = true,
                     modifier = Modifier.padding(horizontal = 18.dp, vertical = 17.dp)
                 )
             }
         } else {
             Row(
-                Modifier.fillMaxWidth().height(134.dp),
+                Modifier.fillMaxWidth().height(132.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (cover.isNotBlank()) {
                     AsyncImage(
                         cover,
                         contentDescription = null,
-                        modifier = Modifier.width(132.dp).fillMaxHeight(),
+                        modifier = Modifier.width(138.dp).fillMaxHeight(),
                         contentScale = ContentScale.Crop
                     )
                 }
@@ -306,21 +337,31 @@ private fun NewsCardContent(
                 fontWeight = FontWeight.SemiBold
             )
         }
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Visibility, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(15.dp))
-                Text(item.total_read.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+        NewsMetadata(item = item)
+    }
+}
+
+@Composable
+private fun NewsMetadata(item: NewsItem, onImage: Boolean = false) {
+    val contentColor = if (onImage) Color.White.copy(alpha = 0.84f) else MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.Visibility, null, tint = contentColor, modifier = Modifier.size(15.dp))
             Text(
-                item.publish_time.toNewsDateLabel(),
+                item.total_read.toString(),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = contentColor
             )
         }
+        Text(
+            item.publish_time.toNewsDateLabel(),
+            style = MaterialTheme.typography.labelSmall,
+            color = contentColor
+        )
     }
 }
 

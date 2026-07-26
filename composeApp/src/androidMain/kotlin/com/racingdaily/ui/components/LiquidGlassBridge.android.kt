@@ -68,8 +68,6 @@ actual fun <T> OriginalLiquidBottomTabs(
         },
         backdrop = backdrop,
         tabsCount = tabs.size,
-        accentColor = MaterialTheme.colorScheme.primary,
-        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.28f),
         modifier = modifier
     ) {
         val contentColor = MaterialTheme.colorScheme.onSurfaceVariant

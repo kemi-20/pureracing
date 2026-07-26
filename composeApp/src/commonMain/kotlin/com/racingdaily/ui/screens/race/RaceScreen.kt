@@ -1,8 +1,5 @@
 package com.racingdaily.ui.screens.race
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,14 +36,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.racingdaily.data.model.RaceGp
 import com.racingdaily.data.model.RaceListItem
 import com.racingdaily.data.model.RaceSession
@@ -59,8 +52,10 @@ import com.racingdaily.data.remote.ApiService
 import com.racingdaily.platform.LocalDateTimeParts
 import com.racingdaily.platform.currentLocalDateTimeParts
 import com.racingdaily.ui.components.GlassButton
+import com.racingdaily.ui.components.GlassMaterial
+import com.racingdaily.ui.components.GlassSurface
 import com.racingdaily.ui.components.HighResolutionFlag
-import com.racingdaily.ui.components.LightweightSurface
+import com.racingdaily.ui.components.InfoPill
 import com.racingdaily.ui.components.ScreenHeader
 import com.racingdaily.ui.components.newsCardReveal
 import kotlinx.serialization.json.JsonObject
@@ -152,14 +147,21 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 96.dp)
-            ) {
+                ) {
+                val focusedIndex = runCatching { races.nearestRaceIndex() }.getOrDefault(0)
                 itemsIndexed(
                     races,
                     key = { index, gp ->
                         "${index}|${gp.gp_id}|${gp.race_time}|${gp.session.firstOrNull()?.session_id ?: 0}"
                     }
-                ) { _, gp ->
-                    RaceGlassCard(gp, onRaceClick, onTrackClick)
+                ) { index, gp ->
+                    RaceGlassCard(
+                        gp = gp,
+                        round = index + 1,
+                        focused = index == focusedIndex,
+                        onRaceClick = onRaceClick,
+                        onTrackClick = onTrackClick
+                    )
                 }
             }
         }
@@ -705,17 +707,39 @@ private fun String.parseRaceHour(): Pair<Int, Int>? {
 }
 
 @Composable
-private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit) {
-    // Critical Android stability: never stack real Backdrop glass inside Race list items.
-    LightweightSurface(
+private fun RaceGlassCard(
+    gp: RaceGp,
+    round: Int,
+    focused: Boolean,
+    onRaceClick: (RaceGp) -> Unit,
+    onTrackClick: (Int) -> Unit
+) {
+    val isLive = gp.session.any { it.race_status == 2 }
+    val isFinished = gp.session.isNotEmpty() && gp.session.all { it.race_status == 1 || it.race_status == 4 }
+    val accent = when {
+        isLive -> MaterialTheme.colorScheme.primary
+        focused && !isFinished -> MaterialTheme.colorScheme.secondary
+        isFinished -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val statusLabel = when {
+        isLive -> "直播中"
+        focused && !isFinished -> "当前赛站"
+        isFinished -> "已结束"
+        else -> "即将开始"
+    }
+
+    GlassSurface(
         modifier = Modifier
             .fillMaxWidth()
             .newsCardReveal("${gp.gp_id}|${gp.race_time}|${gp.gp_name}"),
-        shape = RoundedCornerShape(20.dp),
-        contentPadding = PaddingValues(16.dp),
+        shape = RoundedCornerShape(if (focused) 22.dp else 18.dp),
+        material = if (focused) GlassMaterial.FLOATING else GlassMaterial.THIN,
+        selected = isLive,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 15.dp),
         onClick = { onRaceClick(gp) }
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RaceFlag(gp)
                 Spacer(Modifier.width(12.dp))
@@ -732,7 +756,8 @@ private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClic
                         Text(
                             gp.race_time_detail,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.secondary
+                            color = accent,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                     if (gp.track_name.isNotBlank()) {
@@ -743,25 +768,45 @@ private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClic
                         )
                     }
                 }
-                SoftPill(
-                    label = gp.chp_name.ifBlank { "F1" },
-                    accent = MaterialTheme.colorScheme.primary,
-                    leadingIcon = Icons.Rounded.Flag
-                )
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        "R${round.toString().padStart(2, '0')}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold
+                    )
+                    InfoPill(
+                        label = statusLabel,
+                        accent = accent,
+                        leadingIcon = Icons.Rounded.Flag
+                    )
+                }
             }
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(9.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (gp.track_id > 0) {
-                    SoftActionChip(
-                        label = "赛道",
+                    GlassButton(
                         onClick = { onTrackClick(gp.track_id) },
-                        leadingIcon = Icons.Rounded.Route
-                    )
+                        selected = false
+                    ) {
+                        Icon(Icons.Rounded.Route, contentDescription = null, modifier = Modifier.size(17.dp))
+                        Text("赛道")
+                    }
                 }
                 gp.weather?.temp?.takeIf { it.isNotBlank() }?.let { temp ->
-                    SoftPill(label = "${temp}C")
+                    InfoPill(label = "${temp}C", accent = MaterialTheme.colorScheme.secondary)
+                }
+                if (!isLive) {
+                    InfoPill(
+                        label = gp.chp_name.ifBlank { "F1" },
+                        accent = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
             if (gp.session.isNotEmpty()) {
@@ -772,7 +817,7 @@ private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClic
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     gp.session.forEach { session ->
-                        RaceSessionTile(session)
+                        RaceSessionSummary(session)
                     }
                 }
             }
@@ -781,10 +826,10 @@ private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClic
 }
 
 @Composable
-private fun RaceSessionTile(session: RaceSession) {
+private fun RaceSessionSummary(session: RaceSession) {
     val accent = when (session.race_status) {
         2 -> MaterialTheme.colorScheme.primary
-        1 -> MaterialTheme.colorScheme.onSurfaceVariant
+        1 -> MaterialTheme.colorScheme.tertiary
         4 -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.secondary
     }
@@ -794,13 +839,10 @@ private fun RaceSessionTile(session: RaceSession) {
         4 -> "取消"
         else -> "未开始"
     }
-    val shape = RoundedCornerShape(15.dp)
     Column(
-        Modifier
-            .width(132.dp)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.22f), shape)
-            .border(1.dp, accent.copy(alpha = 0.28f), shape)
-            .padding(horizontal = 12.dp, vertical = 11.dp),
+        modifier = Modifier
+            .width(126.dp)
+            .padding(horizontal = 4.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(5.dp)
     ) {
         Row(
@@ -832,6 +874,11 @@ private fun RaceSessionTile(session: RaceSession) {
     }
 }
 
+/*
+ * Race cards intentionally use one AndroidLiquidGlass surface per list item.
+ * Session rows remain within that same sampled material to avoid nested GPU-heavy
+ * backdrop layers on Android.
+ */
 @Composable
 internal fun RaceFlag(
     gp: RaceGp,
@@ -844,65 +891,4 @@ internal fun RaceFlag(
         contentDescription = gp.gp_name,
         modifier = modifier
     )
-}
-
-@Composable
-private fun SoftPill(
-    label: String,
-    accent: Color = MaterialTheme.colorScheme.secondary,
-    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null
-) {
-    val shape = RoundedCornerShape(999.dp)
-    Row(
-        modifier = Modifier
-            .background(accent.copy(alpha = 0.12f), shape)
-            .border(1.dp, accent.copy(alpha = 0.22f), shape)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (leadingIcon != null) {
-            Icon(leadingIcon, contentDescription = null, modifier = Modifier.size(14.dp), tint = accent)
-        }
-        Text(
-            label,
-            color = accent,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
-
-@Composable
-private fun SoftActionChip(
-    label: String,
-    onClick: () -> Unit,
-    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null
-) {
-    val shape = RoundedCornerShape(999.dp)
-    val accent = MaterialTheme.colorScheme.onSurfaceVariant
-    Row(
-        modifier = Modifier
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.22f), shape)
-            .border(1.dp, accent.copy(alpha = 0.18f), shape)
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (leadingIcon != null) {
-            Icon(leadingIcon, contentDescription = null, modifier = Modifier.size(15.dp), tint = accent)
-        }
-        Text(
-            label,
-            color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
 }

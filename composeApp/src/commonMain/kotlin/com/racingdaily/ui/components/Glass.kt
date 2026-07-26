@@ -33,6 +33,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -98,6 +100,18 @@ data class GlassNavTab<T>(
     val label: String
 )
 
+/**
+ * Material weights built with AndroidLiquidGlass 2.0.0's drawBackdrop API.
+ * Thin is intended for repeated Lazy list content; Chrome and Floating are for
+ * controls that sit above scrolling content.
+ */
+enum class GlassMaterial {
+    THIN,
+    CONTENT,
+    CHROME,
+    FLOATING
+}
+
 @Composable
 fun GlassBackdropHost(content: @Composable BoxScope.() -> Unit) {
     val backdrop = rememberLayerBackdrop()
@@ -123,18 +137,18 @@ fun Modifier.pureRacingBackground(): Modifier = composed {
     val mainGradient = if (isLightTheme) {
         listOf(
             Color(0xFFFAFCFD),
-            Color(0xFFE2F1F5),
-            Color(0xFFE2F3ED),
-            Color(0xFFF6E5E7),
-            Color(0xFFE9F0F4)
+            Color(0xFFF0F6F8),
+            Color(0xFFF4F8F7),
+            Color(0xFFFFF4F5),
+            Color(0xFFF0F5F8)
         )
     } else {
         listOf(
-            Color(0xFF20282D),
-            Color(0xFF2B3C42),
-            Color(0xFF30423B),
-            Color(0xFF493538),
-            Color(0xFF242B31)
+            Color(0xFF20272B),
+            Color(0xFF29363C),
+            Color(0xFF2C3B38),
+            Color(0xFF3A3033),
+            Color(0xFF222B30)
         )
     }
     val primary = MaterialTheme.colorScheme.primary
@@ -147,9 +161,9 @@ fun Modifier.pureRacingBackground(): Modifier = composed {
         .background(
             Brush.horizontalGradient(
                 listOf(
-                    primary.copy(alpha = if (isLightTheme) 0.055f else 0.09f),
+                    primary.copy(alpha = if (isLightTheme) 0.04f else 0.07f),
                     Color.Transparent,
-                    secondary.copy(alpha = if (isLightTheme) 0.065f else 0.09f)
+                    secondary.copy(alpha = if (isLightTheme) 0.05f else 0.075f)
                 )
             )
         )
@@ -158,24 +172,41 @@ fun Modifier.pureRacingBackground(): Modifier = composed {
 @Composable
 fun GlassSurface(
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(22.dp),
+    shape: Shape = RoundedCornerShape(20.dp),
+    material: GlassMaterial = GlassMaterial.CONTENT,
     selected: Boolean = false,
     onClick: (() -> Unit)? = null,
     role: Role? = null,
     contentPadding: PaddingValues = PaddingValues(0.dp),
-    /**
-     * Heavy Backdrop sampling is expensive and can crash Android when many surfaces
-     * are composed inside Lazy lists. Race/list cards should set this to false.
-     */
-    useBackdrop: Boolean = true,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val backdrop = if (useBackdrop) LocalGlassBackdrop.current else null
+    val backdrop = LocalGlassBackdrop.current
     val primary = MaterialTheme.colorScheme.primary
     val isLightTheme = !LocalPureRacingDarkTheme.current
-    val containerColor =
-        if (isLightTheme) Color.White.copy(alpha = 0.12f)
-        else Color(0xFF354146).copy(alpha = 0.16f)
+    val containerColor = when (material) {
+        GlassMaterial.THIN -> if (isLightTheme) Color.White.copy(alpha = 0.16f) else Color(0xFF334149).copy(alpha = 0.22f)
+        GlassMaterial.CONTENT -> if (isLightTheme) Color.White.copy(alpha = 0.2f) else Color(0xFF334149).copy(alpha = 0.3f)
+        GlassMaterial.CHROME -> if (isLightTheme) Color.White.copy(alpha = 0.3f) else Color(0xFF2E3B42).copy(alpha = 0.42f)
+        GlassMaterial.FLOATING -> if (isLightTheme) Color.White.copy(alpha = 0.24f) else Color(0xFF35434B).copy(alpha = 0.38f)
+    }
+    val blurRadius = when (material) {
+        GlassMaterial.THIN -> 2.dp
+        GlassMaterial.CONTENT -> 7.dp
+        GlassMaterial.CHROME -> 10.dp
+        GlassMaterial.FLOATING -> 12.dp
+    }
+    val refractionHeight = when (material) {
+        GlassMaterial.THIN -> 6.dp
+        GlassMaterial.CONTENT -> 10.dp
+        GlassMaterial.CHROME -> 14.dp
+        GlassMaterial.FLOATING -> 16.dp
+    }
+    val refractionAmount = when (material) {
+        GlassMaterial.THIN -> 10.dp
+        GlassMaterial.CONTENT -> 18.dp
+        GlassMaterial.CHROME -> 24.dp
+        GlassMaterial.FLOATING -> 28.dp
+    }
     val borderColor =
         if (selected) primary.copy(alpha = 0.58f)
         else if (isLightTheme) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f)
@@ -192,8 +223,13 @@ fun GlassSurface(
                 shape = { shape },
                 effects = {
                     vibrancy()
-                    blur(16.dp.toPx())
-                    lens(17.dp.toPx(), 23.dp.toPx(), chromaticAberration = true)
+                    blur(blurRadius.toPx())
+                    lens(
+                        refractionHeight = refractionHeight.toPx(),
+                        refractionAmount = refractionAmount.toPx(),
+                        depthEffect = material != GlassMaterial.THIN,
+                        chromaticAberration = material == GlassMaterial.FLOATING
+                    )
                 },
                 // Keep large interactive surfaces physically consistent with Kyant's LiquidButton.
                 layerBlock = if (onClick != null) {
@@ -229,9 +265,28 @@ fun GlassSurface(
                 } else {
                     null
                 },
-                highlight = { Highlight.Default.copy(alpha = if (selected) 0.74f else if (isLightTheme) 0.34f else 0.48f) },
-                shadow = { Shadow(radius = 20.dp, alpha = if (isLightTheme) 0.17f else 0.4f) },
-                innerShadow = { InnerShadow(radius = 10.dp, alpha = if (selected) 0.48f else if (isLightTheme) 0.16f else 0.26f) },
+                highlight = {
+                    Highlight.Default.copy(
+                        alpha = if (selected) 0.78f else when (material) {
+                            GlassMaterial.THIN -> if (isLightTheme) 0.24f else 0.34f
+                            GlassMaterial.CONTENT -> if (isLightTheme) 0.34f else 0.46f
+                            GlassMaterial.CHROME -> if (isLightTheme) 0.5f else 0.58f
+                            GlassMaterial.FLOATING -> if (isLightTheme) 0.58f else 0.66f
+                        }
+                    )
+                },
+                shadow = {
+                    Shadow(
+                        radius = if (material == GlassMaterial.THIN) 10.dp else 20.dp,
+                        alpha = if (isLightTheme) 0.16f else 0.36f
+                    )
+                },
+                innerShadow = {
+                    InnerShadow(
+                        radius = if (material == GlassMaterial.THIN) 5.dp else 10.dp,
+                        alpha = if (selected) 0.46f else if (isLightTheme) 0.14f else 0.24f
+                    )
+                },
                 onDrawSurface = {
                     drawRect(containerColor)
                     if (selected) {
@@ -246,8 +301,8 @@ fun GlassSurface(
                     Brush.linearGradient(
                         if (isLightTheme) {
                             listOf(
-                                Color.White.copy(alpha = 0.26f),
-                                Color.White.copy(alpha = 0.07f),
+                                Color.White.copy(alpha = 0.32f),
+                                Color.White.copy(alpha = 0.1f),
                                 MaterialTheme.colorScheme.secondary.copy(alpha = 0.06f)
                             )
                         } else {
@@ -306,29 +361,6 @@ fun GlassSurface(
             )
             .then(if (onClick != null) interactiveHighlight.gestureModifier else Modifier)
             .padding(contentPadding),
-        content = content
-    )
-}
-
-
-@Composable
-fun LightweightSurface(
-    modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(22.dp),
-    selected: Boolean = false,
-    onClick: (() -> Unit)? = null,
-    role: Role? = null,
-    contentPadding: PaddingValues = PaddingValues(0.dp),
-    content: @Composable BoxScope.() -> Unit
-) {
-    GlassSurface(
-        modifier = modifier,
-        shape = shape,
-        selected = selected,
-        onClick = onClick,
-        role = role,
-        contentPadding = contentPadding,
-        useBackdrop = false,
         content = content
     )
 }
@@ -862,7 +894,8 @@ fun PreferenceGlassRow(
 ) {
     GlassSurface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(18.dp),
+        material = GlassMaterial.THIN,
         onClick = onClick,
         role = if (onClick != null) Role.Button else null,
         contentPadding = PaddingValues(16.dp)
@@ -890,6 +923,14 @@ fun PreferenceGlassRow(
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically, content = endContent)
+            if (onClick != null) {
+                Icon(
+                    Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
+                )
+            }
         }
     }
 }

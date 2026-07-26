@@ -26,7 +26,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.unit.dp
 import com.racingdaily.data.model.ArticleDetail
@@ -63,7 +62,7 @@ fun DetailScreen(
     val playerAssets = rememberArticlePlayerAssets()
     val darkTheme = LocalPureRacingDarkTheme.current
     val isChinese = Locale.current.language.startsWith("zh")
-    val articleBackground = if (darkTheme) Color(0xFF1B2024) else Color(0xFFF1F7F9)
+    val articleBackground = MaterialTheme.colorScheme.background
     val title = article?.title?.ifBlank { initialTitle } ?: initialTitle.ifBlank { "新闻" }
     val shareUrl = "https://news.romielf.com/news.html?id=$articleId"
 
@@ -150,15 +149,15 @@ internal fun buildArticleHtmlDocument(
     playerScript: String,
     playerTemplate: String
 ): String {
-    val background = if (darkTheme) "#1B2024" else "#F1F7F9"
-    val foreground = if (darkTheme) "#F4F7F8" else "#172126"
-    val secondaryForeground = if (darkTheme) "#C1CDD2" else "#53666F"
-    val mediaBackground = if (darkTheme) "#14191C" else "#DDEAF0"
+    val background = if (darkTheme) "#20272B" else "#F4F7F8"
+    val foreground = if (darkTheme) "#F6F8F9" else "#172025"
+    val secondaryForeground = if (darkTheme) "#C8D2D7" else "#52636C"
+    val mediaBackground = if (darkTheme) "#171D20" else "#E5EDF1"
     val commentSurface = if (darkTheme) "rgba(255,255,255,.065)" else "rgba(255,255,255,.58)"
     val replySurface = if (darkTheme) "rgba(255,255,255,.055)" else "rgba(225,238,243,.76)"
     val hairline = if (darkTheme) "rgba(255,255,255,.11)" else "rgba(23,33,38,.10)"
-    val linkColor = if (darkTheme) "#64B5FF" else "#007AFF"
-    val accent = if (darkTheme) "#FF5A52" else "#D81B24"
+    val linkColor = if (darkTheme) "#64B5FF" else "#0675E8"
+    val accent = if (darkTheme) "#FF5A52" else "#D91E2B"
     val colorScheme = if (darkTheme) "dark" else "light"
     return """
 <!doctype html>

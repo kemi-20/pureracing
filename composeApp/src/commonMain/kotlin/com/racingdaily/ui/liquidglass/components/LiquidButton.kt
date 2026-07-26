@@ -5,7 +5,8 @@
  * Licensed under the Apache License, Version 2.0.
  * Source: https://github.com/Kyant0/AndroidLiquidGlass/tree/2.0.0
  *
- * Local changes: package/import path adjusted for PureRacing.
+ * Local changes: package/import paths adjusted for PureRacing and a zero-size
+ * Android measurement guard added without changing the visual parameters.
  */
 
 package com.racingdaily.ui.liquidglass.components

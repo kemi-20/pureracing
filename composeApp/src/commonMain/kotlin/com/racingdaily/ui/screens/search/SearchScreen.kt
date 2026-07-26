@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.rounded.Close
@@ -50,10 +51,12 @@ import com.racingdaily.data.model.NewsItem
 import com.racingdaily.data.remote.ApiService
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassIconButton
+import com.racingdaily.ui.components.GlassMaterial
 import com.racingdaily.ui.components.GlassSurface
 import com.racingdaily.ui.components.InfoPill
 import com.racingdaily.ui.components.SectionLabel
 import com.racingdaily.ui.components.ScreenHeader
+import com.racingdaily.ui.components.newsCardReveal
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -106,6 +109,8 @@ fun SearchScreen(
                     modifier = Modifier
                         .weight(1f)
                         .height(56.dp),
+                    shape = RoundedCornerShape(28.dp),
+                    material = GlassMaterial.CHROME,
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
                 ) {
                     BasicTextField(
@@ -219,17 +224,21 @@ private suspend fun ApiService.searchNewsLocally(query: String): List<NewsItem> 
 @Composable
 private fun SearchResultCard(item: NewsItem, onArticleClick: (NewsItem) -> Unit) {
     GlassSurface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .newsCardReveal("search|${item.id}"),
+        shape = RoundedCornerShape(16.dp),
+        material = GlassMaterial.THIN,
         onClick = { onArticleClick(item) },
         contentPadding = PaddingValues(0.dp)
     ) {
-        Row(Modifier.fillMaxWidth().height(112.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().height(116.dp), verticalAlignment = Alignment.CenterVertically) {
             val cover = item.covers.firstOrNull()?.path_url.orEmpty()
             if (cover.isNotBlank()) {
                 AsyncImage(
                     cover,
                     contentDescription = null,
-                    modifier = Modifier.width(124.dp).fillMaxHeight(),
+                    modifier = Modifier.width(132.dp).fillMaxHeight(),
                     contentScale = ContentScale.Crop
                 )
             }

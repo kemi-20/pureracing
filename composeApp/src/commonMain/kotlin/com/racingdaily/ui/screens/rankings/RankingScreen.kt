@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Person
@@ -54,7 +55,9 @@ import com.racingdaily.data.model.RankingOption
 import com.racingdaily.data.remote.ApiService
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassChip
+import com.racingdaily.ui.components.GlassMaterial
 import com.racingdaily.ui.components.GlassSurface
+import com.racingdaily.ui.components.InfoPill
 import com.racingdaily.ui.components.ScreenHeader
 import com.racingdaily.ui.components.SectionLabel
 import com.racingdaily.ui.components.TeamLogo
@@ -144,10 +147,22 @@ fun RankingScreen(
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            GlassChip("车手", selected = isDriver, onClick = { isDriver = true }, leadingIcon = Icons.Rounded.Person)
-            GlassChip("车队", selected = !isDriver, onClick = { isDriver = false }, leadingIcon = Icons.Rounded.Groups)
+            GlassChip(
+                "车手",
+                selected = isDriver,
+                onClick = { isDriver = true },
+                modifier = Modifier.weight(1f),
+                leadingIcon = Icons.Rounded.Person
+            )
+            GlassChip(
+                "车队",
+                selected = !isDriver,
+                onClick = { isDriver = false },
+                modifier = Modifier.weight(1f),
+                leadingIcon = Icons.Rounded.Groups
+            )
         }
         LazyRow(
             Modifier
@@ -192,7 +207,13 @@ fun RankingScreen(
                     item {
                         SectionLabel(
                             title = tab.tab_name.cleanRankingLabel(),
-                            subtitle = remark.ifBlank { if (isDriver) "车手锦标赛" else "车队锦标赛" }
+                            subtitle = remark.ifBlank { if (isDriver) "车手锦标赛" else "车队锦标赛" },
+                            trailing = {
+                                InfoPill(
+                                    label = "${tab.list.size} ${if (isDriver) "位" else "支"}",
+                                    accent = MaterialTheme.colorScheme.secondary
+                                )
+                            }
                         )
                     }
                     if (tab.list.isNotEmpty()) {
@@ -255,7 +276,11 @@ private fun RankingPodium(
     onDriverClick: (chpId: Int, seasonId: Int, driverId: Int, name: String, avatar: String, teamLogo: String, stats: JsonObject) -> Unit,
     onTeamClick: (chpId: Int, seasonId: Int, teamId: Int, name: String, logo: String, stats: JsonObject) -> Unit
 ) {
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+    Row(
+        modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
         listOf(1, 0, 2).forEach { sourceIndex ->
             rows.getOrNull(sourceIndex)?.let { row ->
                 RankingPodiumEntry(
@@ -299,6 +324,8 @@ private fun RankingPodiumEntry(
     )
     GlassSurface(
         modifier = modifier.padding(horizontal = 4.dp, vertical = if (position == 1) 0.dp else 10.dp),
+        shape = RoundedCornerShape(18.dp),
+        material = if (position == 1) GlassMaterial.FLOATING else GlassMaterial.CONTENT,
         onClick = {
             if (isDriver && driverId > 0) {
                 onDriverClick(chpId, seasonId, driverId, name, avatar, teamLogo, row)
@@ -322,12 +349,26 @@ private fun RankingPodiumEntry(
                 maxLines = 1
             )
             if (isDriver) {
-                AsyncImage(
-                    avatar,
-                    null,
-                    Modifier.size(if (position == 1) 72.dp else 58.dp).clip(CircleShape),
-                    contentScale = ContentScale.Fit
-                )
+                Box(
+                    Modifier.size(if (position == 1) 72.dp else 58.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (avatar.isNotBlank()) {
+                        AsyncImage(
+                            avatar,
+                            null,
+                            Modifier.fillMaxSize().clip(CircleShape),
+                            contentScale = ContentScale.Fit
+                        )
+                    } else {
+                        Icon(
+                            Icons.Rounded.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(if (position == 1) 38.dp else 32.dp),
+                            tint = metal.base
+                        )
+                    }
+                }
             } else {
                 TeamLogo(
                     teamName = name,
@@ -379,6 +420,8 @@ private fun RankingRow(
             .fillMaxWidth()
             .padding(vertical = 1.dp)
             .newsCardReveal("$isDriver|$driverId|$teamId|$pos"),
+        shape = RoundedCornerShape(16.dp),
+        material = GlassMaterial.THIN,
         selected = false,
         onClick = {
             if (isDriver && driverId > 0) {
@@ -398,15 +441,24 @@ private fun RankingRow(
                 fontWeight = FontWeight.Bold
             )
             if (isDriver) {
-                if (avatar.isNotBlank()) {
-                    AsyncImage(
-                        avatar,
-                        null,
-                        Modifier.size(42.dp).clip(CircleShape),
-                        contentScale = ContentScale.Fit
-                    )
-                    Spacer(Modifier.width(10.dp))
+                Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
+                    if (avatar.isNotBlank()) {
+                        AsyncImage(
+                            avatar,
+                            null,
+                            Modifier.fillMaxSize().clip(CircleShape),
+                            contentScale = ContentScale.Fit
+                        )
+                    } else {
+                        Icon(
+                            Icons.Rounded.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
+                Spacer(Modifier.width(10.dp))
             } else {
                 TeamLogo(
                     teamName = name,

@@ -5,7 +5,8 @@
  * Licensed under the Apache License, Version 2.0.
  * Source: https://github.com/Kyant0/AndroidLiquidGlass/tree/2.0.0
  *
- * Local changes: package/import path adjusted for PureRacing.
+ * Local changes: package/import paths adjusted for PureRacing and the app's
+ * explicit theme state used in place of the system-only dark-mode check.
  */
 
 package com.racingdaily.ui.liquidglass.components
@@ -72,26 +73,16 @@ fun LiquidBottomTabs(
     onTabSelected: (index: Int) -> Unit,
     backdrop: Backdrop,
     tabsCount: Int,
-    accentColor: Color = Color.Unspecified,
-    containerColor: Color = Color.Unspecified,
     modifier: Modifier = Modifier,
     content: @Composable RowScope.() -> Unit
 ) {
     val isLightTheme = !LocalPureRacingDarkTheme.current
-    val resolvedAccentColor = if (accentColor != Color.Unspecified) {
-        accentColor
-    } else if (isLightTheme) {
-        Color(0xFF0088FF)
-    } else {
-        Color(0xFF0091FF)
-    }
-    val resolvedContainerColor = if (containerColor != Color.Unspecified) {
-        containerColor
-    } else if (isLightTheme) {
-        Color(0xFFFAFAFA).copy(0.32f)
-    } else {
-        Color(0xFF2B3A46).copy(0.36f)
-    }
+    val accentColor =
+        if (isLightTheme) Color(0xFF0088FF)
+        else Color(0xFF0091FF)
+    val containerColor =
+        if (isLightTheme) Color(0xFFFAFAFA).copy(0.4f)
+        else Color(0xFF121212).copy(0.4f)
 
     val tabsBackdrop = rememberLayerBackdrop()
 
@@ -197,7 +188,7 @@ fun LiquidBottomTabs(
                         scaleX = scale
                         scaleY = scale
                     },
-                    onDrawSurface = { drawRect(resolvedContainerColor) }
+                    onDrawSurface = { drawRect(containerColor) }
                 )
                 .then(interactiveHighlight.modifier)
                 .height(64f.dp)
@@ -236,13 +227,13 @@ fun LiquidBottomTabs(
                             val progress = dampedDragAnimation.pressProgress
                             Highlight.Default.copy(alpha = progress)
                         },
-                        onDrawSurface = { drawRect(resolvedContainerColor) }
+                        onDrawSurface = { drawRect(containerColor) }
                     )
                     .then(interactiveHighlight.modifier)
                     .height(56f.dp)
                     .fillMaxWidth()
                     .padding(horizontal = 4f.dp)
-                    .graphicsLayer(colorFilter = ColorFilter.tint(resolvedAccentColor)),
+                    .graphicsLayer(colorFilter = ColorFilter.tint(accentColor)),
                 verticalAlignment = Alignment.CenterVertically,
                 content = content
             )

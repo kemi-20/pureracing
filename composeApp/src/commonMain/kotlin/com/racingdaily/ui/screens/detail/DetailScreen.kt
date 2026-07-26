@@ -555,7 +555,7 @@ private fun ArticleComment.toCommentHtml(isChinese: Boolean, reply: Boolean = fa
     } else {
         ""
     }
-    val metadata = listOf(create_time, likes)
+    val metadata = listOf(likes)
         .filter { it.isNotBlank() }
         .joinToString("<span aria-hidden=\"true\">·</span>") { "<span>${it.escapeHtml()}</span>" }
         .takeIf { it.isNotBlank() }

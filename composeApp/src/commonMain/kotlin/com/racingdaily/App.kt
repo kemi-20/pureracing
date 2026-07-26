@@ -368,7 +368,7 @@ fun TrackScreen(trackId: Int, onBack: () -> Unit, api: ApiService) {
             track = api.getTrackInfo(trackId).track
             history = api.getTrackScore(trackId).history
         }.onFailure {
-            error = it.message ?: "无法加载赛道信息"
+            error = it.userFacingLoadError("无法加载赛道信息")
         }
         loading = false
     }
@@ -468,7 +468,7 @@ fun ChampScreen(category: String, id: Int, onBack: () -> Unit, api: ApiService) 
         }.onSuccess {
             data = it
         }.onFailure {
-            error = it.message ?: "无法加载锦标赛"
+            error = it.userFacingLoadError("无法加载锦标赛")
         }
         loading = false
     }
@@ -621,7 +621,7 @@ fun DriverDetailScreen(
                 selectedTab = info.visibleTabs().firstOrNull()?.first ?: "info"
             }
         }.onFailure {
-            error = it.message ?: "无法加载车手资料"
+            error = it.userFacingLoadError("无法加载车手资料")
         }
         loading = false
     }
@@ -645,7 +645,7 @@ fun DriverDetailScreen(
         }.onSuccess {
             seasonScores = it
         }.onFailure {
-            scoreError = it.message ?: "无法加载历年成绩"
+            scoreError = it.userFacingLoadError("历年成绩暂时无法加载")
         }
         scoreLoading = false
     }
@@ -777,12 +777,14 @@ fun TeamDetailScreen(
                 teamInfo = info
                 teamNews = news
                 error = if (info == null) {
-                    officialError?.message ?: "无法加载车队资料"
+                    officialError?.userFacingLoadError("无法加载车队资料") ?: "无法加载车队资料"
                 } else {
-                    officialError?.message?.takeIf { page.cadillacFallbackTeamInfo() != null }
+                    officialError
+                        ?.userFacingLoadError("官方车队资料暂时不可用，当前显示内置资料")
+                        ?.takeIf { page.cadillacFallbackTeamInfo() != null }
                 }
             }
-            .onFailure { error = it.message ?: "无法加载车队资料" }
+            .onFailure { error = it.userFacingLoadError("无法加载车队资料") }
         loading = false
     }
 
@@ -805,7 +807,7 @@ fun TeamDetailScreen(
         }.onSuccess {
             seasonScores = it
         }.onFailure {
-            scoreError = it.message ?: "无法加载车队历年成绩"
+            scoreError = it.userFacingLoadError("车队历年成绩暂时无法加载")
         }
         scoreLoading = false
     }
@@ -1354,6 +1356,19 @@ private fun RankingData.toTeamSeasonScore(season: Int, teamId: Int): TeamSeasonS
 private fun Int.asScoreText(): String = if (this == 0) "0" else toString()
 
 private inline fun Int.ifZero(block: () -> Int): Int = if (this == 0) block() else this
+
+private fun Throwable.userFacingLoadError(fallback: String): String {
+    val details = message.orEmpty()
+    return when {
+        details.contains("timeout", ignoreCase = true) ->
+            "网络连接超时，请稍后重试"
+        details.contains("connect", ignoreCase = true) ||
+            details.contains("resolve", ignoreCase = true) ||
+            details.contains("network", ignoreCase = true) ->
+            "暂时无法连接服务器，请检查网络后重试"
+        else -> fallback
+    }
+}
 
 private fun DriverInfoData.visibleTabs(): List<Pair<String, String>> =
     title.tab.mapNotNull { tab ->

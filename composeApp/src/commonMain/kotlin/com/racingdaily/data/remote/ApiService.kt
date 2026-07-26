@@ -7,6 +7,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.parameter
 import io.ktor.http.Parameters
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -38,6 +39,7 @@ class ApiService(private val client: HttpClient) {
         loader: suspend () -> T
     ): T {
         var cachedValue: Any? = null
+        var staleValue: Any? = null
         var producer = false
         lateinit var request: CompletableDeferred<Any>
 
@@ -47,7 +49,7 @@ class ApiService(private val client: HttpClient) {
             if (entry != null && entry.storedAt.elapsedNow() < StartupCacheLifetime) {
                 cachedValue = entry.value
             } else {
-                if (entry != null) cache.remove(key)
+                staleValue = entry?.value
                 request = inFlight[key] ?: CompletableDeferred<Any>().also {
                     inFlight[key] = it
                     producer = true
@@ -66,8 +68,19 @@ class ApiService(private val client: HttpClient) {
             request.complete(value)
             value
         } catch (error: Throwable) {
+            if (error is CancellationException) {
+                cacheMutex.withLock {
+                    if (inFlight[key] === request) inFlight.remove(key)
+                }
+                request.completeExceptionally(error)
+                throw error
+            }
             cacheMutex.withLock {
                 if (inFlight[key] === request) inFlight.remove(key)
+            }
+            staleValue?.let {
+                request.complete(it)
+                return it as T
             }
             request.completeExceptionally(error)
             throw error

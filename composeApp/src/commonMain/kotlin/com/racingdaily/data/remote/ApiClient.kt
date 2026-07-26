@@ -1,6 +1,8 @@
 package com.racingdaily.data.remote
 
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpRequestRetry
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.header
@@ -10,6 +12,17 @@ import kotlinx.serialization.json.Json
 const val newsReferer = "https://news.romielf.com/"
 
 fun createHttpClient() = HttpClient {
+    install(HttpTimeout) {
+        connectTimeoutMillis = 15_000
+        requestTimeoutMillis = 30_000
+        socketTimeoutMillis = 30_000
+    }
+    install(HttpRequestRetry) {
+        maxRetries = 2
+        retryIf { _, response -> response.status.value >= 500 }
+        retryOnExceptionIf { _, _ -> true }
+        exponentialDelay()
+    }
     install(ContentNegotiation) {
         json(Json {
             ignoreUnknownKeys = true

@@ -35,7 +35,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -242,12 +241,12 @@ private fun ThemeModeSelector(
                         icon,
                         contentDescription = null,
                         modifier = Modifier.size(23.dp),
-                        tint = if (active) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = label,
                         style = MaterialTheme.typography.labelMedium,
-                        color = if (active) Color.White else MaterialTheme.colorScheme.onSurface,
+                        color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                         fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis

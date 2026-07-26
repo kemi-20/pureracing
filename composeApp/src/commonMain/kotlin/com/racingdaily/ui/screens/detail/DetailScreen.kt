@@ -75,7 +75,7 @@ fun DetailScreen(
         comments = null
         val (articleResult, commentsResult) = coroutineScope {
             val articleRequest = async { runCatching { api.getNewsDetail(articleId).details } }
-            val commentsRequest = async { runCatching { api.getArticleComments(articleId, page = 0) } }
+            val commentsRequest = async { runCatching { api.getArticleCommentsWithReplies(articleId) } }
             articleRequest.await() to commentsRequest.await()
         }
         articleResult

@@ -94,6 +94,45 @@ class ApiService(private val client: HttpClient) {
             }
         ).body<ApiResponse<CommentListData>>().requireData()
 
+    suspend fun getArticleCommentsWithReplies(articleId: Int): CommentListData {
+        val comments = getArticleComments(articleId, page = 0)
+        val completeComments = supervisorScope {
+            comments.comment_list.map { comment ->
+                async {
+                    if (comment.sub_count <= comment.sub_list.size) {
+                        comment
+                    } else {
+                        val replies = runCatching {
+                            getAllCommentReplies(comment.id, comment.sub_count)
+                        }.getOrDefault(comment.sub_list)
+                        comment.copy(sub_list = replies)
+                    }
+                }
+            }.awaitAll()
+        }
+        return comments.copy(comment_list = completeComments)
+    }
+
+    private suspend fun getAllCommentReplies(commentId: Int, expectedCount: Int): List<ArticleComment> {
+        val repliesById = linkedMapOf<Int, ArticleComment>()
+        var page = 0
+        while (page < MaxCommentReplyPages && repliesById.size < expectedCount) {
+            val previousSize = repliesById.size
+            val data = client.submitForm(
+                url = "comment/sub-list",
+                formParameters = Parameters.build {
+                    append("comment_id", commentId.toString())
+                    append("page", page.toString())
+                }
+            ).body<ApiResponse<CommentSubListData>>().requireData()
+            if (data.sub_coment.isEmpty()) break
+            data.sub_coment.forEach { reply -> repliesById[reply.id] = reply }
+            if (repliesById.size == previousSize) break
+            page++
+        }
+        return repliesById.values.toList()
+    }
+
     suspend fun getNavTabs(forceRefresh: Boolean = false) = cached("news-navigation", forceRefresh) {
         client.get("index/navitv2").body<ApiResponse<Navitv2Data>>().requireData()
     }
@@ -231,6 +270,7 @@ class ApiService(private val client: HttpClient) {
 
     private companion object {
         val StartupCacheLifetime = 2.minutes
+        const val MaxCommentReplyPages = 50
         val PreloadedStationSessionKeys = setOf(
             "fp1cj", "fp2cj", "fp3cj", "ccpws", "ccpwscj", "ccscj", "pwscj", "zscj"
         )

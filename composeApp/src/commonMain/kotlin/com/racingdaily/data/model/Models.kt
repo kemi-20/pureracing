@@ -89,6 +89,11 @@ object FlexibleLongSerializer : KSerializer<Long> {
     @Serializable(with = FlexibleIntSerializer::class) val page: Int = 0,
     @Serializable(with = FlexibleIntSerializer::class) val count: Int = 0
 )
+@Serializable data class CommentSubListData(
+    val main_coment: ArticleComment = ArticleComment(),
+    val sub_coment: List<ArticleComment> = emptyList(),
+    @Serializable(with = FlexibleIntSerializer::class) val page: Int = 0
+)
 @Serializable data class ArticleComment(
     @Serializable(with = FlexibleIntSerializer::class) val id: Int = 0,
     @Serializable(with = FlexibleIntSerializer::class) val article_id: Int = 0,

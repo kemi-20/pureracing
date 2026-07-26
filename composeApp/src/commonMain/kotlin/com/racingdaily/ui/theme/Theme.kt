@@ -6,48 +6,52 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-val RacingRed = Color(0xFFE10600)
-val RacingBlue = Color(0xFF58A6FF)
-val RacingGreen = Color(0xFF3FB950)
-val RacingYellow = Color(0xFFD29922)
+val RacingRed = Color(0xFFFF453A)
+val RacingBlue = Color(0xFF0A84FF)
+val RacingGreen = Color(0xFF30D158)
+val RacingYellow = Color(0xFFFFD60A)
+
+val LocalPureRacingDarkTheme = staticCompositionLocalOf { false }
 
 private val DarkColors = darkColorScheme(
     primary = RacingRed,
     secondary = RacingBlue,
     tertiary = RacingYellow,
-    background = Color(0xFF1C2732),
-    surface = Color(0xFF2B3945),
-    surfaceVariant = Color(0xFF374957),
+    background = Color(0xFF1B2024),
+    surface = Color(0xFF293136),
+    surfaceVariant = Color(0xFF364147),
     onPrimary = Color.White,
     onSecondary = Color.White,
-    onBackground = Color(0xFFE6EDF3),
-    onSurface = Color(0xFFE6EDF3),
-    onSurfaceVariant = Color(0xFFB8C7D4),
+    onBackground = Color(0xFFF4F7F8),
+    onSurface = Color(0xFFF4F7F8),
+    onSurfaceVariant = Color(0xFFC1CDD2),
     outline = Color.White.copy(alpha = 0.22f),
 )
 
 private val LightColors = lightColorScheme(
-    primary = RacingRed,
-    secondary = Color(0xFF1769AA),
-    tertiary = Color(0xFF8B6508),
-    background = Color(0xFFE7F1F6),
-    surface = Color(0xFFF8FCFE),
-    surfaceVariant = Color(0xFFD4E4EC),
+    primary = Color(0xFFD81B24),
+    secondary = Color(0xFF007AFF),
+    tertiary = Color(0xFF8A6400),
+    background = Color(0xFFF1F7F9),
+    surface = Color(0xFFFCFEFF),
+    surfaceVariant = Color(0xFFDDEAF0),
     onPrimary = Color.White,
     onSecondary = Color.White,
-    onBackground = Color(0xFF17212B),
-    onSurface = Color(0xFF17212B),
-    onSurfaceVariant = Color(0xFF526575),
-    outline = Color(0xFF526575).copy(alpha = 0.28f),
+    onBackground = Color(0xFF172126),
+    onSurface = Color(0xFF172126),
+    onSurfaceVariant = Color(0xFF53666F),
+    outline = Color(0xFF53666F).copy(alpha = 0.26f),
 )
 
 private val AppTypography = Typography(
-    headlineLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 34.sp, letterSpacing = 0.sp),
+    headlineLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 29.sp, lineHeight = 34.sp, letterSpacing = 0.sp),
     headlineMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 23.sp, lineHeight = 28.sp, letterSpacing = 0.sp),
     titleLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 19.sp, lineHeight = 24.sp, letterSpacing = 0.sp),
     titleMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 21.sp, letterSpacing = 0.sp),
@@ -60,10 +64,20 @@ private val AppTypography = Typography(
 )
 
 @Composable
-fun RacingDailyTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = if (isSystemInDarkTheme()) DarkColors else LightColors,
-        typography = AppTypography,
-        content = content
-    )
+fun RacingDailyTheme(
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    content: @Composable () -> Unit
+) {
+    val darkTheme = when (themeMode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
+    CompositionLocalProvider(LocalPureRacingDarkTheme provides darkTheme) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) DarkColors else LightColors,
+            typography = AppTypography,
+            content = content
+        )
+    }
 }

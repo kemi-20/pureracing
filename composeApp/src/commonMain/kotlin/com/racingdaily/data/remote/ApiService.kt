@@ -4,57 +4,146 @@ import com.racingdaily.data.model.*
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.parameter
+import io.ktor.http.Parameters
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 class ApiService(private val client: HttpClient) {
+
+    private data class CacheEntry(val value: Any, val storedAt: TimeMark)
+
+    private val cacheMutex = Mutex()
+    private val cache = mutableMapOf<String, CacheEntry>()
+    private val inFlight = mutableMapOf<String, CompletableDeferred<Any>>()
 
     private fun <T> ApiResponse<T>.requireData(): T {
         if (code != 200) error(msg.ifBlank { "API request failed with code $code" })
         return data
     }
 
-    suspend fun getNewsList(tagId: Int, page: Int = 1) =
-        client.get("index/index") { parameter("tag_id", tagId); parameter("page", page) }
-            .body<ApiResponse<NewsListData>>().requireData()
+    @Suppress("UNCHECKED_CAST")
+    private suspend fun <T : Any> cached(
+        key: String,
+        forceRefresh: Boolean = false,
+        loader: suspend () -> T
+    ): T {
+        var cachedValue: Any? = null
+        var producer = false
+        lateinit var request: CompletableDeferred<Any>
+
+        cacheMutex.withLock {
+            if (forceRefresh) cache.remove(key)
+            val entry = cache[key]
+            if (entry != null && entry.storedAt.elapsedNow() < StartupCacheLifetime) {
+                cachedValue = entry.value
+            } else {
+                if (entry != null) cache.remove(key)
+                request = inFlight[key] ?: CompletableDeferred<Any>().also {
+                    inFlight[key] = it
+                    producer = true
+                }
+            }
+        }
+        cachedValue?.let { return it as T }
+        if (!producer) return request.await() as T
+
+        return try {
+            val value = loader()
+            cacheMutex.withLock {
+                cache[key] = CacheEntry(value, TimeSource.Monotonic.markNow())
+                if (inFlight[key] === request) inFlight.remove(key)
+            }
+            request.complete(value)
+            value
+        } catch (error: Throwable) {
+            cacheMutex.withLock {
+                if (inFlight[key] === request) inFlight.remove(key)
+            }
+            request.completeExceptionally(error)
+            throw error
+        }
+    }
+
+    suspend fun getNewsList(tagId: Int, page: Int = 1, forceRefresh: Boolean = false): NewsListData {
+        suspend fun request() = client.get("index/index") {
+            parameter("tag_id", tagId)
+            parameter("page", page)
+        }.body<ApiResponse<NewsListData>>().requireData()
+        return if (page == 1) cached("news:$tagId:$page", forceRefresh) { request() } else request()
+    }
 
     suspend fun getNewsDetail(id: Int) =
         client.get("index/detail") { parameter("id", id) }.body<ApiResponse<NewsDetail>>().requireData()
 
-    suspend fun getNavTabs() =
+    suspend fun getArticleComments(articleId: Int, page: Int = 0) =
+        client.submitForm(
+            url = "comment/list",
+            formParameters = Parameters.build {
+                append("article_id", articleId.toString())
+                append("page", page.toString())
+            }
+        ).body<ApiResponse<CommentListData>>().requireData()
+
+    suspend fun getNavTabs(forceRefresh: Boolean = false) = cached("news-navigation", forceRefresh) {
         client.get("index/navitv2").body<ApiResponse<Navitv2Data>>().requireData()
+    }
 
-    suspend fun getRaceSchedule() =
+    suspend fun getRaceSchedule(forceRefresh: Boolean = false) = cached("race-schedule", forceRefresh) {
         client.get("race/index").body<ApiResponse<List<RaceGp>>>().requireData()
+    }
 
-    suspend fun getRaceList(chpId: Int, seasonId: Int) =
-        client.get("race/list") {
+    suspend fun getRaceList(chpId: Int, seasonId: Int, forceRefresh: Boolean = false) =
+        cached("race-list:$chpId:$seasonId", forceRefresh) {
+            client.get("race/list") {
             parameter("chp_id", chpId)
             parameter("season_id", seasonId)
-        }.body<ApiResponse<List<RaceListItem>>>().requireData()
+            }.body<ApiResponse<List<RaceListItem>>>().requireData()
+        }
 
-    suspend fun getRankingNav() =
+    suspend fun getRankingNav(forceRefresh: Boolean = false) = cached("ranking-navigation", forceRefresh) {
         client.get("rank/navigationv2").body<ApiResponse<RankingNavData>>().requireData()
+    }
 
-    suspend fun getDriverRanking(chpId: Int, seasonId: Int) =
-        client.get("rank/driver") { parameter("chp_id", chpId); parameter("season_id", seasonId) }
-            .body<ApiResponse<RankingData>>().requireData()
+    suspend fun getDriverRanking(chpId: Int, seasonId: Int, forceRefresh: Boolean = false) =
+        cached("driver-ranking:$chpId:$seasonId", forceRefresh) {
+            client.get("rank/driver") { parameter("chp_id", chpId); parameter("season_id", seasonId) }
+                .body<ApiResponse<RankingData>>().requireData()
+        }
 
-    suspend fun getTeamRanking(chpId: Int, seasonId: Int) =
-        client.get("rank/team") { parameter("chp_id", chpId); parameter("season_id", seasonId) }
-            .body<ApiResponse<RankingData>>().requireData()
+    suspend fun getTeamRanking(chpId: Int, seasonId: Int, forceRefresh: Boolean = false) =
+        cached("team-ranking:$chpId:$seasonId", forceRefresh) {
+            client.get("rank/team") { parameter("chp_id", chpId); parameter("season_id", seasonId) }
+                .body<ApiResponse<RankingData>>().requireData()
+        }
 
-    suspend fun getStationList(chpId: Int, seasonId: Int) =
-        client.get("station/list") { parameter("chp_id", chpId); parameter("season_id", seasonId) }
-            .body<ApiResponse<StationData>>().requireData()
+    suspend fun getStationList(chpId: Int, seasonId: Int, forceRefresh: Boolean = false) =
+        cached("station-list:$chpId:$seasonId", forceRefresh) {
+            client.get("station/list") { parameter("chp_id", chpId); parameter("season_id", seasonId) }
+                .body<ApiResponse<StationData>>().requireData()
+        }
 
-    suspend fun getStationRank(gpId: Int) =
-        client.get("station/rank") { parameter("gp_id", gpId) }.body<ApiResponse<StationRankData>>().requireData()
+    suspend fun getStationRank(gpId: Int, forceRefresh: Boolean = false) =
+        cached("station-rank:$gpId", forceRefresh) {
+            client.get("station/rank") { parameter("gp_id", gpId) }.body<ApiResponse<StationRankData>>().requireData()
+        }
 
-    suspend fun getStationScore(gpId: Int, typeId: Int) =
-        client.get("station/score") {
-            parameter("gp_id", gpId)
-            parameter("type_id", typeId)
-        }.body<ApiResponse<List<StationScoreItem>>>().requireData()
+    suspend fun getStationScore(gpId: Int, typeId: Int, forceRefresh: Boolean = false) =
+        cached("station-score:$gpId:$typeId", forceRefresh) {
+            client.get("station/score") {
+                parameter("gp_id", gpId)
+                parameter("type_id", typeId)
+            }.body<ApiResponse<List<StationScoreItem>>>().requireData()
+        }
 
     suspend fun getTrackInfo(trackId: Int) =
         client.get("track/index") { parameter("track_id", trackId) }.body<ApiResponse<TrackData>>().requireData()
@@ -101,4 +190,49 @@ class ApiService(private val client: HttpClient) {
     suspend fun getTcrTeam(id: Int) = client.get("tcr/team") { parameter("tcr_id", id) }.body<ApiResponse<ChampSeason>>().requireData()
 
     suspend fun getAppVersion() = client.get("index/ver").body<ApiResponse<AppVersion>>().requireData()
+
+    suspend fun preloadHomeThenSecondary(seasonId: Int) {
+        supervisorScope {
+            val navigation = async { runCatching { getNavTabs() } }
+            val headlines = async { runCatching { getNewsList(tagId = 1, page = 1) } }
+            navigation.await()
+            headlines.await()
+        }
+
+        supervisorScope {
+            launch { runCatching { getRaceSchedule() } }
+            launch { runCatching { getRaceList(chpId = 6, seasonId = seasonId) } }
+            launch {
+                val stations = runCatching { getStationList(chpId = 6, seasonId = seasonId).tmp }
+                    .getOrDefault(emptyList())
+                stations.takeLast(4).forEach { station ->
+                    val navigation = runCatching { getStationRank(station.gp_id).navbar }
+                        .getOrDefault(emptyList())
+                        .filter { it.key_name in PreloadedStationSessionKeys }
+                    navigation.map { nav ->
+                        async { runCatching { getStationScore(station.gp_id, nav.id) } }
+                    }.awaitAll()
+                }
+            }
+            launch {
+                val option = runCatching {
+                    getRankingNav().list
+                        .flatMap { it.options }
+                        .firstOrNull { it.id == seasonId }
+                        ?: getRankingNav().list.flatMap { it.options }.firstOrNull()
+                }.getOrNull() ?: return@launch
+                supervisorScope {
+                    launch { runCatching { getDriverRanking(option.chp_id, option.id) } }
+                    launch { runCatching { getTeamRanking(option.chp_id, option.id) } }
+                }
+            }
+        }
+    }
+
+    private companion object {
+        val StartupCacheLifetime = 2.minutes
+        val PreloadedStationSessionKeys = setOf(
+            "fp1cj", "fp2cj", "fp3cj", "ccpws", "ccpwscj", "ccscj", "pwscj", "zscj"
+        )
+    }
 }

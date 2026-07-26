@@ -86,19 +86,20 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
         loading = true
         error = null
         runCatching {
-            val schedule = api.getRaceSchedule()
+            val forceRefresh = reloadKey > 0
+            val schedule = api.getRaceSchedule(forceRefresh = forceRefresh)
             val currentYear = currentLocalDateTimeParts().year
             val completedStations = runCatching {
-                api.getStationList(chpId = 6, seasonId = currentYear).tmp
+                api.getStationList(chpId = 6, seasonId = currentYear, forceRefresh = forceRefresh).tmp
             }.getOrDefault(emptyList())
             val seasonList = runCatching {
-                api.getRaceList(chpId = 6, seasonId = currentYear)
+                api.getRaceList(chpId = 6, seasonId = currentYear, forceRefresh = forceRefresh)
             }.getOrDefault(emptyList())
             val ranking = runCatching {
-                api.getDriverRanking(chpId = 6, seasonId = currentYear)
+                api.getDriverRanking(chpId = 6, seasonId = currentYear, forceRefresh = forceRefresh)
             }.getOrNull()
             val seasonGpIds = resolveSeasonGpIds(schedule, completedStations, seasonList)
-            val historicalSessions = api.loadHistoricalSessions(schedule, seasonList, seasonGpIds)
+            val historicalSessions = api.loadHistoricalSessions(schedule, seasonList, seasonGpIds, forceRefresh)
             buildSeasonRaceSchedule(
                 schedule,
                 completedStations,
@@ -410,20 +411,21 @@ private fun resolveSeasonGpIds(
 private suspend fun ApiService.loadHistoricalSessions(
     schedule: List<RaceGp>,
     seasonList: List<RaceListItem>,
-    seasonGpIds: Map<String, String>
+    seasonGpIds: Map<String, String>,
+    forceRefresh: Boolean = false
 ): Map<String, List<RaceSession>> {
     val scheduledIds = schedule.mapTo(mutableSetOf()) { it.gp_id }
     val result = linkedMapOf<String, List<RaceSession>>()
     for (seasonItem in seasonList) {
         val gpId = seasonGpIds[seasonItem.gp_name.normalizedRaceName()]?.toIntOrNull() ?: continue
         if (gpId.toString() in scheduledIds || seasonItem.status !in setOf(1, 4)) continue
-        val navigation = runCatching { getStationRank(gpId).navbar }
+        val navigation = runCatching { getStationRank(gpId, forceRefresh = forceRefresh).navbar }
             .getOrDefault(emptyList())
             .filter { it.key_name in stationSessionKeys }
             .sortedBy { it.sessionOrder() }
         val sessions = mutableListOf<RaceSession>()
         for (nav in navigation) {
-            val scores = runCatching { getStationScore(gpId, nav.id) }
+            val scores = runCatching { getStationScore(gpId, nav.id, forceRefresh = forceRefresh) }
                 .getOrDefault(emptyList())
             if (scores.isNotEmpty() || seasonItem.status == 4) {
                 sessions += nav.toRaceSession(scores, seasonItem.time, seasonItem.status)

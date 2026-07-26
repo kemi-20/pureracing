@@ -84,6 +84,26 @@ object FlexibleLongSerializer : KSerializer<Long> {
     val total_read: Int = 0, val author: String = "", val user_name: String = "", val source_link: String = "",
     val temotime: String = "", val iteam: List<kotlinx.serialization.json.JsonObject> = emptyList(),
     val tag: List<String> = emptyList(), val conten: String = "")
+@Serializable data class CommentListData(
+    val comment_list: List<ArticleComment> = emptyList(),
+    @Serializable(with = FlexibleIntSerializer::class) val page: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class) val count: Int = 0
+)
+@Serializable data class ArticleComment(
+    @Serializable(with = FlexibleIntSerializer::class) val id: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class) val article_id: Int = 0,
+    val content: String = "",
+    @Serializable(with = FlexibleIntSerializer::class) val parent_id: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class) val reply_id: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class) val digg_count: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class) val sub_count: Int = 0,
+    val create_time: String = "",
+    val user: CommentUser? = null,
+    val pics: List<CommentPicture> = emptyList(),
+    val sub_list: List<ArticleComment> = emptyList()
+)
+@Serializable data class CommentUser(val avatar: String = "", val nick_name: String = "")
+@Serializable data class CommentPicture(val pic_path: String = "")
 @Serializable data class NavTab(val id: Int = 0, val name: String = "")
 @Serializable data class Navitv2Data(val navbar: List<NavTab> = emptyList())
 

@@ -38,8 +38,8 @@ actual fun HtmlView(
                     var customVideoCallback: WebChromeClient.CustomViewCallback? = null
                     val activity = ctx.findActivity()
                     setBackgroundColor(
-                        if (darkTheme) Color.rgb(0x1C, 0x27, 0x32)
-                        else Color.rgb(0xEA, 0xF4, 0xF8)
+                        if (darkTheme) Color.rgb(0x1B, 0x20, 0x24)
+                        else Color.rgb(0xF1, 0xF7, 0xF9)
                     )
                     alpha = 0f
                     webViewClient = object : WebViewClient() {

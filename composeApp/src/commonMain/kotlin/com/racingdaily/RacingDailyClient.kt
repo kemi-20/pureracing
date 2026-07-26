@@ -2,6 +2,7 @@ package com.racingdaily
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import coil3.ImageLoader
 import coil3.annotation.ExperimentalCoilApi
@@ -11,6 +12,7 @@ import coil3.svg.SvgDecoder
 import com.racingdaily.data.remote.ApiService
 import com.racingdaily.data.remote.createHttpClient
 import com.racingdaily.data.remote.newsReferer
+import com.racingdaily.platform.currentLocalDateTimeParts
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.header
@@ -34,6 +36,10 @@ fun RacingDailyClient() {
     }
     val client = remember { createHttpClient() }
     val api = remember(client) { ApiService(client) }
+    val startupSeason = remember { currentLocalDateTimeParts().year }
+    LaunchedEffect(api, startupSeason) {
+        api.preloadHomeThenSecondary(startupSeason)
+    }
     DisposableEffect(client) {
         onDispose { client.close() }
     }

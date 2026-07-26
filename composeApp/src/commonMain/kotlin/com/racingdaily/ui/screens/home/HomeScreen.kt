@@ -84,7 +84,7 @@ fun HomeScreen(
     val appSubtitle = if (isChinese) "每日 F1 新闻" else "Daily F1 News"
 
     LaunchedEffect(reloadKey) {
-        runCatching { api.getNavTabs().navbar }
+        runCatching { api.getNavTabs(forceRefresh = reloadKey > 0).navbar }
             .onSuccess { tabs = it }
             .onFailure { error = it.message ?: "无法加载新闻分类" }
     }
@@ -95,7 +95,7 @@ fun HomeScreen(
         loadMoreError = null
         loadMoreRetryKey = 0
         nextPage = 0
-        runCatching { api.getNewsList(selectedTabId, page = 1) }
+        runCatching { api.getNewsList(selectedTabId, page = 1, forceRefresh = reloadKey > 0) }
             .onSuccess {
                 news = it.list
                 nextPage = it.next_page

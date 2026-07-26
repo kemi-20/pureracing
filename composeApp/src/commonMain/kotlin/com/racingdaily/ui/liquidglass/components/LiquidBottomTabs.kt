@@ -13,7 +13,6 @@ package com.racingdaily.ui.liquidglass.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -52,6 +51,7 @@ import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.racingdaily.ui.liquidglass.utils.DampedDragAnimation
 import com.racingdaily.ui.liquidglass.utils.InteractiveHighlight
+import com.racingdaily.ui.theme.LocalPureRacingDarkTheme
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
@@ -77,7 +77,7 @@ fun LiquidBottomTabs(
     modifier: Modifier = Modifier,
     content: @Composable RowScope.() -> Unit
 ) {
-    val isLightTheme = !isSystemInDarkTheme()
+    val isLightTheme = !LocalPureRacingDarkTheme.current
     val resolvedAccentColor = if (accentColor != Color.Unspecified) {
         accentColor
     } else if (isLightTheme) {

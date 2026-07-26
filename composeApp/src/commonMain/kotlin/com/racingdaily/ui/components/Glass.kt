@@ -11,7 +11,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -85,6 +84,7 @@ import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
 import com.racingdaily.ui.liquidglass.utils.InteractiveHighlight
+import com.racingdaily.ui.theme.LocalPureRacingDarkTheme
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -121,22 +121,22 @@ fun GlassBackdropHost(content: @Composable BoxScope.() -> Unit) {
 }
 
 fun Modifier.pureRacingBackground(): Modifier = composed {
-    val isLightTheme = !isSystemInDarkTheme()
+    val isLightTheme = !LocalPureRacingDarkTheme.current
     val mainGradient = if (isLightTheme) {
         listOf(
-            Color(0xFFF4FAFD),
-            Color(0xFFCDE8F3),
-            Color(0xFFD7EFE6),
-            Color(0xFFF5DADD),
-            Color(0xFFE4EDF4)
+            Color(0xFFFAFCFD),
+            Color(0xFFE2F1F5),
+            Color(0xFFE2F3ED),
+            Color(0xFFF6E5E7),
+            Color(0xFFE9F0F4)
         )
     } else {
         listOf(
-            Color(0xFF203448),
-            Color(0xFF2A566B),
-            Color(0xFF315B4E),
-            Color(0xFF643842),
-            Color(0xFF22303D)
+            Color(0xFF20282D),
+            Color(0xFF2B3C42),
+            Color(0xFF30423B),
+            Color(0xFF493538),
+            Color(0xFF242B31)
         )
     }
     val primary = MaterialTheme.colorScheme.primary
@@ -149,9 +149,9 @@ fun Modifier.pureRacingBackground(): Modifier = composed {
         .background(
             Brush.horizontalGradient(
                 listOf(
-                    primary.copy(alpha = if (isLightTheme) 0.07f else 0.12f),
+                    primary.copy(alpha = if (isLightTheme) 0.055f else 0.09f),
                     Color.Transparent,
-                    secondary.copy(alpha = if (isLightTheme) 0.09f else 0.12f)
+                    secondary.copy(alpha = if (isLightTheme) 0.065f else 0.09f)
                 )
             )
         )
@@ -174,10 +174,10 @@ fun GlassSurface(
 ) {
     val backdrop = if (useBackdrop) LocalGlassBackdrop.current else null
     val primary = MaterialTheme.colorScheme.primary
-    val isLightTheme = !isSystemInDarkTheme()
+    val isLightTheme = !LocalPureRacingDarkTheme.current
     val containerColor =
-        if (isLightTheme) Color.White.copy(alpha = 0.14f)
-        else Color(0xFF314450).copy(alpha = 0.2f)
+        if (isLightTheme) Color.White.copy(alpha = 0.12f)
+        else Color(0xFF354146).copy(alpha = 0.16f)
     val borderColor =
         if (selected) primary.copy(alpha = 0.58f)
         else if (isLightTheme) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f)
@@ -196,8 +196,8 @@ fun GlassSurface(
                 shape = { shape },
                 effects = {
                     vibrancy()
-                    blur(14.dp.toPx())
-                    lens(16.dp.toPx(), 22.dp.toPx())
+                    blur(16.dp.toPx())
+                    lens(17.dp.toPx(), 23.dp.toPx(), chromaticAberration = true)
                 },
                 // Keep large interactive surfaces physically consistent with Kyant's LiquidButton.
                 layerBlock = if (onClick != null) {
@@ -233,8 +233,8 @@ fun GlassSurface(
                 } else {
                     null
                 },
-                highlight = { Highlight.Default.copy(alpha = if (selected) 0.7f else if (isLightTheme) 0.3f else 0.42f) },
-                shadow = { Shadow(radius = 18.dp, alpha = if (isLightTheme) 0.18f else 0.48f) },
+                highlight = { Highlight.Default.copy(alpha = if (selected) 0.74f else if (isLightTheme) 0.34f else 0.48f) },
+                shadow = { Shadow(radius = 20.dp, alpha = if (isLightTheme) 0.17f else 0.4f) },
                 innerShadow = { InnerShadow(radius = 10.dp, alpha = if (selected) 0.48f else if (isLightTheme) 0.16f else 0.26f) },
                 onDrawSurface = {
                     drawRect(containerColor)
@@ -495,7 +495,7 @@ fun InfoPill(
     leadingIcon: ImageVector? = null
 ) {
     val backdrop = LocalGlassBackdrop.current
-    val isLightTheme = !isSystemInDarkTheme()
+    val isLightTheme = !LocalPureRacingDarkTheme.current
     val shape = RoundedCornerShape(999.dp)
     val glassModifier = if (backdrop != null) {
         Modifier.drawBackdrop(

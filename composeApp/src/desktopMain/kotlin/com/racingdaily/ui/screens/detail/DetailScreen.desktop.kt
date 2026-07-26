@@ -38,7 +38,7 @@ actual fun HtmlView(
     }
     val pageUrl = remember(articleId) { "${newsReferer}news.html?id=$articleId" }
     val awtBackground = remember(darkTheme) {
-        if (darkTheme) java.awt.Color(0x1C, 0x27, 0x32) else java.awt.Color(0xEA, 0xF4, 0xF8)
+        if (darkTheme) java.awt.Color(0x1B, 0x20, 0x24) else java.awt.Color(0xF1, 0xF7, 0xF9)
     }
     val canvas = remember(darkTheme) { Canvas().apply { background = awtBackground } }
     val panel = remember(darkTheme) {

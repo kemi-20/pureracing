@@ -85,7 +85,7 @@ fun RankingScreen(
     LaunchedEffect(reloadKey) {
         loading = true
         error = null
-        runCatching { api.getRankingNav().list.firstOrNull()?.options.orEmpty() }
+        runCatching { api.getRankingNav(forceRefresh = reloadKey > 0).list.firstOrNull()?.options.orEmpty() }
             .onSuccess {
                 seasons = it
                 selectedSeason = it.firstOrNull { option -> option.id == 2026 } ?: it.firstOrNull()
@@ -99,7 +99,11 @@ fun RankingScreen(
         loading = true
         error = null
         runCatching {
-            if (isDriver) api.getDriverRanking(season.chp_id, season.id) else api.getTeamRanking(season.chp_id, season.id)
+            if (isDriver) {
+                api.getDriverRanking(season.chp_id, season.id, forceRefresh = reloadKey > 0)
+            } else {
+                api.getTeamRanking(season.chp_id, season.id, forceRefresh = reloadKey > 0)
+            }
         }.onSuccess {
             data = it
             selectedSubTab = it.visibleRankingTabs().firstOrNull()?.tab_key.orEmpty()

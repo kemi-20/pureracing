@@ -100,6 +100,7 @@ import com.racingdaily.ui.screens.race.RaceScreen
 import com.racingdaily.ui.screens.rankings.RankingScreen
 import com.racingdaily.ui.screens.search.SearchScreen
 import com.racingdaily.ui.theme.RacingDailyTheme
+import com.racingdaily.ui.theme.rememberThemeController
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -119,7 +120,8 @@ sealed interface AppPage {
 
 @Composable
 fun App(api: ApiService) {
-    RacingDailyTheme {
+    val themeController = rememberThemeController()
+    RacingDailyTheme(themeMode = themeController.mode) {
         GlassBackdropHost {
             var currentScreen by rememberSaveable { mutableStateOf(Screen.HOME) }
             var homeSelectedTabId by rememberSaveable { mutableIntStateOf(1) }
@@ -206,10 +208,12 @@ fun App(api: ApiService) {
                                     }
                                 )
                                 Screen.MORE -> MoreScreen(
-                                    { cat, id ->
+                                    onChampClick = { cat, id ->
                                         pageStack += AppPage.Championship(cat, id)
                                     },
-                                    api
+                                    api = api,
+                                    themeMode = themeController.mode,
+                                    onThemeModeChange = themeController::select
                                 )
                             }
                         }

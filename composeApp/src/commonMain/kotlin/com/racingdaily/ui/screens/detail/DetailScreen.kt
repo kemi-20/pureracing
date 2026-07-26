@@ -238,14 +238,6 @@ internal fun buildArticleHtmlDocument(
       gap: 16px;
       margin-bottom: 20px;
     }
-    .comments-kicker {
-      margin: 0 0 4px;
-      color: $accent !important;
-      font-size: 11px;
-      line-height: 1.2 !important;
-      font-weight: 750;
-      text-transform: uppercase;
-    }
     .comments-title {
       margin: 0;
       color: $foreground !important;
@@ -350,7 +342,6 @@ internal fun buildArticleHtmlDocument(
     .comment-replies {
       display: grid;
       gap: 9px;
-      margin-top: 12px;
       padding: 11px;
       border-radius: 14px;
       background: $replySurface;
@@ -373,11 +364,40 @@ internal fun buildArticleHtmlDocument(
     }
     .comment-reply .comment-author-row { margin-bottom: 3px; }
     .comment-reply .comment-body { font-size: 13px; line-height: 1.5 !important; }
-    .comment-reply-count {
-      margin-top: 8px;
-      color: $secondaryForeground !important;
-      font-size: 11px;
+    .comment-replies-disclosure {
+      margin-top: 11px;
+    }
+    .comment-replies-disclosure summary {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 0;
+      border: 0;
+      color: $accent !important;
+      background: transparent;
+      cursor: pointer;
+      font-size: 12px;
       line-height: 1.3 !important;
+      font-weight: 680;
+      list-style: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .comment-replies-disclosure summary::-webkit-details-marker { display: none; }
+    .comment-replies-disclosure summary::after {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-right: 1.5px solid currentColor;
+      border-bottom: 1.5px solid currentColor;
+      transform: rotate(45deg) translateY(-2px);
+      transform-origin: center;
+      transition: transform 180ms ease;
+    }
+    .comment-replies-disclosure[open] summary::after {
+      transform: rotate(225deg) translate(-1px, -1px);
+    }
+    .comment-replies-disclosure .comment-replies {
+      margin-top: 6px;
     }
     .comments-empty {
       padding: 28px 18px;
@@ -499,10 +519,9 @@ private fun String.escapeHtml(): String = buildString(length) {
 
 private fun CommentListData?.toCommentsHtml(isChinese: Boolean): String {
     val title = if (isChinese) "评论" else "Comments"
-    val readOnly = if (isChinese) "只读讨论" else "Read-only discussion"
     if (this == null) {
         val unavailable = if (isChinese) "评论暂时无法加载" else "Comments are temporarily unavailable"
-        return commentsSection(title, readOnly, "-", "<div class=\"comments-empty\">${unavailable.escapeHtml()}</div>")
+        return commentsSection(title, "-", "<div class=\"comments-empty\">${unavailable.escapeHtml()}</div>")
     }
 
     val body = if (comment_list.isEmpty()) {
@@ -518,16 +537,13 @@ private fun CommentListData?.toCommentsHtml(isChinese: Boolean): String {
     } else {
         ""
     }
-    return commentsSection(title, readOnly, count.toString(), body + footnote)
+    return commentsSection(title, count.toString(), body + footnote)
 }
 
-private fun commentsSection(title: String, kicker: String, count: String, body: String): String = """
+private fun commentsSection(title: String, count: String, body: String): String = """
 <section class="pureracing-comments">
   <header class="comments-heading">
-    <div>
-      <p class="comments-kicker">${kicker.escapeHtml()}</p>
-      <h2 class="comments-title">${title.escapeHtml()}</h2>
-    </div>
+    <h2 class="comments-title">${title.escapeHtml()}</h2>
     <span class="comments-count">${count.escapeHtml()}</span>
   </header>
   $body
@@ -563,13 +579,14 @@ private fun ArticleComment.toCommentHtml(isChinese: Boolean, reply: Boolean = fa
         .orEmpty()
     val repliesHtml = if (!reply && sub_list.isNotEmpty()) {
         val items = sub_list.joinToString("") { it.toCommentHtml(isChinese, reply = true) }
-        val countLabel = if (sub_count > sub_list.size) {
-            val label = if (isChinese) "共 $sub_count 条回复" else "$sub_count replies"
-            "<div class=\"comment-reply-count\">${label.escapeHtml()}</div>"
-        } else {
-            ""
-        }
-        "<div class=\"comment-replies\">$items$countLabel</div>"
+        val replyCount = maxOf(sub_count, sub_list.size)
+        val label = if (isChinese) "共 $replyCount 条回复" else "$replyCount replies"
+        """
+<details class="comment-replies-disclosure">
+  <summary>${label.escapeHtml()}</summary>
+  <div class="comment-replies">$items</div>
+</details>
+""".trimIndent()
     } else {
         ""
     }

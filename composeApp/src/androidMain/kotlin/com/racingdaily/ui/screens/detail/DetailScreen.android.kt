@@ -3,6 +3,7 @@ package com.racingdaily.ui.screens.detail
 import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.os.Build
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
@@ -17,7 +18,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.racingdaily.data.remote.newsReferer
 
 @Composable
-actual fun HtmlView(articleId: Int, html: String, darkTheme: Boolean) {
+actual fun HtmlView(
+    articleId: Int,
+    html: String,
+    darkTheme: Boolean,
+    onContentReady: () -> Unit
+) {
     val document = remember(articleId, html, darkTheme) { buildArticleHtmlDocument(html, darkTheme) }
     val baseUrl = remember(articleId) { "${newsReferer}news.html?id=$articleId" }
     key(articleId, document) {
@@ -31,7 +37,42 @@ actual fun HtmlView(articleId: Int, html: String, darkTheme: Boolean) {
                         if (darkTheme) Color.rgb(0x1C, 0x27, 0x32)
                         else Color.rgb(0xEA, 0xF4, 0xF8)
                     )
-                    webViewClient = WebViewClient()
+                    alpha = 0f
+                    webViewClient = object : WebViewClient() {
+                        private var revealed = false
+
+                        private fun revealRenderedPage(view: WebView) {
+                            if (revealed) return
+                            revealed = true
+                            val reveal = Runnable {
+                                view.animate()
+                                    .alpha(1f)
+                                    .setDuration(140L)
+                                    .withEndAction { onContentReady() }
+                                    .start()
+                            }
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                view.postVisualStateCallback(
+                                    0L,
+                                    object : WebView.VisualStateCallback() {
+                                        override fun onComplete(requestId: Long) {
+                                            view.post(reveal)
+                                        }
+                                    }
+                                )
+                            } else {
+                                view.post(reveal)
+                            }
+                        }
+
+                        override fun onPageCommitVisible(view: WebView, url: String?) {
+                            revealRenderedPage(view)
+                        }
+
+                        override fun onPageFinished(view: WebView, url: String?) {
+                            revealRenderedPage(view)
+                        }
+                    }
                     webChromeClient = object : WebChromeClient() {
                         override fun getDefaultVideoPoster(): Bitmap =
                             Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
@@ -74,6 +115,12 @@ actual fun HtmlView(articleId: Int, html: String, darkTheme: Boolean) {
                     settings.useWideViewPort = true
                     loadDataWithBaseURL(baseUrl, document, "text/html", "UTF-8", null)
                 }
+            },
+            onRelease = { webView ->
+                webView.stopLoading()
+                webView.webChromeClient = null
+                webView.webViewClient = WebViewClient()
+                webView.destroy()
             },
             modifier = Modifier.fillMaxSize()
         )

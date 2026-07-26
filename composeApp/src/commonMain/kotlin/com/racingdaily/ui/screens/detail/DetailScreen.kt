@@ -34,7 +34,6 @@ import com.racingdaily.platform.rememberShareLauncher
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassIconButton
 import com.racingdaily.ui.components.ScreenHeader
-import kotlinx.coroutines.delay
 
 @Composable
 @Suppress("UNUSED_PARAMETER")
@@ -50,6 +49,7 @@ fun DetailScreen(
     var loading by remember(articleId) { mutableStateOf(true) }
     var error by remember(articleId) { mutableStateOf<String?>(null) }
     var reloadKey by remember(articleId) { mutableIntStateOf(0) }
+    var contentReady by remember(articleId, reloadKey) { mutableStateOf(false) }
     val shareLauncher = rememberShareLauncher()
     val darkTheme = isSystemInDarkTheme()
     val articleBackground = if (darkTheme) Color(0xFF1C2732) else Color(0xFFEAF4F8)
@@ -58,9 +58,9 @@ fun DetailScreen(
 
     LaunchedEffect(articleId, reloadKey) {
         loading = true
+        contentReady = false
         error = null
         article = null
-        delay(240)
         runCatching { api.getNewsDetail(articleId).details }
             .onSuccess { article = it }
             .onFailure { error = it.message ?: "无法加载文章" }
@@ -80,7 +80,6 @@ fun DetailScreen(
         )
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when {
-                loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = MaterialTheme.colorScheme.primary)
                 error != null -> Column(
                     modifier = Modifier.align(Alignment.Center).padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -92,10 +91,23 @@ fun DetailScreen(
                         Text("重试")
                     }
                 }
-                article != null && pageVisible -> HtmlView(
-                    articleId = articleId,
-                    html = article?.htmlContent().orEmpty(),
-                    darkTheme = darkTheme
+                article != null && pageVisible -> {
+                    HtmlView(
+                        articleId = articleId,
+                        html = article?.htmlContent().orEmpty(),
+                        darkTheme = darkTheme,
+                        onContentReady = { contentReady = true }
+                    )
+                    if (!contentReady) {
+                        CircularProgressIndicator(
+                            Modifier.align(Alignment.Center),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                loading -> CircularProgressIndicator(
+                    Modifier.align(Alignment.Center),
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -103,7 +115,12 @@ fun DetailScreen(
 }
 
 @Composable
-expect fun HtmlView(articleId: Int, html: String, darkTheme: Boolean)
+expect fun HtmlView(
+    articleId: Int,
+    html: String,
+    darkTheme: Boolean,
+    onContentReady: () -> Unit
+)
 
 internal fun buildArticleHtmlDocument(html: String, darkTheme: Boolean): String {
     val background = if (darkTheme) "#1C2732" else "#EAF4F8"

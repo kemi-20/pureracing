@@ -298,20 +298,34 @@ private fun AppPageOverlay(
     AnimatedVisibility(
         visibleState = transitionState,
         modifier = modifier.fillMaxSize(),
-        enter = fadeIn(spring(dampingRatio = 1f, stiffness = 600f)) +
-            scaleIn(
-                animationSpec = spring(dampingRatio = 1f, stiffness = 430f),
-                initialScale = 0.98f
-            ) + slideInHorizontally(
-                animationSpec = spring(dampingRatio = 0.9f, stiffness = 430f)
-            ) { it / 6 },
-        exit = fadeOut(spring(dampingRatio = 1f, stiffness = 680f)) +
-            scaleOut(
-                animationSpec = spring(dampingRatio = 1f, stiffness = 500f),
-                targetScale = 0.985f
-            ) + slideOutHorizontally(
-                animationSpec = spring(dampingRatio = 1f, stiffness = 500f)
-            ) { it / 6 }
+        enter = if (pageKey is AppPage.Article) {
+            fadeIn(spring(dampingRatio = 1f, stiffness = 600f)) +
+                slideInHorizontally(
+                    animationSpec = spring(dampingRatio = 0.92f, stiffness = 430f)
+                ) { it / 6 }
+        } else {
+            fadeIn(spring(dampingRatio = 1f, stiffness = 600f)) +
+                scaleIn(
+                    animationSpec = spring(dampingRatio = 1f, stiffness = 430f),
+                    initialScale = 0.98f
+                ) + slideInHorizontally(
+                    animationSpec = spring(dampingRatio = 0.9f, stiffness = 430f)
+                ) { it / 6 }
+        },
+        exit = if (pageKey is AppPage.Article) {
+            fadeOut(spring(dampingRatio = 1f, stiffness = 680f)) +
+                slideOutHorizontally(
+                    animationSpec = spring(dampingRatio = 1f, stiffness = 500f)
+                ) { it / 6 }
+        } else {
+            fadeOut(spring(dampingRatio = 1f, stiffness = 680f)) +
+                scaleOut(
+                    animationSpec = spring(dampingRatio = 1f, stiffness = 500f),
+                    targetScale = 0.985f
+                ) + slideOutHorizontally(
+                    animationSpec = spring(dampingRatio = 1f, stiffness = 500f)
+                ) { it / 6 }
+        }
     ) {
         Box(
             Modifier

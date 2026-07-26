@@ -15,6 +15,7 @@ import org.eclipse.swt.widgets.Display
 import org.eclipse.swt.widgets.Shell
 import java.awt.BorderLayout
 import java.awt.Canvas
+import java.awt.EventQueue
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
 import java.awt.event.HierarchyEvent
@@ -24,7 +25,12 @@ import javax.swing.JPanel
 import kotlin.concurrent.thread
 
 @Composable
-actual fun HtmlView(articleId: Int, html: String, darkTheme: Boolean) {
+actual fun HtmlView(
+    articleId: Int,
+    html: String,
+    darkTheme: Boolean,
+    onContentReady: () -> Unit
+) {
     val document = remember(articleId, html, darkTheme) { buildArticleHtmlDocument(html, darkTheme) }
     val pageUrl = remember(articleId) { "${newsReferer}news.html?id=$articleId" }
     val awtBackground = remember(darkTheme) {
@@ -62,9 +68,13 @@ actual fun HtmlView(articleId: Int, html: String, darkTheme: Boolean) {
                 shell.layout = FillLayout()
                 val browser = createBrowser(shell)
                 browserRef.set(browser)
-                browser.loadArticleDocument(pageUrl, document)
                 shell.setSize(canvas.width.coerceAtLeast(1), canvas.height.coerceAtLeast(1))
-                shell.open()
+                browser.loadArticleDocument(pageUrl, document) {
+                    if (!shell.isDisposed) {
+                        shell.open()
+                        EventQueue.invokeLater { onContentReady() }
+                    }
+                }
             }
         }
 
@@ -135,7 +145,11 @@ private object SwtThread {
 private fun createBrowser(shell: Shell): Browser =
     runCatching { Browser(shell, SWT.EDGE) }.getOrElse { Browser(shell, SWT.NONE) }
 
-private fun Browser.loadArticleDocument(pageUrl: String, document: String) {
+private fun Browser.loadArticleDocument(
+    pageUrl: String,
+    document: String,
+    onReady: () -> Unit = {}
+) {
     val script = "document.open();document.write(${document.toJavaScriptString()});document.close();"
     var injected = false
 
@@ -144,6 +158,9 @@ private fun Browser.loadArticleDocument(pageUrl: String, document: String) {
         injected = true
         if (!execute(script)) {
             setText(document)
+        }
+        display.timerExec(50) {
+            if (!isDisposed) onReady()
         }
     }
 

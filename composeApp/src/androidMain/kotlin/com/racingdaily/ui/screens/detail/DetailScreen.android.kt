@@ -22,9 +22,13 @@ actual fun HtmlView(
     articleId: Int,
     html: String,
     darkTheme: Boolean,
+    playerScript: String,
+    playerTemplate: String,
     onContentReady: () -> Unit
 ) {
-    val document = remember(articleId, html, darkTheme) { buildArticleHtmlDocument(html, darkTheme) }
+    val document = remember(articleId, html, darkTheme, playerScript, playerTemplate) {
+        buildArticleHtmlDocument(html, darkTheme, playerScript, playerTemplate)
+    }
     val baseUrl = remember(articleId) { "${newsReferer}news.html?id=$articleId" }
     key(articleId, document) {
         AndroidView(

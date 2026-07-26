@@ -29,9 +29,13 @@ actual fun HtmlView(
     articleId: Int,
     html: String,
     darkTheme: Boolean,
+    playerScript: String,
+    playerTemplate: String,
     onContentReady: () -> Unit
 ) {
-    val document = remember(articleId, html, darkTheme) { buildArticleHtmlDocument(html, darkTheme) }
+    val document = remember(articleId, html, darkTheme, playerScript, playerTemplate) {
+        buildArticleHtmlDocument(html, darkTheme, playerScript, playerTemplate)
+    }
     val pageUrl = remember(articleId) { "${newsReferer}news.html?id=$articleId" }
     val awtBackground = remember(darkTheme) {
         if (darkTheme) java.awt.Color(0x1C, 0x27, 0x32) else java.awt.Color(0xEA, 0xF4, 0xF8)

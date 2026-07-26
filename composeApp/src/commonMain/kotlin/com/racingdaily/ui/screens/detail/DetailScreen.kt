@@ -22,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -31,9 +32,11 @@ import androidx.compose.ui.unit.dp
 import com.racingdaily.data.model.ArticleDetail
 import com.racingdaily.data.remote.ApiService
 import com.racingdaily.platform.rememberShareLauncher
+import com.racingdaily.resources.Res
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassIconButton
 import com.racingdaily.ui.components.ScreenHeader
+import org.jetbrains.compose.resources.ExperimentalResourceApi
 
 @Composable
 @Suppress("UNUSED_PARAMETER")
@@ -51,6 +54,7 @@ fun DetailScreen(
     var reloadKey by remember(articleId) { mutableIntStateOf(0) }
     var contentReady by remember(articleId, reloadKey) { mutableStateOf(false) }
     val shareLauncher = rememberShareLauncher()
+    val playerAssets = rememberArticlePlayerAssets()
     val darkTheme = isSystemInDarkTheme()
     val articleBackground = if (darkTheme) Color(0xFF1C2732) else Color(0xFFEAF4F8)
     val title = article?.title?.ifBlank { initialTitle } ?: initialTitle.ifBlank { "新闻" }
@@ -91,11 +95,13 @@ fun DetailScreen(
                         Text("重试")
                     }
                 }
-                article != null && pageVisible -> {
+                article != null && pageVisible && playerAssets != null -> {
                     HtmlView(
                         articleId = articleId,
                         html = article?.htmlContent().orEmpty(),
                         darkTheme = darkTheme,
+                        playerScript = playerAssets.mediaChromeScript,
+                        playerTemplate = playerAssets.cupertinoTemplate,
                         onContentReady = { contentReady = true }
                     )
                     if (!contentReady) {
@@ -105,7 +111,7 @@ fun DetailScreen(
                         )
                     }
                 }
-                loading -> CircularProgressIndicator(
+                loading || (article != null && playerAssets == null) -> CircularProgressIndicator(
                     Modifier.align(Alignment.Center),
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -119,10 +125,17 @@ expect fun HtmlView(
     articleId: Int,
     html: String,
     darkTheme: Boolean,
+    playerScript: String,
+    playerTemplate: String,
     onContentReady: () -> Unit
 )
 
-internal fun buildArticleHtmlDocument(html: String, darkTheme: Boolean): String {
+internal fun buildArticleHtmlDocument(
+    html: String,
+    darkTheme: Boolean,
+    playerScript: String,
+    playerTemplate: String
+): String {
     val background = if (darkTheme) "#1C2732" else "#EAF4F8"
     val foreground = if (darkTheme) "#E6EDF3" else "#17212B"
     val mediaBackground = if (darkTheme) "#161B22" else "#D4E4EC"
@@ -136,6 +149,7 @@ internal fun buildArticleHtmlDocument(html: String, darkTheme: Boolean): String 
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <meta name="referrer" content="origin">
   <base href="https://news.romielf.com/">
+  <script>${playerScript.escapeClosingScriptTag()}</script>
   <style>
     html, body {
       margin: 0;
@@ -171,33 +185,76 @@ internal fun buildArticleHtmlDocument(html: String, darkTheme: Boolean): String 
       background: $mediaBackground;
     }
     video { width: 100% !important; object-fit: contain; }
+    media-theme.pureracing-video-player {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      aspect-ratio: 16 / 9;
+      margin: 12px auto;
+      overflow: hidden;
+      border-radius: 16px;
+      background: $mediaBackground;
+      line-height: 0;
+    }
+    media-theme.pureracing-video-player > video {
+      width: 100% !important;
+      height: 100% !important;
+      margin: 0;
+      border-radius: 0;
+      background: $mediaBackground;
+      object-fit: contain;
+    }
     table { width: 100% !important; table-layout: fixed; }
     pre, code { white-space: pre-wrap; overflow-wrap: anywhere; }
     a { color: $linkColor !important; }
   </style>
 </head>
 <body>
+<template id="pureracing-cupertino-theme">
+$playerTemplate
+</template>
 $html
 <script>
 (function () {
-  function useOfficialVideoControls(video) {
-    video.setAttribute("controls", "");
-    video.preload = "metadata";
+  function useCupertinoPlayer(video) {
+    if (video.closest("media-theme.pureracing-video-player")) return;
+
+    video.removeAttribute("controls");
+    video.preload = video.poster ? "metadata" : "auto";
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
+    video.setAttribute("slot", "media");
+
+    var player = document.createElement("media-theme");
+    player.className = "pureracing-video-player";
+    player.setAttribute("template", "pureracing-cupertino-theme");
+    video.parentNode.insertBefore(player, video);
+    player.appendChild(video);
+
+    function updateAspectRatio() {
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        player.style.aspectRatio = video.videoWidth + " / " + video.videoHeight;
+      }
+    }
+
     var seeked = false;
     video.addEventListener("loadedmetadata", function () {
+      updateAspectRatio();
       if (seeked || video.readyState >= 2) return;
       seeked = true;
       try {
         video.currentTime = Math.min(0.08, Math.max(0, (video.duration || 1) - 0.01));
       } catch (ignored) {}
+    });
+    video.addEventListener("loadeddata", function () {
+      updateAspectRatio();
+      player.classList.add("frame-ready");
     }, { once: true });
     video.load();
   }
 
   function boot() {
-    Array.prototype.forEach.call(document.querySelectorAll("video"), useOfficialVideoControls);
+    Array.prototype.forEach.call(document.querySelectorAll("video"), useCupertinoPlayer);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
@@ -207,6 +264,32 @@ $html
 </html>
 """.trimIndent()
 }
+
+private data class ArticlePlayerAssets(
+    val mediaChromeScript: String,
+    val cupertinoTemplate: String
+)
+
+@OptIn(ExperimentalResourceApi::class)
+@Composable
+private fun rememberArticlePlayerAssets(): ArticlePlayerAssets? {
+    val assets by produceState<ArticlePlayerAssets?>(initialValue = null) {
+        value = runCatching {
+            ArticlePlayerAssets(
+                mediaChromeScript = Res.readBytes(
+                    "files/article-player/media-chrome-4.19.2.iife.js"
+                ).decodeToString(),
+                cupertinoTemplate = Res.readBytes(
+                    "files/article-player/cupertino-liquid.html"
+                ).decodeToString()
+            )
+        }.getOrNull()
+    }
+    return assets
+}
+
+private fun String.escapeClosingScriptTag(): String =
+    replace("</script", "<\\/script", ignoreCase = true)
 
 private fun ArticleDetail.htmlContent(): String =
     content.ifBlank {

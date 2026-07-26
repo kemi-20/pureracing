@@ -716,6 +716,7 @@ private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClic
         modifier = Modifier
             .fillMaxWidth()
             .newsCardReveal("${gp.gp_id}|${gp.race_time}|${gp.gp_name}"),
+        shape = RoundedCornerShape(20.dp),
         contentPadding = PaddingValues(16.dp),
         onClick = { onRaceClick(gp) }
     ) {

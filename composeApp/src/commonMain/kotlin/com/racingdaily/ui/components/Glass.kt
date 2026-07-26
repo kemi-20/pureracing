@@ -9,8 +9,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -182,8 +180,6 @@ fun GlassSurface(
         if (selected) primary.copy(alpha = 0.58f)
         else if (isLightTheme) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f)
         else Color.White.copy(alpha = 0.16f)
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
     val animationScope = rememberCoroutineScope()
     val interactiveHighlight = remember(animationScope) {
         InteractiveHighlight(animationScope = animationScope)
@@ -244,26 +240,62 @@ fun GlassSurface(
                 }
             )
         } else {
-            Modifier.background(containerColor, shape)
+            Modifier
+                .background(containerColor, shape)
+                .background(
+                    Brush.linearGradient(
+                        if (isLightTheme) {
+                            listOf(
+                                Color.White.copy(alpha = 0.26f),
+                                Color.White.copy(alpha = 0.07f),
+                                MaterialTheme.colorScheme.secondary.copy(alpha = 0.06f)
+                            )
+                        } else {
+                            listOf(
+                                Color.White.copy(alpha = 0.12f),
+                                Color.Transparent,
+                                primary.copy(alpha = 0.08f)
+                            )
+                        }
+                    ),
+                    shape
+                )
         }
 
     Box(
         modifier
             .graphicsLayer {
                 if (backdrop == null && onClick != null) {
-                    val scale = if (isPressed) 0.975f else 1f
-                    scaleX = scale
-                    scaleY = scale
+                    val width = size.width
+                    val height = size.height
+                    if (width > 0.5f && height > 0.5f) {
+                        val progress = interactiveHighlight.pressProgress
+                        val scale = lerp(1f, 1f + 4.dp.toPx() / height, progress)
+                        val maxOffset = size.minDimension.coerceAtLeast(1f)
+                        val offset = interactiveHighlight.offset
+                        translationX = maxOffset * tanh(0.05f * offset.x / maxOffset)
+                        translationY = maxOffset * tanh(0.05f * offset.y / maxOffset)
+
+                        val maxDragScale = 4.dp.toPx() / height
+                        val offsetAngle = atan2(offset.y, offset.x)
+                        val maxDimension = size.maxDimension.coerceAtLeast(1f)
+                        scaleX = scale +
+                            maxDragScale * abs(cos(offsetAngle) * offset.x / maxDimension) *
+                            (width / height).fastCoerceAtMost(1f)
+                        scaleY = scale +
+                            maxDragScale * abs(sin(offsetAngle) * offset.y / maxDimension) *
+                            (height / width).fastCoerceAtMost(1f)
+                    }
                 }
             }
             .then(glassModifier)
-            .then(if (backdrop != null && onClick != null) interactiveHighlight.modifier else Modifier)
+            .then(if (onClick != null) interactiveHighlight.modifier else Modifier)
             .clip(shape)
             .border(1.dp, borderColor, shape)
             .then(
                 if (onClick != null) {
                     Modifier.clickable(
-                        interactionSource = if (backdrop == null) interactionSource else null,
+                        interactionSource = null,
                         indication = null,
                         role = role,
                         onClick = onClick
@@ -272,7 +304,7 @@ fun GlassSurface(
                     Modifier
                 }
             )
-            .then(if (backdrop != null && onClick != null) interactiveHighlight.gestureModifier else Modifier)
+            .then(if (onClick != null) interactiveHighlight.gestureModifier else Modifier)
             .padding(contentPadding),
         content = content
     )

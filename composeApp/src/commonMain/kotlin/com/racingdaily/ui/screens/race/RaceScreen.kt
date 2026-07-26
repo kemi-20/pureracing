@@ -59,6 +59,8 @@ import com.racingdaily.data.model.RaceSession
 import com.racingdaily.data.model.RankingData
 import com.racingdaily.data.model.SessionResult
 import com.racingdaily.data.model.StationItem
+import com.racingdaily.data.model.StationNavItem
+import com.racingdaily.data.model.StationScoreItem
 import com.racingdaily.data.remote.ApiService
 import com.racingdaily.platform.LocalDateTimeParts
 import com.racingdaily.platform.currentLocalDateTimeParts
@@ -95,7 +97,17 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
             val ranking = runCatching {
                 api.getDriverRanking(chpId = 6, seasonId = currentYear)
             }.getOrNull()
-            buildSeasonRaceSchedule(schedule, completedStations, seasonList, ranking, currentYear)
+            val seasonGpIds = resolveSeasonGpIds(schedule, completedStations, seasonList)
+            val historicalSessions = api.loadHistoricalSessions(schedule, seasonList, seasonGpIds)
+            buildSeasonRaceSchedule(
+                schedule,
+                completedStations,
+                seasonList,
+                ranking,
+                currentYear,
+                historicalSessions,
+                seasonGpIds
+            )
         }
             .onSuccess { payload ->
                 races = payload.filter { gp ->
@@ -162,7 +174,9 @@ private fun buildSeasonRaceSchedule(
     stations: List<StationItem>,
     seasonList: List<RaceListItem>,
     ranking: RankingData?,
-    seasonYear: Int
+    seasonYear: Int,
+    historicalSessions: Map<String, List<RaceSession>>,
+    seasonGpIds: Map<String, String>
 ): List<RaceGp> {
     val historicalResults = ranking.historicalRaceResults()
     val scheduleByGp = schedule
@@ -178,7 +192,7 @@ private fun buildSeasonRaceSchedule(
                 ?: scheduleByGp.keys.firstOrNull { key ->
                     scheduleByGp[key].orEmpty().any { day -> day.gp_name.sameRaceNameAs(seasonItem.gp_name) }
                 }
-                .orEmpty()
+                ?: seasonGpIds[seasonItem.gp_name.normalizedRaceName()].orEmpty()
             val days = when {
                 gpId.isNotBlank() -> scheduleByGp[gpId].orEmpty()
                 else -> schedule.filter { it.gp_name.sameRaceNameAs(seasonItem.gp_name) }
@@ -191,7 +205,8 @@ private fun buildSeasonRaceSchedule(
                 seasonItem = seasonItem,
                 station = station,
                 seasonYear = seasonYear,
-                historicalResults = historicalResults
+                historicalResults = historicalResults,
+                historicalSessions = historicalSessions[gpId].orEmpty()
             )
         }
     }
@@ -209,7 +224,8 @@ private fun buildSeasonRaceSchedule(
                 seasonItem = null,
                 station = null,
                 seasonYear = seasonYear,
-                historicalResults = historicalResults
+                historicalResults = historicalResults,
+                historicalSessions = historicalSessions[days.firstOrNull()?.gp_id.orEmpty()].orEmpty()
             )
         }
     val missing = stations
@@ -226,7 +242,8 @@ private fun buildSeasonRaceSchedule(
                 seasonItem = details,
                 station = station,
                 seasonYear = seasonYear,
-                historicalResults = historicalResults
+                historicalResults = historicalResults,
+                historicalSessions = historicalSessions[station.gp_id.toString()].orEmpty()
             )
         }
         .toList()
@@ -241,7 +258,8 @@ private fun List<RaceGp>.mergedRaceCard(
     seasonItem: RaceListItem?,
     station: StationItem?,
     seasonYear: Int,
-    historicalResults: Map<String, List<SessionResult>>
+    historicalResults: Map<String, List<SessionResult>>,
+    historicalSessions: List<RaceSession>
 ): RaceGp {
     val orderedDays = sortedBy { it.race_time }
     val sample = orderedDays.firstOrNull()
@@ -305,6 +323,7 @@ private fun List<RaceGp>.mergedRaceCard(
                 }
             }
         }
+        historicalSessions.isNotEmpty() -> historicalSessions
         raceResults.isNotEmpty() -> listOf(
             RaceSession(
                 session_id = -1,
@@ -356,6 +375,133 @@ private fun List<RaceGp>.mergedRaceCard(
         weather = sample?.weather,
         session = sessions
     )
+}
+
+private val stationSessionKeys = setOf(
+    "fp1cj", "fp2cj", "fp3cj", "ccpws", "ccpwscj", "ccscj", "pwscj", "zscj"
+)
+
+private fun resolveSeasonGpIds(
+    schedule: List<RaceGp>,
+    stations: List<StationItem>,
+    seasonList: List<RaceListItem>
+): Map<String, String> {
+    val known = linkedMapOf<String, String>()
+    schedule.forEach { gp ->
+        if (gp.gp_id.isNotBlank() && gp.gp_id != "0" && gp.gp_name.isNotBlank()) {
+            known[gp.gp_name.normalizedRaceName()] = gp.gp_id
+        }
+    }
+    stations.forEach { station ->
+        if (station.gp_id > 0) known[station.chinese_name.normalizedRaceName()] = station.gp_id.toString()
+    }
+    val baseGpId = stations.mapNotNull { station ->
+        val round = station.number.toIntOrNull() ?: return@mapNotNull null
+        station.gp_id.takeIf { it > 0 }?.minus(round - 1)
+    }.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key
+
+    return seasonList.mapIndexedNotNull { index, item ->
+        val key = item.gp_name.normalizedRaceName()
+        val gpId = known[key] ?: baseGpId?.plus(index)?.toString() ?: return@mapIndexedNotNull null
+        key to gpId
+    }.toMap()
+}
+
+private suspend fun ApiService.loadHistoricalSessions(
+    schedule: List<RaceGp>,
+    seasonList: List<RaceListItem>,
+    seasonGpIds: Map<String, String>
+): Map<String, List<RaceSession>> {
+    val scheduledIds = schedule.mapTo(mutableSetOf()) { it.gp_id }
+    val result = linkedMapOf<String, List<RaceSession>>()
+    for (seasonItem in seasonList) {
+        val gpId = seasonGpIds[seasonItem.gp_name.normalizedRaceName()]?.toIntOrNull() ?: continue
+        if (gpId.toString() in scheduledIds || seasonItem.status !in setOf(1, 4)) continue
+        val navigation = runCatching { getStationRank(gpId).navbar }
+            .getOrDefault(emptyList())
+            .filter { it.key_name in stationSessionKeys }
+            .sortedBy { it.sessionOrder() }
+        val sessions = mutableListOf<RaceSession>()
+        for (nav in navigation) {
+            val scores = runCatching { getStationScore(gpId, nav.id) }
+                .getOrDefault(emptyList())
+            if (scores.isNotEmpty() || seasonItem.status == 4) {
+                sessions += nav.toRaceSession(scores, seasonItem.time, seasonItem.status)
+            }
+        }
+        if (sessions.isNotEmpty()) result[gpId.toString()] = sessions
+    }
+    return result
+}
+
+private fun StationNavItem.sessionOrder(): Int = when (key_name) {
+    "fp1cj" -> 10
+    "ccpws" -> 20
+    "fp2cj" -> 20
+    "ccpwscj", "ccscj" -> 30
+    "fp3cj" -> 30
+    "pwscj" -> 40
+    "zscj" -> 50
+    else -> 100
+}
+
+private fun StationNavItem.toRaceSession(
+    scores: List<StationScoreItem>,
+    raceRange: String,
+    raceStatus: Int
+): RaceSession = RaceSession(
+    session_id = scores.firstOrNull()?.gp_session_id ?: id,
+    session_name = listOf(
+        when (key_name) {
+            "fp1cj" -> "一练"
+            "fp2cj" -> "二练"
+            "fp3cj" -> "三练"
+            "ccpws" -> "冲刺排位"
+            "ccpwscj", "ccscj" -> "冲刺赛"
+            "pwscj" -> "排位赛"
+            "zscj" -> "正赛"
+            else -> name.removeSuffix("成绩")
+        }
+    ),
+    session_type = when (key_name) {
+        "fp1cj" -> 1
+        "fp2cj" -> 2
+        "fp3cj" -> 3
+        "pwscj", "ccpws" -> 4
+        "zscj" -> 5
+        else -> 6
+    },
+    hour = listOf(raceRange.sessionDateLabel(key_name)),
+    race_status = if (raceStatus == 4) 4 else 1,
+    race_result = scores.sortedBy { it.display_order }.map { it.toSessionResult() }
+)
+
+private fun StationScoreItem.toSessionResult(): SessionResult = SessionResult(
+    rank = rank?.toIntOrNull() ?: display_order,
+    driverid = driver_id.toString(),
+    dr_name = driver_abbr_chinese_name,
+    teamid = team_id.toString(),
+    team_logo = team_logo,
+    gap = gap.orEmpty().ifBlank { fast_lap_speed.orEmpty() },
+    score_p = point ?: 0,
+    is_fast = is_fast ?: 0
+)
+
+private fun String.sessionDateLabel(key: String): String {
+    val firstDay = substringBefore("~").trim()
+    val lastDay = substringAfter("~", firstDay).trim()
+    return when (key) {
+        "fp1cj", "fp2cj", "ccpws" -> firstDay
+        "zscj" -> lastDay
+        else -> lastDay.previousDayLabel().ifBlank { firstDay }
+    }
+}
+
+private fun String.previousDayLabel(): String {
+    val month = substringBefore("月").filter(Char::isDigit).toIntOrNull() ?: return ""
+    val day = substringAfter("月").substringBefore("日").filter(Char::isDigit).toIntOrNull() ?: return ""
+    if (day <= 1) return ""
+    return "${month.toString().padStart(2, '0')}月${(day - 1).toString().padStart(2, '0')}日"
 }
 
 private fun RankingData?.historicalRaceResults(): Map<String, List<SessionResult>> {
@@ -483,8 +629,14 @@ private fun List<RaceGp>.nearestRaceIndex(): Int {
     val liveIndex = indexOfFirst { gp -> gp.session.any { it.race_status == 2 } }
     if (liveIndex >= 0) return liveIndex
 
-    val now = runCatching { currentLocalDateTimeParts().toSortableMinutes() }.getOrNull()
-    if (now != null) {
+    val localNow = runCatching { currentLocalDateTimeParts() }.getOrNull()
+    if (localNow != null) {
+        val activeWeekendIndex = indexOfFirst { gp ->
+            gp.containsDate(localNow) && gp.session.any { it.race_status != 1 && it.race_status != 4 }
+        }
+        if (activeWeekendIndex >= 0) return activeWeekendIndex
+
+        val now = localNow.toSortableMinutes()
         val nextTimedRace = mapIndexedNotNull { index, gp ->
             gp.nextSessionMinutesAfter(now)?.let { index to it }
         }.minByOrNull { it.second }
@@ -495,6 +647,14 @@ private fun List<RaceGp>.nearestRaceIndex(): Int {
     if (upcomingIndex >= 0) return upcomingIndex
 
     return lastIndex.coerceAtLeast(0)
+}
+
+private fun RaceGp.containsDate(now: LocalDateTimeParts): Boolean {
+    val start = race_time.parseRaceDate() ?: return false
+    val endLabel = race_time_detail.substringBefore("·").substringAfter("~", "").trim()
+    val end = endLabel.parseMonthDay(start.year) ?: start
+    val current = (now.year * 10000L) + (now.month * 100L) + now.day
+    return current in start.toSortableDate()..end.toSortableDate()
 }
 
 private fun RaceGp.nextSessionMinutesAfter(now: Long): Long? {
@@ -514,6 +674,8 @@ private fun RaceGp.nextSessionMinutesAfter(now: Long): Long? {
 private data class RaceDate(val year: Int, val month: Int, val day: Int) {
     fun toSortableMinutes(hour: Int, minute: Int): Long =
         (((year * 100L + month) * 100L + day) * 24L + hour) * 60L + minute
+
+    fun toSortableDate(): Long = (year * 10000L) + (month * 100L) + day
 }
 
 private fun LocalDateTimeParts.toSortableMinutes(): Long =
@@ -525,6 +687,13 @@ private fun String.parseRaceDate(): RaceDate? {
     val year = parts[0].toIntOrNull() ?: return null
     val month = parts[1].toIntOrNull() ?: return null
     val day = parts[2].toIntOrNull() ?: return null
+    return RaceDate(year, month, day)
+}
+
+private fun String.parseMonthDay(year: Int): RaceDate? {
+    val month = substringBefore("月").filter(Char::isDigit).toIntOrNull() ?: return null
+    val day = substringAfter("月").substringBefore("日").filter(Char::isDigit).toIntOrNull() ?: return null
+    if (month !in 1..12 || day !in 1..31) return null
     return RaceDate(year, month, day)
 }
 

@@ -125,6 +125,19 @@ object FlexibleLongSerializer : KSerializer<Long> {
 @Serializable data class StationData(val tmp: List<StationItem> = emptyList())
 @Serializable data class StationRankData(val navbar: List<StationNavItem> = emptyList())
 @Serializable data class StationNavItem(val id: Int = 0, val key_name: String = "", val name: String = "")
+@Serializable data class StationScoreItem(
+    val gp_session_id: Int = 0,
+    val driver_id: Int = 0,
+    val team_id: Int = 0,
+    val rank: String? = null,
+    val display_order: Int = 0,
+    val driver_abbr_chinese_name: String = "",
+    val team_logo: String = "",
+    val gap: String? = null,
+    val fast_lap_speed: String? = null,
+    val point: Int? = null,
+    val is_fast: Int? = null
+)
 
 // Track
 @Serializable data class TrackInfo(val id: Int = 0, val name: String = "", val chinese_name: String = "",

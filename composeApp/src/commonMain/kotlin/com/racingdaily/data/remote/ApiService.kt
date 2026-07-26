@@ -50,8 +50,11 @@ class ApiService(private val client: HttpClient) {
     suspend fun getStationRank(gpId: Int) =
         client.get("station/rank") { parameter("gp_id", gpId) }.body<ApiResponse<StationRankData>>().requireData()
 
-    suspend fun getStationScore(gpId: Int) =
-        client.get("station/score") { parameter("gp_id", gpId) }.body<ApiResponse<kotlinx.serialization.json.JsonElement>>().requireData()
+    suspend fun getStationScore(gpId: Int, typeId: Int) =
+        client.get("station/score") {
+            parameter("gp_id", gpId)
+            parameter("type_id", typeId)
+        }.body<ApiResponse<List<StationScoreItem>>>().requireData()
 
     suspend fun getTrackInfo(trackId: Int) =
         client.get("track/index") { parameter("track_id", trackId) }.body<ApiResponse<TrackData>>().requireData()

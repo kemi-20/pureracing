@@ -67,6 +67,7 @@ import com.racingdaily.platform.currentLocalDateTimeParts
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.LightweightSurface
 import com.racingdaily.ui.components.ScreenHeader
+import com.racingdaily.ui.components.newsCardReveal
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -712,7 +713,9 @@ private fun String.parseRaceHour(): Pair<Int, Int>? {
 private fun RaceGlassCard(gp: RaceGp, onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit) {
     // Critical Android stability: never stack real Backdrop glass inside Race list items.
     LightweightSurface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .newsCardReveal("${gp.gp_id}|${gp.race_time}|${gp.gp_name}"),
         contentPadding = PaddingValues(16.dp),
         onClick = { onRaceClick(gp) }
     ) {

@@ -266,6 +266,13 @@ internal fun buildArticleHtmlDocument(
       border-radius: 18px;
       background: $commentSurface;
     }
+    .comment-item,
+    .comment-reply {
+      opacity: 0;
+      transform: translateY(18px) scale(.985);
+      transform-origin: center;
+      will-change: opacity, transform;
+    }
     .comment-avatar,
     .comment-avatar-fallback {
       width: 42px !important;
@@ -463,6 +470,40 @@ $html
 
   function boot() {
     Array.prototype.forEach.call(document.querySelectorAll("video"), useCupertinoPlayer);
+    var animatedCards = document.querySelectorAll(".comment-item, .comment-reply");
+    var omega = Math.sqrt(360);
+    var frameCount = 30;
+    var duration = 500;
+    var revealFrames = [];
+    for (var frame = 0; frame <= frameCount; frame++) {
+      var offset = frame / frameCount;
+      var elapsed = duration * offset / 1000;
+      var progress = 1 - (1 + omega * elapsed) * Math.exp(-omega * elapsed);
+      if (frame === frameCount) progress = 1;
+      revealFrames.push({
+        opacity: progress,
+        transform: "translateY(" + ((1 - progress) * 18) + "px) scale(" + (0.985 + 0.015 * progress) + ")",
+        offset: offset
+      });
+    }
+    var revealObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          if (entry.target.__pureracingReveal) entry.target.__pureracingReveal.cancel();
+          entry.target.__pureracingReveal = entry.target.animate(revealFrames, {
+            duration: duration,
+            fill: "forwards"
+          });
+        } else {
+          if (entry.target.__pureracingReveal) entry.target.__pureracingReveal.cancel();
+          entry.target.style.opacity = "0";
+          entry.target.style.transform = "translateY(18px) scale(.985)";
+        }
+      });
+    }, { threshold: 0.04 });
+    Array.prototype.forEach.call(animatedCards, function (card) {
+      revealObserver.observe(card);
+    });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();

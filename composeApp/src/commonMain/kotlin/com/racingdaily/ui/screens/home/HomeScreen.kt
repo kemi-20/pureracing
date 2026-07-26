@@ -1,7 +1,5 @@
 package com.racingdaily.ui.screens.home
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
@@ -41,9 +39,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,6 +55,7 @@ import com.racingdaily.ui.components.GlassIconButton
 import com.racingdaily.ui.components.GlassSurface
 import com.racingdaily.ui.components.InfoPill
 import com.racingdaily.ui.components.ScreenHeader
+import com.racingdaily.ui.components.newsCardReveal
 import kotlinx.coroutines.flow.collect
 
 @Composable
@@ -218,26 +215,10 @@ private fun NewsGlassCard(
     onArticleClick: (NewsItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val density = LocalDensity.current
-    val reveal = remember(item.id) { Animatable(0f) }
-    LaunchedEffect(item.id) {
-        reveal.animateTo(
-            targetValue = 1f,
-            animationSpec = spring(dampingRatio = 1f, stiffness = 360f)
-        )
-    }
-    val revealOffset = with(density) { 18.dp.toPx() }
-
     GlassSurface(
         modifier = modifier
             .fillMaxWidth()
-            .graphicsLayer {
-                alpha = reveal.value
-                translationY = (1f - reveal.value) * revealOffset
-                val revealScale = 0.985f + 0.015f * reveal.value
-                scaleX = revealScale
-                scaleY = revealScale
-            },
+            .newsCardReveal(item.id),
         shape = RoundedCornerShape(if (featured) 24.dp else 20.dp),
         onClick = { onArticleClick(item) },
         contentPadding = PaddingValues(0.dp)

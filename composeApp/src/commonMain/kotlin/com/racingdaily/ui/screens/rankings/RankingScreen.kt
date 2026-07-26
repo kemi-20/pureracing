@@ -58,6 +58,7 @@ import com.racingdaily.ui.components.GlassSurface
 import com.racingdaily.ui.components.ScreenHeader
 import com.racingdaily.ui.components.SectionLabel
 import com.racingdaily.ui.components.TeamLogo
+import com.racingdaily.ui.components.newsCardReveal
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -202,6 +203,9 @@ fun RankingScreen(
                                 chpId = selectedSeason?.chp_id ?: 0,
                                 seasonId = selectedSeason?.id ?: 0,
                                 shineOffset = podiumShine.value,
+                                modifier = Modifier.newsCardReveal(
+                                    "podium|${selectedSeason?.id}|$isDriver|${tab.tab_key}"
+                                ),
                                 onDriverClick = onDriverClick,
                                 onTeamClick = onTeamClick
                             )
@@ -247,10 +251,11 @@ private fun RankingPodium(
     chpId: Int,
     seasonId: Int,
     shineOffset: Float,
+    modifier: Modifier = Modifier,
     onDriverClick: (chpId: Int, seasonId: Int, driverId: Int, name: String, avatar: String, teamLogo: String, stats: JsonObject) -> Unit,
     onTeamClick: (chpId: Int, seasonId: Int, teamId: Int, name: String, logo: String, stats: JsonObject) -> Unit
 ) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
         listOf(1, 0, 2).forEach { sourceIndex ->
             rows.getOrNull(sourceIndex)?.let { row ->
                 RankingPodiumEntry(
@@ -372,7 +377,8 @@ private fun RankingRow(
     GlassSurface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 1.dp),
+            .padding(vertical = 1.dp)
+            .newsCardReveal("$isDriver|$driverId|$teamId|$pos"),
         selected = false,
         onClick = {
             if (isDriver && driverId > 0) {

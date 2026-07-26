@@ -89,6 +89,7 @@ import com.racingdaily.ui.components.GlassIconButton
 import com.racingdaily.ui.components.GlassNavTab
 import com.racingdaily.ui.components.GlassSurface
 import com.racingdaily.ui.components.LocalNavigationGlassBackdrop
+import com.racingdaily.ui.components.NationalityFlags
 import com.racingdaily.ui.components.ScreenHeader
 import com.racingdaily.ui.components.TeamLogo
 import com.racingdaily.ui.components.pureRacingBackground
@@ -689,7 +690,10 @@ fun DriverDetailScreen(
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
-                        AsyncImage(title?.nationality_img?.ifBlank { page.teamLogo } ?: page.teamLogo, null, Modifier.size(42.dp))
+                        NationalityFlags(
+                            nationality = title?.nationality.orEmpty(),
+                            remoteFallbackUrl = title?.nationality_img.orEmpty()
+                        )
                     }
                 }
             }

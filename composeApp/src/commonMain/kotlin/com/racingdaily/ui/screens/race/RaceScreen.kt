@@ -35,7 +35,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -48,11 +47,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import coil3.compose.LocalPlatformContext
-import coil3.request.ImageRequest
-import coil3.svg.SvgDecoder
-import com.racingdaily.resources.Res
-import org.jetbrains.compose.resources.ExperimentalResourceApi
 import com.racingdaily.data.model.RaceGp
 import com.racingdaily.data.model.RaceListItem
 import com.racingdaily.data.model.RaceSession
@@ -65,6 +59,7 @@ import com.racingdaily.data.remote.ApiService
 import com.racingdaily.platform.LocalDateTimeParts
 import com.racingdaily.platform.currentLocalDateTimeParts
 import com.racingdaily.ui.components.GlassButton
+import com.racingdaily.ui.components.HighResolutionFlag
 import com.racingdaily.ui.components.LightweightSurface
 import com.racingdaily.ui.components.ScreenHeader
 import com.racingdaily.ui.components.newsCardReveal
@@ -837,97 +832,19 @@ private fun RaceSessionTile(session: RaceSession) {
     }
 }
 
-@OptIn(ExperimentalResourceApi::class)
 @Composable
 internal fun RaceFlag(
     gp: RaceGp,
     modifier: Modifier = Modifier.width(68.dp).height(51.dp)
 ) {
-    val imageModifier = modifier
-        .clip(RoundedCornerShape(8.dp))
-        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.18f))
-
-    // Keep high-res SVG sources. Prefer raw SVG bytes through Coil's SVG decoder so we avoid
-    // Compose Resources painterResource / unsupported resource URIs. Fall back to API logos.
-    val localFlagPath = remember(gp.gp_name, gp.track_name) { gp.localFlagPath() }
-    val localFlagBytes by produceState<ByteArray?>(initialValue = null, localFlagPath) {
-        value = localFlagPath?.let { path ->
-            runCatching { Res.readBytes(path) }.getOrNull()
-        }
-    }
     val remoteLogo = gp.gp_logo.takeIf { it.isNotBlank() } ?: gp.chp_logo.takeIf { it.isNotBlank() }
-    var useRemote by remember(localFlagPath, remoteLogo) { mutableStateOf(false) }
-    val platformContext = LocalPlatformContext.current
-    val model = when {
-        !useRemote && localFlagBytes != null -> ImageRequest.Builder(platformContext)
-            .data(localFlagBytes)
-            .decoderFactory(SvgDecoder.Factory())
-            .memoryCacheKey(localFlagPath)
-            .diskCacheKey(localFlagPath)
-            .build()
-        remoteLogo != null -> remoteLogo
-        else -> null
-    }
-
-    if (model != null) {
-        AsyncImage(
-            model = model,
-            contentDescription = gp.gp_name,
-            modifier = imageModifier,
-            contentScale = ContentScale.Crop,
-            onError = {
-                if (!useRemote && remoteLogo != null && localFlagBytes != null) {
-                    useRemote = true
-                }
-            }
-        )
-    } else {
-        Box(imageModifier, contentAlignment = Alignment.Center) {
-            Icon(
-                Icons.Rounded.Flag,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-    }
+    HighResolutionFlag(
+        identity = "${gp.gp_name} ${gp.track_name}",
+        remoteFallbackUrl = remoteLogo.orEmpty(),
+        contentDescription = gp.gp_name,
+        modifier = modifier
+    )
 }
-
-private fun RaceGp.localFlagPath(): String? {
-    val identity = "$gp_name $track_name".lowercase()
-    val code = when {
-        identity.containsAny("australia", "melbourne", "澳大利亚") -> "au"
-        identity.containsAny("china", "chinese", "shanghai", "中国", "上海") -> "cn"
-        identity.containsAny("japan", "japanese", "suzuka", "日本", "铃鹿") -> "jp"
-        identity.containsAny("bahrain", "sakhir", "巴林") -> "bh"
-        identity.containsAny("saudi", "jeddah", "沙特", "吉达") -> "sa"
-        identity.containsAny("emilia", "imola", "italian", "monza", "意大利", "伊莫拉", "蒙扎") -> "it"
-        identity.containsAny("monaco", "monte carlo", "摩纳哥") -> "mc"
-        identity.containsAny("spain", "spanish", "barcelona", "madrid", "西班牙", "巴塞罗那", "马德里") -> "es"
-        identity.containsAny("canada", "canadian", "montreal", "加拿大", "蒙特利尔") -> "ca"
-        identity.containsAny("austria", "austrian", "spielberg", "奥地利") -> "at"
-        identity.containsAny("britain", "british", "silverstone", "united kingdom", "英国", "银石") -> "gb"
-        identity.containsAny("belgium", "belgian", "spa-francorchamps", "spa ", "比利时", "斯帕") -> "be"
-        identity.containsAny("hungary", "hungarian", "budapest", "匈牙利", "布达佩斯") -> "hu"
-        identity.containsAny("netherlands", "dutch", "zandvoort", "荷兰", "赞德沃特") -> "nl"
-        identity.containsAny("azerbaijan", "baku", "阿塞拜疆", "巴库") -> "az"
-        identity.containsAny("singapore", "marina bay", "新加坡", "滨海湾") -> "sg"
-        identity.containsAny("mexico", "mexican", "墨西哥") -> "mx"
-        identity.containsAny("brazil", "brazilian", "sao paulo", "interlagos", "巴西", "圣保罗") -> "br"
-        identity.containsAny("qatar", "lusail", "卡塔尔", "卢赛尔", "罗塞尔") -> "qa"
-        identity.containsAny("abu dhabi", "yas marina", "united arab emirates", "阿布扎比", "亚斯码头") -> "ae"
-        identity.containsAny("miami", "las vegas", "austin", "united states", "american", "美国", "迈阿密", "拉斯维加斯", "奥斯汀", "美洲赛道") -> "us"
-        identity.containsAny("france", "french", "paul ricard", "法国") -> "fr"
-        identity.containsAny("germany", "german", "hockenheim", "nurburgring", "德国") -> "de"
-        identity.containsAny("malaysia", "sepang", "马来西亚", "雪邦") -> "my"
-        identity.containsAny("turkey", "turkish", "istanbul", "土耳其", "伊斯坦布尔") -> "tr"
-        identity.containsAny("russia", "russian", "sochi", "俄罗斯", "索契") -> "ru"
-        identity.containsAny("south africa", "kyalami", "南非") -> "za"
-        else -> null
-    } ?: return null
-    return "files/flags-svg/flag_$code.svg"
-}
-
-private fun String.containsAny(vararg candidates: String): Boolean = candidates.any(::contains)
 
 @Composable
 private fun SoftPill(

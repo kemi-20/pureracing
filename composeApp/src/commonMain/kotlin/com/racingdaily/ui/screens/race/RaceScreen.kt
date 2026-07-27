@@ -1041,8 +1041,8 @@ private fun RaceGlassCard(
     GlassSurface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 12.dp),
-        contentModifier = Modifier.newsCardReveal("${gp.gp_id}|${gp.race_time}|${gp.gp_name}"),
+            .padding(bottom = 12.dp)
+            .newsCardReveal("${gp.gp_id}|${gp.race_time}|${gp.gp_name}"),
         shape = RoundedCornerShape(if (focused) 22.dp else 18.dp),
         material = GlassMaterial.THIN,
         selected = isLive,

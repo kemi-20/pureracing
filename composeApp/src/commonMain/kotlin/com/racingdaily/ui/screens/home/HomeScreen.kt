@@ -220,8 +220,8 @@ private fun NewsGlassCard(
     GlassSurface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(bottom = 14.dp),
-        contentModifier = Modifier.newsCardReveal(item.id),
+            .padding(bottom = 14.dp)
+            .newsCardReveal(item.id),
         shape = RoundedCornerShape(if (featured) 24.dp else 18.dp),
         material = if (featured) GlassMaterial.FLOATING else GlassMaterial.THIN,
         onClick = { onArticleClick(item) },

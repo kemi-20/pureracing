@@ -178,7 +178,6 @@ fun GlassSurface(
     onClick: (() -> Unit)? = null,
     role: Role? = null,
     contentPadding: PaddingValues = PaddingValues(0.dp),
-    contentModifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
     val backdrop = LocalGlassBackdrop.current
@@ -318,32 +317,37 @@ fun GlassSurface(
                 )
         }
 
-    Box(
-        modifier
-            .graphicsLayer {
-                if (backdrop == null && onClick != null) {
-                    val width = size.width
-                    val height = size.height
-                    if (width > 0.5f && height > 0.5f) {
-                        val progress = interactiveHighlight.pressProgress
-                        val scale = lerp(1f, 1f + 4.dp.toPx() / height, progress)
-                        val maxOffset = size.minDimension.coerceAtLeast(1f)
-                        val offset = interactiveHighlight.offset
-                        translationX = maxOffset * tanh(0.05f * offset.x / maxOffset)
-                        translationY = maxOffset * tanh(0.05f * offset.y / maxOffset)
+    val fallbackMotionModifier =
+        if (backdrop == null && onClick != null) {
+            Modifier.graphicsLayer {
+                val width = size.width
+                val height = size.height
+                if (width > 0.5f && height > 0.5f) {
+                    val progress = interactiveHighlight.pressProgress
+                    val scale = lerp(1f, 1f + 4.dp.toPx() / height, progress)
+                    val maxOffset = size.minDimension.coerceAtLeast(1f)
+                    val offset = interactiveHighlight.offset
+                    translationX = maxOffset * tanh(0.05f * offset.x / maxOffset)
+                    translationY = maxOffset * tanh(0.05f * offset.y / maxOffset)
 
-                        val maxDragScale = 4.dp.toPx() / height
-                        val offsetAngle = atan2(offset.y, offset.x)
-                        val maxDimension = size.maxDimension.coerceAtLeast(1f)
-                        scaleX = scale +
-                            maxDragScale * abs(cos(offsetAngle) * offset.x / maxDimension) *
+                    val maxDragScale = 4.dp.toPx() / height
+                    val offsetAngle = atan2(offset.y, offset.x)
+                    val maxDimension = size.maxDimension.coerceAtLeast(1f)
+                    scaleX = scale +
+                        maxDragScale * abs(cos(offsetAngle) * offset.x / maxDimension) *
                             (width / height).fastCoerceAtMost(1f)
-                        scaleY = scale +
-                            maxDragScale * abs(sin(offsetAngle) * offset.y / maxDimension) *
+                    scaleY = scale +
+                        maxDragScale * abs(sin(offsetAngle) * offset.y / maxDimension) *
                             (height / width).fastCoerceAtMost(1f)
-                    }
                 }
             }
+        } else {
+            Modifier
+        }
+
+    Box(
+        modifier
+            .then(fallbackMotionModifier)
             .then(glassModifier)
             .then(if (onClick != null) interactiveHighlight.modifier else Modifier)
             .clip(shape)
@@ -362,12 +366,7 @@ fun GlassSurface(
             )
             .then(if (onClick != null) interactiveHighlight.gestureModifier else Modifier)
             .padding(contentPadding),
-        content = {
-            Box(
-                modifier = contentModifier,
-                content = content
-            )
-        }
+        content = content
     )
 }
 

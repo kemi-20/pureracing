@@ -309,9 +309,13 @@ private fun List<RaceGp>.mergedRaceCard(
                 val mapped = sessionsFromSchedule.map { session ->
                     val isRaceSession = session.session_type == 5 ||
                         session.session_name.any { name -> name.contains("正赛") }
-                    if (!attached && isRaceSession && session.race_result.isEmpty()) {
+                    if (!attached && isRaceSession) {
                         attached = true
-                        session.copy(race_result = raceResults, race_status = 1)
+                        if (session.race_result.isEmpty()) {
+                            session.copy(race_result = raceResults, race_status = 1)
+                        } else {
+                            session
+                        }
                     } else {
                         session
                     }

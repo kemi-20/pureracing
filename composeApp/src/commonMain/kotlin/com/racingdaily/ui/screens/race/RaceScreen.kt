@@ -57,7 +57,6 @@ import com.racingdaily.data.remote.ApiService
 import com.racingdaily.platform.LocalDateTimeParts
 import com.racingdaily.platform.currentLocalDateTimeParts
 import com.racingdaily.platform.raceCalendarUtcToLocal
-import com.racingdaily.ui.components.DiagonalSplitFlag
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassMaterial
 import com.racingdaily.ui.components.GlassSurface
@@ -1289,9 +1288,9 @@ internal fun RaceFlag(
     val remoteLogo = gp.gp_logo.takeIf { it.isNotBlank() } ?: gp.chp_logo.takeIf { it.isNotBlank() }
     val alternateVenue = gp.gp_name.alternateVenueNames()
     if (alternateVenue != null) {
-        DiagonalSplitFlag(
-            topLeftIdentity = alternateVenue.first,
-            bottomRightIdentity = alternateVenue.second,
+        HighResolutionFlag(
+            identity = alternateVenue.second,
+            remoteFallbackUrl = "",
             contentDescription = gp.gp_name,
             modifier = modifier
         )

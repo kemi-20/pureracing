@@ -69,8 +69,8 @@ android {
         applicationId = "com.racingdaily.pureracing"
         minSdk = 24
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.2"
+        versionCode = 4
+        versionName = "1.3"
     }
 
     signingConfigs {
@@ -109,7 +109,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Exe)
             packageName = "PureRacing"
-            packageVersion = "1.1.0"
+            packageVersion = "1.3.0"
             windows {
                 iconFile.set(project.file("src/desktopMain/resources/app_icon.ico"))
             }

@@ -4,8 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Flag
@@ -116,6 +118,51 @@ fun HighResolutionFlag(
             )
         }
     }
+}
+
+@Composable
+fun DiagonalSplitFlag(
+    topLeftIdentity: String,
+    bottomRightIdentity: String,
+    contentDescription: String?,
+    modifier: Modifier
+) {
+    Box(
+        modifier
+            .clip(RoundedCornerShape(7.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.18f))
+    ) {
+        HighResolutionFlag(
+            identity = topLeftIdentity,
+            remoteFallbackUrl = "",
+            contentDescription = contentDescription,
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(TopLeftDiagonalFlagShape)
+        )
+        HighResolutionFlag(
+            identity = bottomRightIdentity,
+            remoteFallbackUrl = "",
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(BottomRightDiagonalFlagShape)
+        )
+    }
+}
+
+private val TopLeftDiagonalFlagShape = GenericShape { size, _ ->
+    moveTo(0f, 0f)
+    lineTo(size.width, 0f)
+    lineTo(0f, size.height)
+    close()
+}
+
+private val BottomRightDiagonalFlagShape = GenericShape { size, _ ->
+    moveTo(size.width, 0f)
+    lineTo(size.width, size.height)
+    lineTo(0f, size.height)
+    close()
 }
 
 private fun countryFlagPath(rawIdentity: String): String? {

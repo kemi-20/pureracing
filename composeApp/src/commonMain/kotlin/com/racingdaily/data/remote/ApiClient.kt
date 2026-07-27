@@ -33,7 +33,7 @@ fun createHttpClient() = HttpClient {
     }
     defaultRequest {
         url("https://api.romielf.com/")
-        header("User-Agent", "RacingDaily/1.2.9")
+        header("User-Agent", "RacingDaily/1.3.0")
         header("Referer", newsReferer)
     }
 }

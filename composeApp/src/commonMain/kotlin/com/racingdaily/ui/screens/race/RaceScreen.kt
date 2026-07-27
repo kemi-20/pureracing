@@ -57,6 +57,7 @@ import com.racingdaily.data.remote.ApiService
 import com.racingdaily.platform.LocalDateTimeParts
 import com.racingdaily.platform.currentLocalDateTimeParts
 import com.racingdaily.platform.raceCalendarUtcToLocal
+import com.racingdaily.ui.components.DiagonalSplitFlag
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassMaterial
 import com.racingdaily.ui.components.GlassSurface
@@ -294,7 +295,9 @@ private fun List<F1CalendarEvent>.toRaceCards(
     val races = mutableListOf<RaceGp>()
 
     grouped.forEachIndexed { index, (raceName, events) ->
+        val apiRaceName = raceName.primaryCalendarRaceName()
         val seasonItem = activeSeason.firstOrNull { it.gp_name == raceName }
+            ?: activeSeason.firstOrNull { it.gp_name.sameRaceNameAs(apiRaceName) }
             ?: activeSeason.getOrNull(index)
         val localSessions = events.mapNotNull { event ->
             val start = raceCalendarUtcToLocal(event.startUtc) ?: return@mapNotNull null
@@ -320,8 +323,9 @@ private fun List<F1CalendarEvent>.toRaceCards(
         val grandPrixUid = events.first().grandPrixUid()
         val englishEvent = englishByUid[grandPrixUid]
         val englishName = englishEvent?.raceName().orEmpty()
+        val englishApiName = englishName.primaryCalendarRaceName()
         val results = historicalResults[gpId].orEmpty().ifEmpty {
-            historicalResults.entries.firstOrNull { (key, _) -> key.sameRaceNameAs(raceName) }
+            historicalResults.entries.firstOrNull { (key, _) -> key.sameRaceNameAs(apiRaceName) }
                 ?.value.orEmpty()
         }
         val sessions = localSessions.map { it.toRaceSession(now) }.map { session ->
@@ -339,8 +343,8 @@ private fun List<F1CalendarEvent>.toRaceCards(
             chp_name = "F1",
             track_name = events.firstOrNull()?.location.orEmpty().unescapeCalendarText(),
             track_id = seasonItem?.track_id ?: 0,
-            track_slug = englishName.toFormula1Slug(),
-            track_english_name = englishName,
+            track_slug = englishApiName.toFormula1Slug(),
+            track_english_name = englishApiName,
             session = sessions
         )
     }
@@ -369,9 +373,30 @@ private fun LocalCalendarSession.toRaceSession(now: LocalDateTimeParts): RaceSes
     )
 }
 
+private data class CalendarSummaryParts(
+    val sessionName: String,
+    val raceName: String
+)
+
+private val CalendarSummaryRegex =
+    Regex(
+        pattern = """^\s*(?:[（(](?:TBC|TBD)[）)]\s*)?F1:\s*(.*?)\s*\((.*)\)\s*$""",
+        option = RegexOption.IGNORE_CASE
+    )
+
+private val AlternateVenueRegex =
+    Regex("""^(.+?)\s*[（(]\s*([^（）()]+)\s*[）)]\s*$""")
+
+private fun F1CalendarEvent.summaryParts(): CalendarSummaryParts? {
+    val match = CalendarSummaryRegex.matchEntire(summary.unescapeCalendarText()) ?: return null
+    return CalendarSummaryParts(
+        sessionName = match.groupValues[1].trim(),
+        raceName = match.groupValues[2].trim()
+    )
+}
+
 private fun F1CalendarEvent.raceName(): String =
-    summary.substringAfterLast('(').substringBeforeLast(')').unescapeCalendarText()
-        .ifBlank { summary.unescapeCalendarText() }
+    summaryParts()?.raceName.orEmpty().ifBlank { summary.unescapeCalendarText() }
 
 private fun String.localizedRaceName(): String = when (this) {
     "Barcelona-Catalunya" -> "加泰罗尼亚大奖赛"
@@ -379,7 +404,8 @@ private fun String.localizedRaceName(): String = when (this) {
 }
 
 private fun F1CalendarEvent.sessionName(): String =
-    summary.substringAfter("F1:").substringBeforeLast(" (").trim().unescapeCalendarText()
+    summaryParts()?.sessionName.orEmpty()
+        .ifBlank { summary.substringAfter("F1:").trim().unescapeCalendarText() }
         .let { name ->
             when (name) {
                 "第1次练习赛" -> "一练"
@@ -389,6 +415,16 @@ private fun F1CalendarEvent.sessionName(): String =
                 else -> name
             }
         }
+
+private fun String.alternateVenueNames(): Pair<String, String>? {
+    val match = AlternateVenueRegex.matchEntire(trim()) ?: return null
+    val primary = match.groupValues[1].trim()
+    val alternate = match.groupValues[2].trim()
+    return if (primary.isNotBlank() && alternate.isNotBlank()) primary to alternate else null
+}
+
+private fun String.primaryCalendarRaceName(): String =
+    alternateVenueNames()?.first ?: this
 
 private fun F1CalendarEvent.calendarRound(): Int =
     uid.substringAfter("#GP", "").substringBefore('_').toIntOrNull() ?: Int.MAX_VALUE
@@ -1251,10 +1287,20 @@ internal fun RaceFlag(
     modifier: Modifier = Modifier.width(68.dp).height(51.dp)
 ) {
     val remoteLogo = gp.gp_logo.takeIf { it.isNotBlank() } ?: gp.chp_logo.takeIf { it.isNotBlank() }
-    HighResolutionFlag(
-        identity = "${gp.gp_name} ${gp.track_name}",
-        remoteFallbackUrl = remoteLogo.orEmpty(),
-        contentDescription = gp.gp_name,
-        modifier = modifier
-    )
+    val alternateVenue = gp.gp_name.alternateVenueNames()
+    if (alternateVenue != null) {
+        DiagonalSplitFlag(
+            topLeftIdentity = alternateVenue.first,
+            bottomRightIdentity = alternateVenue.second,
+            contentDescription = gp.gp_name,
+            modifier = modifier
+        )
+    } else {
+        HighResolutionFlag(
+            identity = "${gp.gp_name} ${gp.track_name}",
+            remoteFallbackUrl = remoteLogo.orEmpty(),
+            contentDescription = gp.gp_name,
+            modifier = modifier
+        )
+    }
 }

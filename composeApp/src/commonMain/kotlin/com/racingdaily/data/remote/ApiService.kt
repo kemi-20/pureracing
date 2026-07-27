@@ -343,8 +343,11 @@ private fun String.parseF1Calendar(seasonId: Int): List<F1CalendarEvent> {
                 val values = properties
                 if (values != null) {
                     val start = values["DTSTART"].orEmpty()
-                    val status = values["STATUS"].orEmpty()
-                    if (start.take(4).toIntOrNull() == seasonId && status == "CONFIRMED") {
+                    val status = values["STATUS"].orEmpty().uppercase()
+                    if (
+                        start.take(4).toIntOrNull() == seasonId &&
+                        (status == "CONFIRMED" || status == "TENTATIVE")
+                    ) {
                         events += F1CalendarEvent(
                             uid = values["UID"].orEmpty(),
                             summary = values["SUMMARY"].orEmpty(),

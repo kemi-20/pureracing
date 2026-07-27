@@ -6,6 +6,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -62,8 +63,6 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.drawOutline
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -117,7 +116,10 @@ enum class GlassMaterial {
 @Composable
 fun GlassBackdropHost(content: @Composable BoxScope.() -> Unit) {
     val backdrop = rememberLayerBackdrop()
-    CompositionLocalProvider(LocalGlassBackdrop provides backdrop) {
+    CompositionLocalProvider(
+        LocalGlassBackdrop provides backdrop,
+        LocalOverscrollFactory provides null
+    ) {
         Box(
             Modifier
                 .fillMaxSize()
@@ -185,7 +187,6 @@ fun GlassSurface(
 ) {
     val backdrop = LocalGlassBackdrop.current
     val primary = MaterialTheme.colorScheme.primary
-    val onSurface = MaterialTheme.colorScheme.onSurface
     val isLightTheme = !LocalPureRacingDarkTheme.current
     val containerColor = when (material) {
         GlassMaterial.THIN -> if (isLightTheme) Color.White.copy(alpha = 0.16f) else Color(0xFF334149).copy(alpha = 0.22f)
@@ -225,18 +226,26 @@ fun GlassSurface(
             Modifier.drawBackdrop(
                 backdrop = backdrop,
                 shape = { shape },
-                effects = {
-                    vibrancy()
-                    blur(blurRadius.toPx())
-                    lens(
-                        refractionHeight = refractionHeight.toPx(),
-                        refractionAmount = refractionAmount.toPx(),
-                        depthEffect = material != GlassMaterial.THIN,
-                        chromaticAberration = material == GlassMaterial.FLOATING
-                    )
+                effects = if (isLazyListItem) {
+                    {
+                        // Matches AndroidLiquidGlass 2.0.0's LazyScrollContainerContent.
+                        vibrancy()
+                        lens(16.dp.toPx(), 32.dp.toPx())
+                    }
+                } else {
+                    {
+                        vibrancy()
+                        blur(blurRadius.toPx())
+                        lens(
+                            refractionHeight = refractionHeight.toPx(),
+                            refractionAmount = refractionAmount.toPx(),
+                            depthEffect = material != GlassMaterial.THIN,
+                            chromaticAberration = material == GlassMaterial.FLOATING
+                        )
+                    }
                 },
                 // Keep large interactive surfaces physically consistent with Kyant's LiquidButton.
-                layerBlock = if (onClick != null) {
+                layerBlock = if (onClick != null && !isLazyListItem) {
                     {
                         val width = size.width
                         val height = size.height
@@ -269,7 +278,9 @@ fun GlassSurface(
                 } else {
                     null
                 },
-                highlight = if (isLazyListItem) null else {
+                highlight = if (isLazyListItem) {
+                    { Highlight.Default }
+                } else {
                     {
                         Highlight.Default.copy(
                             alpha = if (selected) 0.78f else when (material) {
@@ -281,7 +292,9 @@ fun GlassSurface(
                         )
                     }
                 },
-                shadow = if (isLazyListItem) null else {
+                shadow = if (isLazyListItem) {
+                    { Shadow.Default }
+                } else {
                     {
                         Shadow(
                             radius = if (material == GlassMaterial.THIN) 10.dp else 20.dp,
@@ -289,7 +302,9 @@ fun GlassSurface(
                         )
                     }
                 },
-                innerShadow = if (isLazyListItem) null else {
+                innerShadow = if (isLazyListItem) {
+                    null
+                } else {
                     {
                         InnerShadow(
                             radius = if (material == GlassMaterial.THIN) 5.dp else 10.dp,
@@ -297,41 +312,15 @@ fun GlassSurface(
                         )
                     }
                 },
-                onDrawSurface = {
-                    drawRect(containerColor)
-                    if (isLazyListItem) {
-                        drawRect(
-                            Brush.verticalGradient(
-                                0f to Color.White.copy(alpha = if (isLightTheme) 0.13f else 0.1f),
-                                0.42f to Color.Transparent,
-                                1f to onSurface.copy(
-                                    alpha = if (isLightTheme) 0.025f else 0.04f
-                                )
-                            )
-                        )
-                    }
-                    if (selected) {
-                        drawRect(primary.copy(alpha = 0.18f))
-                    }
-                },
-                onDrawFront = if (isLazyListItem) {
-                    {
-                        drawOutline(
-                            outline = shape.createOutline(size, layoutDirection, this),
-                            brush = Brush.linearGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = if (isLightTheme) 0.72f else 0.5f),
-                                    borderColor.copy(alpha = if (isLightTheme) 0.42f else 0.58f),
-                                    Color.White.copy(alpha = if (isLightTheme) 0.18f else 0.28f)
-                                ),
-                                start = Offset.Zero,
-                                end = Offset(size.width, size.height)
-                            ),
-                            style = Stroke(width = 1.5.dp.toPx())
-                        )
-                    }
-                } else {
+                onDrawSurface = if (isLazyListItem) {
                     null
+                } else {
+                    {
+                        drawRect(containerColor)
+                        if (selected) {
+                            drawRect(primary.copy(alpha = 0.18f))
+                        }
+                    }
                 }
             )
         } else {
@@ -389,9 +378,15 @@ fun GlassSurface(
         modifier
             .then(fallbackMotionModifier)
             .then(glassModifier)
-            .then(if (onClick != null) interactiveHighlight.modifier else Modifier)
+            .then(if (onClick != null && !isLazyListItem) interactiveHighlight.modifier else Modifier)
             .then(if (backdrop == null) Modifier.clip(shape) else Modifier)
-            .border(1.dp, borderColor, shape)
+            .then(
+                if (backdrop != null && isLazyListItem) {
+                    Modifier
+                } else {
+                    Modifier.border(1.dp, borderColor, shape)
+                }
+            )
             .then(
                 if (onClick != null) {
                     Modifier.clickable(
@@ -404,7 +399,7 @@ fun GlassSurface(
                     Modifier
                 }
             )
-            .then(if (onClick != null) interactiveHighlight.gestureModifier else Modifier)
+            .then(if (onClick != null && !isLazyListItem) interactiveHighlight.gestureModifier else Modifier)
             .padding(contentPadding),
         content = content
     )
@@ -622,31 +617,16 @@ fun InfoPill(
             shape = { shape },
             effects = {
                 vibrancy()
-                blur(1.5.dp.toPx())
-                lens(12.dp.toPx(), 20.dp.toPx(), chromaticAberration = true)
+                blur(2.dp.toPx())
+                lens(12.dp.toPx(), 24.dp.toPx())
             },
-            highlight = null,
-            shadow = null,
+            highlight = { Highlight.Default },
+            shadow = { Shadow.Default },
             innerShadow = null,
             onDrawSurface = {
                 drawRect(accent, blendMode = BlendMode.Hue)
                 drawRect(Color.White.copy(alpha = if (isLightTheme) 0.07f else 0.04f))
                 drawRect(accent.copy(alpha = if (isLightTheme) 0.04f else 0.07f))
-            },
-            onDrawFront = {
-                drawOutline(
-                    outline = shape.createOutline(size, layoutDirection, this),
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = if (isLightTheme) 0.82f else 0.62f),
-                            accent.copy(alpha = if (isLightTheme) 0.3f else 0.46f),
-                            Color.White.copy(alpha = if (isLightTheme) 0.2f else 0.32f)
-                        ),
-                        start = Offset.Zero,
-                        end = Offset(size.width, size.height)
-                    ),
-                    style = Stroke(width = 1.5.dp.toPx())
-                )
             }
         )
     } else {

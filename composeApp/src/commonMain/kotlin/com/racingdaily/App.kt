@@ -64,7 +64,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -584,9 +586,7 @@ private fun SessionCard(
     val stateKey = "${gpId ?: 0}:${session.result_type_id}:${session.session_id}"
     var showFullResults by rememberSaveable(stateKey) { mutableStateOf(false) }
     var showLapStrategy by rememberSaveable(stateKey) { mutableStateOf(false) }
-    var fullResults by remember(stateKey) {
-        mutableStateOf(session.race_result.takeIf { it.size > 3 })
-    }
+    var fullResults by remember(stateKey) { mutableStateOf<List<SessionResult>?>(null) }
     var fullResultsLoading by remember(stateKey) { mutableStateOf(false) }
     var fullResultsError by remember(stateKey) { mutableStateOf<String?>(null) }
     var fullResultsReloadKey by remember(stateKey) { mutableIntStateOf(0) }
@@ -658,20 +658,14 @@ private fun SessionCard(
             }
 
             if (canLoadResults) {
-                GlassButton(
+                RaceDisclosureButton(
                     onClick = {
                         showFullResults = !showFullResults
                         if (!showFullResults) showLapStrategy = false
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    selected = false
-                ) {
-                    Icon(
-                        if (showFullResults) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                        contentDescription = null
-                    )
-                    Text(if (showFullResults) "收起完整成绩" else "查看完整成绩")
-                }
+                    icon = if (showFullResults) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                    label = if (showFullResults) "收起完整成绩" else "查看完整成绩"
+                )
             }
 
             if (showFullResults) {
@@ -681,14 +675,11 @@ private fun SessionCard(
                         color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 2.dp
                     )
-                    fullResultsError != null -> GlassButton(
+                    fullResultsError != null -> RaceDisclosureButton(
                         onClick = { fullResultsReloadKey++ },
-                        modifier = Modifier.fillMaxWidth(),
-                        selected = false
-                    ) {
-                        Icon(Icons.Rounded.Refresh, contentDescription = null)
-                        Text(fullResultsError.orEmpty())
-                    }
+                        icon = Icons.Rounded.Refresh,
+                        label = fullResultsError.orEmpty()
+                    )
                     fullResults?.isEmpty() == true -> Text(
                         "暂无完整成绩",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -697,14 +688,11 @@ private fun SessionCard(
                 }
 
                 if (session.session_type == 5 || session.session_name.any { it.contains("正赛") }) {
-                    GlassButton(
+                    RaceDisclosureButton(
                         onClick = { showLapStrategy = !showLapStrategy },
-                        modifier = Modifier.fillMaxWidth(),
-                        selected = false
-                    ) {
-                        Icon(Icons.Rounded.Timeline, contentDescription = null)
-                        Text(if (showLapStrategy) "收起逐圈策略" else "查看逐圈策略")
-                    }
+                        icon = Icons.Rounded.Timeline,
+                        label = if (showLapStrategy) "收起逐圈策略" else "查看逐圈策略"
+                    )
                 }
             }
 
@@ -720,18 +708,53 @@ private fun SessionCard(
                             strokeWidth = 2.dp
                         )
                     }
-                    strategyError != null -> GlassButton(
+                    strategyError != null -> RaceDisclosureButton(
                         onClick = { strategyReloadKey++ },
-                        modifier = Modifier.fillMaxWidth(),
-                        selected = false
-                    ) {
-                        Icon(Icons.Rounded.Refresh, contentDescription = null)
-                        Text(strategyError.orEmpty())
-                    }
+                        icon = Icons.Rounded.Refresh,
+                        label = strategyError.orEmpty()
+                    )
                     strategy != null -> LapStrategyTable(strategy!!)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RaceDisclosureButton(
+    onClick: () -> Unit,
+    icon: ImageVector,
+    label: String
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .clip(RoundedCornerShape(999.dp))
+            .clickable(
+                interactionSource = null,
+                indication = null,
+                role = Role.Button,
+                onClick = onClick
+            ),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            label,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 

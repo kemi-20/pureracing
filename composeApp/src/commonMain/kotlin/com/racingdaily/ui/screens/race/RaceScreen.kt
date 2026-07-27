@@ -34,6 +34,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -58,6 +59,7 @@ import com.racingdaily.ui.components.HighResolutionFlag
 import com.racingdaily.ui.components.InfoPill
 import com.racingdaily.ui.components.ScreenHeader
 import com.racingdaily.ui.components.newsCardReveal
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -112,12 +114,13 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
 
     LaunchedEffect(loading, error, races) {
         if (!loading && error == null && races.isNotEmpty() && !didAutoScroll) {
-            didAutoScroll = true
             val targetIndex = runCatching { races.nearestRaceIndex() }
                 .getOrDefault(0)
                 .coerceIn(0, races.lastIndex)
-            // Delay one frame so LazyColumn has real item metrics before scrolling.
-            runCatching { listState.scrollToItem(targetIndex) }
+            snapshotFlow { listState.layoutInfo.totalItemsCount }
+                .first { itemCount -> itemCount > targetIndex }
+            listState.scrollToItem(targetIndex)
+            didAutoScroll = true
         }
     }
 

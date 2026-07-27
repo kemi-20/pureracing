@@ -230,7 +230,8 @@ private fun SearchResultCard(item: NewsItem, onArticleClick: (NewsItem) -> Unit)
         shape = RoundedCornerShape(16.dp),
         material = GlassMaterial.THIN,
         onClick = { onArticleClick(item) },
-        contentPadding = PaddingValues(0.dp)
+        contentPadding = PaddingValues(0.dp),
+        isLazyListItem = true
     ) {
         Row(Modifier.fillMaxWidth().height(116.dp), verticalAlignment = Alignment.CenterVertically) {
             val cover = item.covers.firstOrNull()?.path_url.orEmpty()

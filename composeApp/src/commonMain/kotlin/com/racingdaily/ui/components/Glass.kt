@@ -178,6 +178,7 @@ fun GlassSurface(
     onClick: (() -> Unit)? = null,
     role: Role? = null,
     contentPadding: PaddingValues = PaddingValues(0.dp),
+    isLazyListItem: Boolean = false,
     content: @Composable BoxScope.() -> Unit
 ) {
     val backdrop = LocalGlassBackdrop.current
@@ -265,27 +266,33 @@ fun GlassSurface(
                 } else {
                     null
                 },
-                highlight = {
-                    Highlight.Default.copy(
-                        alpha = if (selected) 0.78f else when (material) {
-                            GlassMaterial.THIN -> if (isLightTheme) 0.24f else 0.34f
-                            GlassMaterial.CONTENT -> if (isLightTheme) 0.34f else 0.46f
-                            GlassMaterial.CHROME -> if (isLightTheme) 0.5f else 0.58f
-                            GlassMaterial.FLOATING -> if (isLightTheme) 0.58f else 0.66f
-                        }
-                    )
+                highlight = if (isLazyListItem) null else {
+                    {
+                        Highlight.Default.copy(
+                            alpha = if (selected) 0.78f else when (material) {
+                                GlassMaterial.THIN -> if (isLightTheme) 0.24f else 0.34f
+                                GlassMaterial.CONTENT -> if (isLightTheme) 0.34f else 0.46f
+                                GlassMaterial.CHROME -> if (isLightTheme) 0.5f else 0.58f
+                                GlassMaterial.FLOATING -> if (isLightTheme) 0.58f else 0.66f
+                            }
+                        )
+                    }
                 },
-                shadow = {
-                    Shadow(
-                        radius = if (material == GlassMaterial.THIN) 10.dp else 20.dp,
-                        alpha = if (isLightTheme) 0.16f else 0.36f
-                    )
+                shadow = if (isLazyListItem) null else {
+                    {
+                        Shadow(
+                            radius = if (material == GlassMaterial.THIN) 10.dp else 20.dp,
+                            alpha = if (isLightTheme) 0.16f else 0.36f
+                        )
+                    }
                 },
-                innerShadow = {
-                    InnerShadow(
-                        radius = if (material == GlassMaterial.THIN) 5.dp else 10.dp,
-                        alpha = if (selected) 0.46f else if (isLightTheme) 0.14f else 0.24f
-                    )
+                innerShadow = if (isLazyListItem) null else {
+                    {
+                        InnerShadow(
+                            radius = if (material == GlassMaterial.THIN) 5.dp else 10.dp,
+                            alpha = if (selected) 0.46f else if (isLightTheme) 0.14f else 0.24f
+                        )
+                    }
                 },
                 onDrawSurface = {
                     drawRect(containerColor)
@@ -350,7 +357,7 @@ fun GlassSurface(
             .then(fallbackMotionModifier)
             .then(glassModifier)
             .then(if (onClick != null) interactiveHighlight.modifier else Modifier)
-            .clip(shape)
+            .then(if (backdrop == null) Modifier.clip(shape) else Modifier)
             .border(1.dp, borderColor, shape)
             .then(
                 if (onClick != null) {

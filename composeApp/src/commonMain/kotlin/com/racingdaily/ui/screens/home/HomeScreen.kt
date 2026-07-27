@@ -225,7 +225,8 @@ private fun NewsGlassCard(
         shape = RoundedCornerShape(if (featured) 24.dp else 18.dp),
         material = if (featured) GlassMaterial.FLOATING else GlassMaterial.THIN,
         onClick = { onArticleClick(item) },
-        contentPadding = PaddingValues(0.dp)
+        contentPadding = PaddingValues(0.dp),
+        isLazyListItem = true
     ) {
         val cover = item.covers.firstOrNull()?.path_url.orEmpty()
         if (featured && cover.isNotBlank()) {

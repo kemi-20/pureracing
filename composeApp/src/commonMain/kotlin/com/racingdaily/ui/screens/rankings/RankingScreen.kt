@@ -548,7 +548,8 @@ private fun RankingRow(
                 onTeamClick(chpId, seasonId, teamId, name, avatar, row)
             }
         },
-        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+        isLazyListItem = true
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(

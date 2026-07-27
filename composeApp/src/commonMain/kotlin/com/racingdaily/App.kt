@@ -696,7 +696,8 @@ private fun SessionCard(
 
     GlassSurface(
         Modifier.fillMaxWidth().padding(bottom = 12.dp),
-        contentPadding = PaddingValues(16.dp)
+        contentPadding = PaddingValues(16.dp),
+        isLazyListItem = true
     ) {
         Column(
             verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)

@@ -1047,7 +1047,8 @@ private fun RaceGlassCard(
         material = GlassMaterial.THIN,
         selected = isLive,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 15.dp),
-        onClick = { onRaceClick(gp) }
+        onClick = { onRaceClick(gp) },
+        isLazyListItem = true
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

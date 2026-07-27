@@ -64,6 +64,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -327,10 +328,10 @@ private fun AppPageOverlay(
                     animationSpec = spring(dampingRatio = 0.92f, stiffness = 430f)
                 ) { it / 6 }
             is AppPage.RaceDetail -> scaleIn(
-                animationSpec = spring(dampingRatio = 1f, stiffness = 430f),
+                animationSpec = spring(dampingRatio = 1f, stiffness = 900f),
                 initialScale = 0.98f
             ) + slideInHorizontally(
-                animationSpec = spring(dampingRatio = 0.9f, stiffness = 430f)
+                animationSpec = spring(dampingRatio = 1f, stiffness = 900f)
             ) { it / 6 }
             else -> fadeIn(spring(dampingRatio = 1f, stiffness = 600f)) +
                 scaleIn(
@@ -346,10 +347,10 @@ private fun AppPageOverlay(
                     animationSpec = spring(dampingRatio = 1f, stiffness = 500f)
                 ) { it / 6 }
             is AppPage.RaceDetail -> scaleOut(
-                animationSpec = spring(dampingRatio = 1f, stiffness = 500f),
+                animationSpec = spring(dampingRatio = 1f, stiffness = 900f),
                 targetScale = 0.985f
             ) + slideOutHorizontally(
-                animationSpec = spring(dampingRatio = 1f, stiffness = 500f)
+                animationSpec = spring(dampingRatio = 1f, stiffness = 900f)
             ) { it / 6 }
             else -> fadeOut(spring(dampingRatio = 1f, stiffness = 680f)) +
                 scaleOut(
@@ -363,6 +364,16 @@ private fun AppPageOverlay(
         Box(
             Modifier
                 .fillMaxSize()
+                .then(
+                    if (pageKey is AppPage.RaceDetail) {
+                        Modifier.graphicsLayer {
+                            // Render the heavy glass detail page once, then animate its layer.
+                            compositingStrategy = CompositingStrategy.Offscreen
+                        }
+                    } else {
+                        Modifier
+                    }
+                )
         ) {
             Box(
                 Modifier

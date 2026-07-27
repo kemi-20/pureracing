@@ -117,6 +117,8 @@ actual fun HtmlView(
                     settings.mediaPlaybackRequiresUserGesture = false
                     settings.loadWithOverviewMode = true
                     settings.useWideViewPort = true
+                    isHapticFeedbackEnabled = false
+                    setOnLongClickListener { true }
                     loadDataWithBaseURL(baseUrl, document, "text/html", "UTF-8", null)
                 }
             },

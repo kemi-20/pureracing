@@ -214,6 +214,10 @@ internal fun buildArticleHtmlDocument(
       border-radius: 16px;
       background: $mediaBackground;
       line-height: 0;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none;
+      user-select: none;
     }
     media-theme.pureracing-video-player > video {
       width: 100% !important;
@@ -443,6 +447,12 @@ $html
     var player = document.createElement("media-theme");
     player.className = "pureracing-video-player";
     player.setAttribute("template", "pureracing-cupertino-theme");
+    ["contextmenu", "selectstart", "dragstart"].forEach(function (eventName) {
+      player.addEventListener(eventName, function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }, true);
+    });
     video.parentNode.insertBefore(player, video);
     player.appendChild(video);
 

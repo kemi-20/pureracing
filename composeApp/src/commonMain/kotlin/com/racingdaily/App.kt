@@ -3,8 +3,10 @@ package com.racingdaily
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -327,12 +329,9 @@ private fun AppPageOverlay(
                 slideInHorizontally(
                     animationSpec = spring(dampingRatio = 0.92f, stiffness = 430f)
                 ) { it / 6 }
-            is AppPage.RaceDetail -> scaleIn(
-                animationSpec = spring(dampingRatio = 1f, stiffness = 900f),
-                initialScale = 0.98f
-            ) + slideInHorizontally(
-                animationSpec = spring(dampingRatio = 1f, stiffness = 900f)
-            ) { it / 6 }
+            is AppPage.RaceDetail -> slideInHorizontally(
+                animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing)
+            ) { it }
             else -> fadeIn(spring(dampingRatio = 1f, stiffness = 600f)) +
                 scaleIn(
                     animationSpec = spring(dampingRatio = 1f, stiffness = 430f),
@@ -346,12 +345,9 @@ private fun AppPageOverlay(
                 slideOutHorizontally(
                     animationSpec = spring(dampingRatio = 1f, stiffness = 500f)
                 ) { it / 6 }
-            is AppPage.RaceDetail -> scaleOut(
-                animationSpec = spring(dampingRatio = 1f, stiffness = 900f),
-                targetScale = 0.985f
-            ) + slideOutHorizontally(
-                animationSpec = spring(dampingRatio = 1f, stiffness = 900f)
-            ) { it / 6 }
+            is AppPage.RaceDetail -> slideOutHorizontally(
+                animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
+            ) { it }
             else -> fadeOut(spring(dampingRatio = 1f, stiffness = 680f)) +
                 scaleOut(
                     animationSpec = spring(dampingRatio = 1f, stiffness = 500f),

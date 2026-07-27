@@ -134,6 +134,15 @@ object FlexibleLongSerializer : KSerializer<Long> {
     @Serializable(with = FlexibleStringSerializer::class) val teamid: String = "", val team_logo: String = "", val gap: String = "",
     @Serializable(with = FlexibleIntSerializer::class) val score_p: Int = 0, @Serializable(with = FlexibleIntSerializer::class) val is_fast: Int = 0)
 
+data class F1CalendarEvent(
+    val uid: String,
+    val summary: String,
+    val startUtc: String,
+    val endUtc: String,
+    val location: String,
+    val status: String
+)
+
 // Ranking
 @Serializable data class RankingNavData(val list: List<RankingNavItem> = emptyList())
 @Serializable data class RankingNavItem(val options: List<RankingOption> = emptyList())

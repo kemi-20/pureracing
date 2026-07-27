@@ -3,8 +3,10 @@ package com.racingdaily.data.remote
 import com.racingdaily.data.model.*
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.statement.bodyAsText
 import io.ktor.client.request.get
 import io.ktor.client.request.forms.submitForm
+import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.http.Parameters
 import kotlinx.coroutines.CancellationException
@@ -154,6 +156,14 @@ class ApiService(private val client: HttpClient) {
         client.get("race/index").body<ApiResponse<List<RaceGp>>>().requireData()
     }
 
+    suspend fun getF1Calendar(seasonId: Int, forceRefresh: Boolean = false) =
+        cached("f1-calendar-ics:$seasonId", forceRefresh) {
+            client.get(F1CalendarUrl) {
+                header("Accept", "text/calendar")
+                header("Referer", "https://motorsportcalendars.com/")
+            }.bodyAsText().parseF1Calendar(seasonId)
+        }
+
     suspend fun getRaceList(chpId: Int, seasonId: Int, forceRefresh: Boolean = false) =
         cached("race-list:$chpId:$seasonId", forceRefresh) {
             client.get("race/list") {
@@ -260,7 +270,7 @@ class ApiService(private val client: HttpClient) {
         }
 
         supervisorScope {
-            launch { runCatching { getRaceSchedule() } }
+            launch { runCatching { getF1Calendar(seasonId) } }
             launch { runCatching { getRaceList(chpId = 6, seasonId = seasonId) } }
             launch { runCatching { getStationList(chpId = 6, seasonId = seasonId) } }
             launch {
@@ -281,5 +291,54 @@ class ApiService(private val client: HttpClient) {
     private companion object {
         val StartupCacheLifetime = 2.minutes
         const val MaxCommentReplyPages = 50
+        const val F1CalendarUrl =
+            "https://files-f1.motorsportcalendars.com/zh/f1-calendar_p1_p2_p3_qualifying_sprint_gp.ics"
     }
+}
+
+private fun String.parseF1Calendar(seasonId: Int): List<F1CalendarEvent> {
+    // RFC 5545 allows long property values to continue on a whitespace-prefixed line.
+    val unfolded = mutableListOf<String>()
+    lineSequence().forEach { rawLine ->
+        val line = rawLine.trimEnd('\r')
+        if ((line.startsWith(' ') || line.startsWith('\t')) && unfolded.isNotEmpty()) {
+            unfolded[unfolded.lastIndex] += line.drop(1)
+        } else {
+            unfolded += line
+        }
+    }
+
+    val events = mutableListOf<F1CalendarEvent>()
+    var properties: MutableMap<String, String>? = null
+    unfolded.forEach { line ->
+        when (line) {
+            "BEGIN:VEVENT" -> properties = linkedMapOf()
+            "END:VEVENT" -> {
+                val values = properties
+                if (values != null) {
+                    val start = values["DTSTART"].orEmpty()
+                    val status = values["STATUS"].orEmpty()
+                    if (start.take(4).toIntOrNull() == seasonId && status == "CONFIRMED") {
+                        events += F1CalendarEvent(
+                            uid = values["UID"].orEmpty(),
+                            summary = values["SUMMARY"].orEmpty(),
+                            startUtc = start,
+                            endUtc = values["DTEND"].orEmpty(),
+                            location = values["LOCATION"].orEmpty(),
+                            status = status
+                        )
+                    }
+                }
+                properties = null
+            }
+            else -> {
+                val separator = line.indexOf(':')
+                if (separator > 0) {
+                    val key = line.substring(0, separator).substringBefore(';')
+                    properties?.set(key, line.substring(separator + 1))
+                }
+            }
+        }
+    }
+    return events
 }

@@ -9,3 +9,5 @@ data class LocalDateTimeParts(
 )
 
 expect fun currentLocalDateTimeParts(): LocalDateTimeParts
+
+expect fun raceCalendarUtcToLocal(utcTimestamp: String): LocalDateTimeParts?

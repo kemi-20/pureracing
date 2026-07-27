@@ -267,8 +267,8 @@ internal fun buildArticleHtmlDocument(
     }
     .comment-item,
     .comment-reply {
-      opacity: 0;
-      transform: translateY(18px) scale(.985);
+      opacity: .62;
+      transform: translateY(8px) scale(.995);
       transform-origin: center;
       will-change: opacity, transform;
     }
@@ -472,7 +472,10 @@ $html
     var animatedCards = document.querySelectorAll(".comment-item, .comment-reply");
     var omega = Math.sqrt(360);
     var frameCount = 30;
-    var duration = 500;
+    var duration = 360;
+    var initialOpacity = 0.62;
+    var initialOffset = 8;
+    var initialScale = 0.995;
     var revealFrames = [];
     for (var frame = 0; frame <= frameCount; frame++) {
       var offset = frame / frameCount;
@@ -480,8 +483,8 @@ $html
       var progress = 1 - (1 + omega * elapsed) * Math.exp(-omega * elapsed);
       if (frame === frameCount) progress = 1;
       revealFrames.push({
-        opacity: progress,
-        transform: "translateY(" + ((1 - progress) * 18) + "px) scale(" + (0.985 + 0.015 * progress) + ")",
+        opacity: initialOpacity + (1 - initialOpacity) * progress,
+        transform: "translateY(" + ((1 - progress) * initialOffset) + "px) scale(" + (initialScale + (1 - initialScale) * progress) + ")",
         offset: offset
       });
     }
@@ -495,8 +498,8 @@ $html
           });
         } else {
           if (entry.target.__pureracingReveal) entry.target.__pureracingReveal.cancel();
-          entry.target.style.opacity = "0";
-          entry.target.style.transform = "translateY(18px) scale(.985)";
+          entry.target.style.opacity = String(initialOpacity);
+          entry.target.style.transform = "translateY(" + initialOffset + "px) scale(" + initialScale + ")";
         }
       });
     }, { threshold: 0.04 });

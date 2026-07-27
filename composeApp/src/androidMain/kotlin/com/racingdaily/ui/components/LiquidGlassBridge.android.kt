@@ -23,6 +23,7 @@ actual fun OriginalLiquidButton(
     backdrop: Backdrop,
     modifier: Modifier,
     selected: Boolean,
+    hasShadow: Boolean,
     tint: Color,
     surfaceColor: Color,
     content: @Composable RowScope.() -> Unit
@@ -32,6 +33,7 @@ actual fun OriginalLiquidButton(
         backdrop = backdrop,
         modifier = modifier,
         isInteractive = true,
+        hasShadow = hasShadow,
         tint = when {
             tint != Color.Unspecified -> tint
             selected -> MaterialTheme.colorScheme.primary

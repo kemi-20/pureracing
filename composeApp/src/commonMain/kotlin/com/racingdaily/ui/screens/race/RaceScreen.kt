@@ -97,6 +97,11 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
                         api.getF1Calendar(seasonId = currentYear, forceRefresh = forceRefresh)
                     }.getOrDefault(emptyList())
                 }
+                val legacySchedule = async {
+                    runCatching {
+                        api.getRaceSchedule(forceRefresh = forceRefresh)
+                    }.getOrDefault(emptyList())
+                }
                 val stations = async {
                     runCatching {
                         api.getStationList(chpId = 6, seasonId = currentYear, forceRefresh = forceRefresh).tmp
@@ -114,6 +119,7 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
                 }
                 CalendarLoadResult(
                     events = calendar.await(),
+                    legacySchedule = legacySchedule.await(),
                     stations = stations.await(),
                     season = season.await(),
                     ranking = ranking.await()
@@ -121,14 +127,14 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
             }
             val calendarEvents = loaded.events
             val fallbackSchedule = if (calendarEvents.isEmpty()) {
-                api.getRaceSchedule(forceRefresh = forceRefresh)
+                loaded.legacySchedule
             } else {
                 emptyList()
             }
             val completedStations = loaded.stations
             val seasonList = loaded.season
             val ranking = loaded.ranking
-            val seasonGpIds = resolveSeasonGpIds(fallbackSchedule, completedStations, seasonList)
+            val seasonGpIds = resolveSeasonGpIds(loaded.legacySchedule, completedStations, seasonList)
             val calendar = calendarEvents.toRaceSchedule(seasonList, seasonGpIds)
             val schedule = calendar?.schedule ?: fallbackSchedule
             val displayedSeason = calendar?.season ?: seasonList
@@ -218,6 +224,7 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
 
 private data class CalendarLoadResult(
     val events: List<F1CalendarEvent>,
+    val legacySchedule: List<RaceGp>,
     val stations: List<StationItem>,
     val season: List<RaceListItem>,
     val ranking: RankingData?

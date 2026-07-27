@@ -370,6 +370,7 @@ fun GlassButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     selected: Boolean = true,
+    hasShadow: Boolean = true,
     content: @Composable RowScope.() -> Unit
 ) {
     val backdrop = LocalGlassBackdrop.current
@@ -380,6 +381,7 @@ fun GlassButton(
             backdrop = backdrop,
             modifier = modifier.defaultMinSize(minHeight = 48.dp),
             selected = selected,
+            hasShadow = hasShadow,
             surfaceColor = Color.Unspecified
         ) {
             CompositionLocalProvider(LocalContentColor provides contentColor) {

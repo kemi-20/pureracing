@@ -271,6 +271,7 @@ class ApiService(private val client: HttpClient) {
 
         supervisorScope {
             launch { runCatching { getF1Calendar(seasonId) } }
+            launch { runCatching { getRaceSchedule() } }
             launch { runCatching { getRaceList(chpId = 6, seasonId = seasonId) } }
             launch { runCatching { getStationList(chpId = 6, seasonId = seasonId) } }
             launch {

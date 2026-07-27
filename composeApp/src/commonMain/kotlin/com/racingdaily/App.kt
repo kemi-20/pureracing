@@ -726,24 +726,30 @@ private fun RaceDisclosureButton(
     icon: ImageVector,
     label: String
 ) {
-    GlassButton(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        selected = false
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            modifier = Modifier.size(20.dp),
-            tint = LocalContentColor.current
-        )
-        Text(
-            label,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        GlassButton(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(),
+            selected = false,
+            hasShadow = false
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = LocalContentColor.current
+            )
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 

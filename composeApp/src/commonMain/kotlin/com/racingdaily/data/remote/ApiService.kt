@@ -197,6 +197,14 @@ class ApiService(private val client: HttpClient) {
             }.body<ApiResponse<List<StationScoreItem>>>().requireData()
         }
 
+    suspend fun getStationStrategy(gpId: Int, typeId: Int, forceRefresh: Boolean = false) =
+        cached("station-strategy:$gpId:$typeId", forceRefresh) {
+            client.get("station/score") {
+                parameter("gp_id", gpId)
+                parameter("type_id", typeId)
+            }.body<ApiResponse<StationStrategyData>>().requireData()
+        }
+
     suspend fun getTrackInfo(trackId: Int) =
         client.get("track/index") { parameter("track_id", trackId) }.body<ApiResponse<TrackData>>().requireData()
 
@@ -254,18 +262,7 @@ class ApiService(private val client: HttpClient) {
         supervisorScope {
             launch { runCatching { getRaceSchedule() } }
             launch { runCatching { getRaceList(chpId = 6, seasonId = seasonId) } }
-            launch {
-                val stations = runCatching { getStationList(chpId = 6, seasonId = seasonId).tmp }
-                    .getOrDefault(emptyList())
-                stations.takeLast(4).forEach { station ->
-                    val navigation = runCatching { getStationRank(station.gp_id).navbar }
-                        .getOrDefault(emptyList())
-                        .filter { it.key_name in PreloadedStationSessionKeys }
-                    navigation.map { nav ->
-                        async { runCatching { getStationScore(station.gp_id, nav.id) } }
-                    }.awaitAll()
-                }
-            }
+            launch { runCatching { getStationList(chpId = 6, seasonId = seasonId) } }
             launch {
                 val option = runCatching {
                     getRankingNav().list
@@ -284,8 +281,5 @@ class ApiService(private val client: HttpClient) {
     private companion object {
         val StartupCacheLifetime = 2.minutes
         const val MaxCommentReplyPages = 50
-        val PreloadedStationSessionKeys = setOf(
-            "fp1cj", "fp2cj", "fp3cj", "ccpws", "ccpwscj", "ccscj", "pwscj", "zscj"
-        )
     }
 }

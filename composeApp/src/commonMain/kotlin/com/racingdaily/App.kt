@@ -2,6 +2,7 @@ package com.racingdaily
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
@@ -12,6 +13,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,9 +37,12 @@ import androidx.compose.material.icons.automirrored.rounded.Article
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Timeline
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -59,6 +65,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
@@ -71,6 +78,9 @@ import com.racingdaily.data.model.NewsItem
 import com.racingdaily.data.model.RaceGp
 import com.racingdaily.data.model.RaceSession
 import com.racingdaily.data.model.RankingData
+import com.racingdaily.data.model.SessionResult
+import com.racingdaily.data.model.StationStrategyData
+import com.racingdaily.data.model.StationStrategyItem
 import com.racingdaily.data.model.TeamInfoData
 import com.racingdaily.data.model.TeamCarInfo
 import com.racingdaily.data.model.TeamDriverInfo
@@ -98,6 +108,7 @@ import com.racingdaily.ui.screens.home.HomeScreen
 import com.racingdaily.ui.screens.more.MoreScreen
 import com.racingdaily.ui.screens.race.RaceFlag
 import com.racingdaily.ui.screens.race.RaceScreen
+import com.racingdaily.ui.screens.race.toSessionResult
 import com.racingdaily.ui.screens.rankings.RankingScreen
 import com.racingdaily.ui.screens.search.SearchScreen
 import com.racingdaily.ui.theme.RacingDailyTheme
@@ -240,7 +251,7 @@ fun App(api: ApiService) {
                             api = api,
                             pageVisible = pageVisible
                         )
-                        is AppPage.RaceDetail -> RaceDetailScreen(page.gp, goBack)
+                        is AppPage.RaceDetail -> RaceDetailScreen(page.gp, goBack, api)
                         is AppPage.DriverDetail -> DriverDetailScreen(page, goBack, api) { item ->
                             pageStack += AppPage.Article(item.id, item.title, item.http_url)
                         }
@@ -524,7 +535,7 @@ fun ChampScreen(category: String, id: Int, onBack: () -> Unit, api: ApiService) 
 }
 
 @Composable
-fun RaceDetailScreen(gp: RaceGp, onBack: () -> Unit) {
+fun RaceDetailScreen(gp: RaceGp, onBack: () -> Unit, api: ApiService) {
     Column(Modifier.fillMaxSize()) {
         ScreenHeader(gp.gp_name.ifBlank { "赛事" }, gp.track_name, navigationIcon = {
             GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "返回", onBack)
@@ -553,16 +564,76 @@ fun RaceDetailScreen(gp: RaceGp, onBack: () -> Unit) {
                 }
             }
             items(gp.session.size) { index ->
-                SessionCard(gp.session[index])
+                SessionCard(
+                    gpId = gp.gp_id.toIntOrNull(),
+                    session = gp.session[index],
+                    api = api
+                )
             }
         }
     }
 }
 
 @Composable
-private fun SessionCard(session: RaceSession) {
+private fun SessionCard(
+    gpId: Int?,
+    session: RaceSession,
+    api: ApiService
+) {
+    val stateKey = "${gpId ?: 0}:${session.result_type_id}:${session.session_id}"
+    var showFullResults by rememberSaveable(stateKey) { mutableStateOf(false) }
+    var showLapStrategy by rememberSaveable(stateKey) { mutableStateOf(false) }
+    var fullResults by remember(stateKey) {
+        mutableStateOf(session.race_result.takeIf { it.size > 3 })
+    }
+    var fullResultsLoading by remember(stateKey) { mutableStateOf(false) }
+    var fullResultsError by remember(stateKey) { mutableStateOf<String?>(null) }
+    var fullResultsReloadKey by remember(stateKey) { mutableIntStateOf(0) }
+    var strategy by remember(stateKey) { mutableStateOf<StationStrategyData?>(null) }
+    var strategyLoading by remember(stateKey) { mutableStateOf(false) }
+    var strategyError by remember(stateKey) { mutableStateOf<String?>(null) }
+    var strategyReloadKey by remember(stateKey) { mutableIntStateOf(0) }
+    val canLoadResults = gpId != null && gpId > 0 && session.race_status == 1
+    val podium = session.race_result.sortedBy { it.rank }.take(3)
+
+    LaunchedEffect(showFullResults, fullResultsReloadKey, stateKey) {
+        if (!showFullResults || !canLoadResults || fullResults != null) return@LaunchedEffect
+        val resolvedGpId = gpId ?: return@LaunchedEffect
+        fullResultsLoading = true
+        fullResultsError = null
+        runCatching {
+            api.loadFullSessionResults(resolvedGpId, session)
+        }.onSuccess { loaded ->
+            fullResults = loaded
+        }.onFailure {
+            fullResultsError = "完整成绩暂时无法加载"
+        }
+        fullResultsLoading = false
+    }
+
+    LaunchedEffect(showLapStrategy, strategyReloadKey, stateKey) {
+        if (!showLapStrategy || gpId == null || gpId <= 0 || strategy != null) return@LaunchedEffect
+        strategyLoading = true
+        strategyError = null
+        runCatching {
+            val strategyTypeId = api.getStationRank(gpId).navbar
+                .firstOrNull { it.key_name == "zscl" }
+                ?.id
+                ?: error("No strategy data")
+            api.getStationStrategy(gpId, strategyTypeId)
+        }.onSuccess { loaded ->
+            strategy = loaded
+        }.onFailure {
+            strategyError = "逐圈策略暂时无法加载"
+        }
+        strategyLoading = false
+    }
+
     GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
-        Column(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)) {
+        Column(
+            modifier = Modifier.animateContentSize(),
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)
+        ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(session.session_name.joinToString(" / "), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium)
@@ -570,25 +641,210 @@ private fun SessionCard(session: RaceSession) {
                 }
                 GlassChip(session.statusText(), selected = session.race_status == 1, onClick = {})
             }
-            if (session.race_result.isEmpty()) {
+            if (podium.isEmpty() && !showFullResults) {
                 Text("暂无比赛结果", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             } else {
-                session.race_result.forEach { result ->
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("${result.rank}", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(28.dp))
-                        AsyncImage(result.team_logo, null, Modifier.size(24.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(result.dr_name, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-                        Text(
-                            result.gap.ifBlank { result.score_p.takeIf { it > 0 }?.let { "$it 分" }.orEmpty() },
-                            color = MaterialTheme.colorScheme.secondary,
-                            style = MaterialTheme.typography.labelMedium
+                Text(
+                    if (showFullResults) "完整成绩" else "领奖台",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                val displayedResults = if (showFullResults) fullResults ?: podium else podium
+                displayedResults.forEach { result ->
+                    SessionResultRow(result)
+                }
+            }
+
+            if (canLoadResults) {
+                GlassButton(
+                    onClick = {
+                        showFullResults = !showFullResults
+                        if (!showFullResults) showLapStrategy = false
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    selected = false
+                ) {
+                    Icon(
+                        if (showFullResults) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                        contentDescription = null
+                    )
+                    Text(if (showFullResults) "收起完整成绩" else "查看完整成绩")
+                }
+            }
+
+            if (showFullResults) {
+                when {
+                    fullResultsLoading -> CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp).align(Alignment.CenterHorizontally),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 2.dp
+                    )
+                    fullResultsError != null -> GlassButton(
+                        onClick = { fullResultsReloadKey++ },
+                        modifier = Modifier.fillMaxWidth(),
+                        selected = false
+                    ) {
+                        Icon(Icons.Rounded.Refresh, contentDescription = null)
+                        Text(fullResultsError.orEmpty())
+                    }
+                    fullResults?.isEmpty() == true -> Text(
+                        "暂无完整成绩",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                if (session.session_type == 5 || session.session_name.any { it.contains("正赛") }) {
+                    GlassButton(
+                        onClick = { showLapStrategy = !showLapStrategy },
+                        modifier = Modifier.fillMaxWidth(),
+                        selected = false
+                    ) {
+                        Icon(Icons.Rounded.Timeline, contentDescription = null)
+                        Text(if (showLapStrategy) "收起逐圈策略" else "查看逐圈策略")
+                    }
+                }
+            }
+
+            AnimatedVisibility(showFullResults && showLapStrategy) {
+                when {
+                    strategyLoading -> Box(
+                        Modifier.fillMaxWidth().padding(12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            strokeWidth = 2.dp
                         )
                     }
+                    strategyError != null -> GlassButton(
+                        onClick = { strategyReloadKey++ },
+                        modifier = Modifier.fillMaxWidth(),
+                        selected = false
+                    ) {
+                        Icon(Icons.Rounded.Refresh, contentDescription = null)
+                        Text(strategyError.orEmpty())
+                    }
+                    strategy != null -> LapStrategyTable(strategy!!)
                 }
             }
         }
     }
+}
+
+@Composable
+private fun SessionResultRow(result: SessionResult) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text("${result.rank}", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(28.dp))
+        AsyncImage(result.team_logo, null, Modifier.size(24.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(result.dr_name, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+        Text(
+            result.gap.ifBlank { result.score_p.takeIf { it > 0 }?.let { "$it 分" }.orEmpty() },
+            color = MaterialTheme.colorScheme.secondary,
+            style = MaterialTheme.typography.labelMedium
+        )
+    }
+}
+
+@Composable
+private fun LapStrategyTable(strategy: StationStrategyData) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            "逐圈轮胎策略 · ${strategy.circle} 圈",
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+        strategy.list.sortedBy { it.display_order }.forEach { item ->
+            LapStrategyRow(item, strategy.circle)
+        }
+    }
+}
+
+@Composable
+private fun LapStrategyRow(item: StationStrategyItem, totalLaps: Int) {
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            AsyncImage(item.team_logo, null, Modifier.size(22.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(
+                item.driver_abbr_chinese_name,
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(0.8f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                item.describe,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.weight(1.4f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+        ) {
+            item.history.forEach { stint ->
+                val duration = (stint.end - stint.start).coerceAtLeast(1)
+                Box(
+                    Modifier
+                        .weight(duration.toFloat())
+                        .fillMaxHeight()
+                        .background(stint.color.toTyreColor())
+                )
+            }
+            val unaccounted = totalLaps - item.history.sumOf { (it.end - it.start).coerceAtLeast(0) }
+            if (unaccounted > 0) {
+                Spacer(Modifier.weight(unaccounted.toFloat()).fillMaxHeight())
+            }
+        }
+    }
+}
+
+private suspend fun ApiService.loadFullSessionResults(
+    gpId: Int,
+    session: RaceSession
+): List<SessionResult> {
+    val typeId = session.result_type_id.takeIf { it > 0 }
+        ?: getStationRank(gpId).navbar.firstOrNull { navigation ->
+            navigation.key_name in session.stationResultKeys()
+        }?.id
+        ?: error("No matching session result")
+    return getStationScore(gpId, typeId)
+        .sortedBy { it.display_order }
+        .map { it.toSessionResult() }
+}
+
+private fun RaceSession.stationResultKeys(): Set<String> {
+    val name = session_name.joinToString(" ")
+    return when {
+        name.contains("冲刺排位") -> setOf("ccpws")
+        name.contains("冲刺赛") -> setOf("ccpwscj", "ccscj")
+        session_type == 1 || name.contains("一练") || name.contains("FP1", ignoreCase = true) -> setOf("fp1cj")
+        session_type == 2 || name.contains("二练") || name.contains("FP2", ignoreCase = true) -> setOf("fp2cj")
+        session_type == 3 || name.contains("三练") || name.contains("FP3", ignoreCase = true) -> setOf("fp3cj")
+        session_type == 4 || name.contains("排位") -> setOf("pwscj")
+        session_type == 5 || name.contains("正赛") -> setOf("zscj")
+        else -> emptySet()
+    }
+}
+
+private fun String.toTyreColor(): Color {
+    val hex = trim().removePrefix("#")
+    return runCatching {
+        val argb = if (hex.length == 6) "FF$hex" else hex
+        Color(argb.toLong(16))
+    }.getOrDefault(Color.Gray)
 }
 
 @Composable

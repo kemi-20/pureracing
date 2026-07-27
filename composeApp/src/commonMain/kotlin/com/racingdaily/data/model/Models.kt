@@ -128,6 +128,7 @@ object FlexibleLongSerializer : KSerializer<Long> {
 @Serializable data class WeatherInfo(val temp: String = "", val icon: String = "")
 @Serializable data class RaceSession(val session_id: Int = 0, val session_name: List<String> = emptyList(),
     val session_type: Int = 0, val hour: List<String> = emptyList(), val race_status: Int = 0,
+    val result_type_id: Int = 0,
     val race_result: List<SessionResult> = emptyList())
 @Serializable data class SessionResult(val rank: Int = 0, @Serializable(with = FlexibleStringSerializer::class) val driverid: String = "", val dr_name: String = "",
     @Serializable(with = FlexibleStringSerializer::class) val teamid: String = "", val team_logo: String = "", val gap: String = "",
@@ -162,6 +163,25 @@ object FlexibleLongSerializer : KSerializer<Long> {
     val fast_lap_speed: String? = null,
     val point: Int? = null,
     val is_fast: Int? = null
+)
+@Serializable data class StationStrategyData(
+    val circle: Int = 0,
+    val list: List<StationStrategyItem> = emptyList()
+)
+@Serializable data class StationStrategyItem(
+    val driver_id: Int = 0,
+    val display_order: Int = 0,
+    val driver_abbr_chinese_name: String = "",
+    val avatar: String = "",
+    val team_logo: String = "",
+    val describe: String = "",
+    val history: List<TyreStint> = emptyList()
+)
+@Serializable data class TyreStint(
+    val tyre: String = "",
+    val color: String = "",
+    val start: Int = 0,
+    val end: Int = 0
 )
 
 // Track

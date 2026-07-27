@@ -1,6 +1,7 @@
 package com.racingdaily.ui.screens.race
 
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +39,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -56,10 +58,15 @@ import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassMaterial
 import com.racingdaily.ui.components.GlassSurface
 import com.racingdaily.ui.components.HighResolutionFlag
-import com.racingdaily.ui.components.InfoPill
 import com.racingdaily.ui.components.ScreenHeader
 import com.racingdaily.ui.components.newsCardReveal
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -416,25 +423,55 @@ private suspend fun ApiService.loadHistoricalSessions(
     forceRefresh: Boolean = false
 ): Map<String, List<RaceSession>> {
     val scheduledIds = schedule.mapTo(mutableSetOf()) { it.gp_id }
-    val result = linkedMapOf<String, List<RaceSession>>()
-    for (seasonItem in seasonList) {
-        val gpId = seasonGpIds[seasonItem.gp_name.normalizedRaceName()]?.toIntOrNull() ?: continue
-        if (gpId.toString() in scheduledIds || seasonItem.status !in setOf(1, 4)) continue
-        val navigation = runCatching { getStationRank(gpId, forceRefresh = forceRefresh).navbar }
-            .getOrDefault(emptyList())
-            .filter { it.key_name in stationSessionKeys }
-            .sortedBy { it.sessionOrder() }
-        val sessions = mutableListOf<RaceSession>()
-        for (nav in navigation) {
-            val scores = runCatching { getStationScore(gpId, nav.id, forceRefresh = forceRefresh) }
-                .getOrDefault(emptyList())
-            if (scores.isNotEmpty() || seasonItem.status == 4) {
-                sessions += nav.toRaceSession(scores, seasonItem.time, seasonItem.status)
-            }
-        }
-        if (sessions.isNotEmpty()) result[gpId.toString()] = sessions
+    val completedRaces = seasonList.mapNotNull { seasonItem ->
+        val gpId = seasonGpIds[seasonItem.gp_name.normalizedRaceName()]?.toIntOrNull()
+            ?: return@mapNotNull null
+        if (gpId.toString() in scheduledIds || seasonItem.status !in setOf(1, 4)) return@mapNotNull null
+        seasonItem to gpId
     }
-    return result
+    val requestGate = Semaphore(6)
+
+    return supervisorScope {
+        completedRaces.map { (seasonItem, gpId) ->
+            async {
+                requestGate.withPermit {
+                    try {
+                        val navigation = getStationRank(gpId, forceRefresh = forceRefresh).navbar
+                            .filter { it.key_name in stationSessionKeys }
+                            .sortedBy { it.sessionOrder() }
+                        val raceNavigation = navigation.firstOrNull { it.key_name == "zscj" }
+                        val podium = if (raceNavigation != null && seasonItem.status != 4) {
+                            try {
+                                getStationScore(gpId, raceNavigation.id, forceRefresh = forceRefresh)
+                                    .sortedBy { it.display_order }
+                                    .take(3)
+                            } catch (error: CancellationException) {
+                                throw error
+                            } catch (_: Throwable) {
+                                emptyList()
+                            }
+                        } else {
+                            emptyList()
+                        }
+                        val sessions = navigation.map { nav ->
+                            nav.toRaceSession(
+                                scores = if (nav.id == raceNavigation?.id) podium else emptyList(),
+                                raceRange = seasonItem.time,
+                                raceStatus = seasonItem.status
+                            )
+                        }
+                        if (sessions.isEmpty()) null else gpId.toString() to sessions
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (_: Throwable) {
+                        null
+                    }
+                }
+            }
+        }.awaitAll()
+            .filterNotNull()
+            .toMap(linkedMapOf())
+    }
 }
 
 private fun StationNavItem.sessionOrder(): Int = when (key_name) {
@@ -476,10 +513,11 @@ private fun StationNavItem.toRaceSession(
     },
     hour = listOf(raceRange.sessionDateLabel(key_name)),
     race_status = if (raceStatus == 4) 4 else 1,
+    result_type_id = id,
     race_result = scores.sortedBy { it.display_order }.map { it.toSessionResult() }
 )
 
-private fun StationScoreItem.toSessionResult(): SessionResult = SessionResult(
+internal fun StationScoreItem.toSessionResult(): SessionResult = SessionResult(
     rank = rank?.toIntOrNull() ?: display_order,
     driverid = driver_id.toString(),
     dr_name = driver_abbr_chinese_name,
@@ -737,7 +775,7 @@ private fun RaceGlassCard(
             .fillMaxWidth()
             .newsCardReveal("${gp.gp_id}|${gp.race_time}|${gp.gp_name}"),
         shape = RoundedCornerShape(if (focused) 22.dp else 18.dp),
-        material = if (focused) GlassMaterial.FLOATING else GlassMaterial.THIN,
+        material = GlassMaterial.THIN,
         selected = isLive,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 15.dp),
         onClick = { onRaceClick(gp) }
@@ -781,7 +819,7 @@ private fun RaceGlassCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold
                     )
-                    InfoPill(
+                    RaceInlineMeta(
                         label = statusLabel,
                         accent = accent,
                         leadingIcon = Icons.Rounded.Flag
@@ -794,19 +832,31 @@ private fun RaceGlassCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (gp.track_id > 0) {
-                    GlassButton(
-                        onClick = { onTrackClick(gp.track_id) },
-                        selected = false
+                    Row(
+                        modifier = Modifier
+                            .clickable { onTrackClick(gp.track_id) }
+                            .padding(horizontal = 4.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Rounded.Route, contentDescription = null, modifier = Modifier.size(17.dp))
-                        Text("赛道")
+                        Icon(
+                            Icons.Rounded.Route,
+                            contentDescription = null,
+                            modifier = Modifier.size(17.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            "赛道",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.labelLarge
+                        )
                     }
                 }
                 gp.weather?.temp?.takeIf { it.isNotBlank() }?.let { temp ->
-                    InfoPill(label = "${temp}C", accent = MaterialTheme.colorScheme.secondary)
+                    RaceInlineMeta(label = "${temp}C", accent = MaterialTheme.colorScheme.secondary)
                 }
                 if (!isLive) {
-                    InfoPill(
+                    RaceInlineMeta(
                         label = gp.chp_name.ifBlank { "F1" },
                         accent = MaterialTheme.colorScheme.primary
                     )
@@ -825,6 +875,35 @@ private fun RaceGlassCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RaceInlineMeta(
+    label: String,
+    accent: Color,
+    leadingIcon: ImageVector? = null
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (leadingIcon != null) {
+            Icon(
+                leadingIcon,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+                tint = accent
+            )
+        }
+        Text(
+            label,
+            color = accent,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 

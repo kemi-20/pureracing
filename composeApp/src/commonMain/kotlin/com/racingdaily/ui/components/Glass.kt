@@ -245,7 +245,7 @@ fun GlassSurface(
                     }
                 },
                 // Keep large interactive surfaces physically consistent with Kyant's LiquidButton.
-                layerBlock = if (onClick != null && !isLazyListItem) {
+                layerBlock = if (onClick != null) {
                     {
                         val width = size.width
                         val height = size.height
@@ -378,7 +378,7 @@ fun GlassSurface(
         modifier
             .then(fallbackMotionModifier)
             .then(glassModifier)
-            .then(if (onClick != null && !isLazyListItem) interactiveHighlight.modifier else Modifier)
+            .then(if (onClick != null) interactiveHighlight.modifier else Modifier)
             .then(if (backdrop == null) Modifier.clip(shape) else Modifier)
             .then(
                 if (backdrop != null && isLazyListItem) {
@@ -399,7 +399,7 @@ fun GlassSurface(
                     Modifier
                 }
             )
-            .then(if (onClick != null && !isLazyListItem) interactiveHighlight.gestureModifier else Modifier)
+            .then(if (onClick != null) interactiveHighlight.gestureModifier else Modifier)
             .padding(contentPadding),
         content = content
     )

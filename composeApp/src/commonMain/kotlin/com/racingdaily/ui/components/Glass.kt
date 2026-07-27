@@ -513,7 +513,8 @@ fun GlassChip(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    leadingIcon: ImageVector? = null
+    leadingIcon: ImageVector? = null,
+    hasShadow: Boolean = true
 ) {
     val backdrop = LocalGlassBackdrop.current
     if (backdrop != null) {
@@ -523,6 +524,7 @@ fun GlassChip(
             backdrop = backdrop,
             modifier = modifier.defaultMinSize(minHeight = 48.dp),
             selected = selected,
+            hasShadow = hasShadow,
             surfaceColor = Color.Unspecified
         ) {
             CompositionLocalProvider(LocalContentColor provides contentColor) {

@@ -631,10 +631,14 @@ private fun SessionCard(
     var strategyError by remember(stateKey) { mutableStateOf<String?>(null) }
     var strategyReloadKey by remember(stateKey) { mutableIntStateOf(0) }
     val canLoadResults = gpId != null && gpId > 0 && session.race_status == 1
-    val podium = session.race_result.sortedBy { it.rank }.take(3)
+    val availableResults = fullResults ?: session.race_result
+    val podium = availableResults.sortedBy { it.rank }.take(3)
+    val awaitingInitialResults = canLoadResults && session.race_result.isEmpty() &&
+        fullResults == null && fullResultsError == null
 
     LaunchedEffect(showFullResults, fullResultsReloadKey, stateKey) {
-        if (!showFullResults || !canLoadResults || fullResults != null) return@LaunchedEffect
+        val needsResults = showFullResults || session.race_result.isEmpty()
+        if (!needsResults || !canLoadResults || fullResults != null) return@LaunchedEffect
         val resolvedGpId = gpId ?: return@LaunchedEffect
         fullResultsLoading = true
         fullResultsError = null
@@ -676,21 +680,41 @@ private fun SessionCard(
                     Text(session.session_name.joinToString(" / "), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium)
                     Text(session.hour.joinToString(" / "), color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.bodySmall)
                 }
-                GlassChip(session.statusText(), selected = session.race_status == 1, onClick = {})
-            }
-            if (podium.isEmpty() && !showFullResults) {
-                Text("暂无比赛结果", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            } else {
-                Text(
-                    if (showFullResults) "完整成绩" else "领奖台",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold
+                GlassChip(
+                    session.statusText(),
+                    selected = session.race_status == 1,
+                    onClick = {},
+                    hasShadow = false
                 )
-                val displayedResults = if (showFullResults) fullResults ?: podium else podium
-                displayedResults.forEach { result ->
-                    SessionResultRow(result)
+            }
+            val displayedResults = if (showFullResults) availableResults else podium
+            when {
+                displayedResults.isNotEmpty() -> {
+                    Text(
+                        if (showFullResults) "完整成绩" else "领奖台",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    displayedResults.forEach { result ->
+                        SessionResultRow(result)
+                    }
                 }
+                fullResultsLoading || awaitingInitialResults -> CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp).align(Alignment.CenterHorizontally),
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 2.dp
+                )
+                fullResultsError != null -> RaceDisclosureButton(
+                    onClick = { fullResultsReloadKey++ },
+                    icon = Icons.Rounded.Refresh,
+                    label = fullResultsError.orEmpty()
+                )
+                else -> Text(
+                    "暂无比赛结果",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
 
             if (canLoadResults) {
@@ -706,20 +730,15 @@ private fun SessionCard(
 
             if (showFullResults) {
                 when {
-                    fullResultsLoading -> CircularProgressIndicator(
+                    fullResultsLoading && displayedResults.isNotEmpty() -> CircularProgressIndicator(
                         modifier = Modifier.size(24.dp).align(Alignment.CenterHorizontally),
                         color = MaterialTheme.colorScheme.primary,
                         strokeWidth = 2.dp
                     )
-                    fullResultsError != null -> RaceDisclosureButton(
+                    fullResultsError != null && displayedResults.isNotEmpty() -> RaceDisclosureButton(
                         onClick = { fullResultsReloadKey++ },
                         icon = Icons.Rounded.Refresh,
                         label = fullResultsError.orEmpty()
-                    )
-                    fullResults?.isEmpty() == true -> Text(
-                        "暂无完整成绩",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall
                     )
                 }
 

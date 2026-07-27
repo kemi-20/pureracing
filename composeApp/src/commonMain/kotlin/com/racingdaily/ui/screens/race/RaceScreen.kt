@@ -262,7 +262,7 @@ private fun List<F1CalendarEvent>.toRaceCards(
     val activeSeason = seasonList.filter { it.status != 4 }
     val englishByUid = englishEvents.associateBy { it.grandPrixUid() }
     val historicalResults = ranking.historicalRaceResults()
-    val grouped = groupBy { it.raceName() }
+    val grouped = groupBy { it.raceName().localizedRaceName() }
         .entries
         .sortedWith(
             compareBy<Map.Entry<String, List<F1CalendarEvent>>> {
@@ -350,6 +350,11 @@ private fun LocalCalendarSession.toRaceSession(now: LocalDateTimeParts): RaceSes
 private fun F1CalendarEvent.raceName(): String =
     summary.substringAfterLast('(').substringBeforeLast(')').unescapeCalendarText()
         .ifBlank { summary.unescapeCalendarText() }
+
+private fun String.localizedRaceName(): String = when (this) {
+    "Barcelona-Catalunya" -> "加泰罗尼亚大奖赛"
+    else -> this
+}
 
 private fun F1CalendarEvent.sessionName(): String =
     summary.substringAfter("F1:").substringBeforeLast(" (").trim().unescapeCalendarText()

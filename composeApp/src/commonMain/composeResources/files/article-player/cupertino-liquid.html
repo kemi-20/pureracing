@@ -1,235 +1,216 @@
 <!--
-  Control layout adapted from Chewie's CupertinoControls.
-  Control glyph paths are vendored from WebKit's iOS modern media controls.
+  Port of Chewie 1.7.5 CupertinoControls, used by the original RacingDaily app.
+  CupertinoIcons is the tree-shaken font shipped in the original APK.
 -->
 <style>
+  @font-face {
+    font-family: "RacingDaily Cupertino Icons";
+    src: url("data:font/ttf;base64,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") format("truetype");
+    font-weight: normal;
+    font-style: normal;
+  }
+
   :host {
-    --glass-fill: rgba(18, 18, 20, 0.56);
-    --glass-fill-pressed: rgba(38, 38, 42, 0.68);
-    --glass-edge: rgba(255, 255, 255, 0.22);
-    --glass-highlight: rgba(255, 255, 255, 0.14);
-    --glass-shadow: rgba(0, 0, 0, 0.28);
-    --control-size: 36px;
+    --chewie-background: rgba(41, 41, 41, .7);
+    --chewie-icon: rgb(200, 200, 200);
     --media-primary-color: #fff;
     --media-secondary-color: transparent;
     --media-control-background: transparent;
     --media-control-hover-background: transparent;
-    --media-control-transition-in: opacity 350ms cubic-bezier(0.25, 0.1, 0.25, 1);
-    --media-control-transition-out: opacity 250ms cubic-bezier(0.25, 0.1, 0.25, 1);
-    color: #fff;
+    --media-control-transition-in: opacity 300ms linear;
+    --media-control-transition-out: opacity 300ms linear;
+    color: var(--chewie-icon);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 
   media-controller {
     width: 100%;
     height: 100%;
-    background: #000;
-    color: #fff;
     overflow: hidden;
-    --media-control-transition-in: opacity 350ms cubic-bezier(0.25, 0.1, 0.25, 1);
-    --media-control-transition-out: opacity 250ms cubic-bezier(0.25, 0.1, 0.25, 1);
+    color: var(--chewie-icon);
+    background: #000;
   }
 
-  .top-controls,
-  .bottom-controls,
-  .glass-control,
-  .center-play {
-    -webkit-backdrop-filter: saturate(180%) blur(17.5px);
-    backdrop-filter: saturate(180%) blur(17.5px);
-    background:
-      linear-gradient(var(--glass-highlight), var(--glass-highlight)),
-      var(--glass-fill);
-    border: 1px solid var(--glass-edge);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.13),
-      0 5px 18px var(--glass-shadow);
-  }
-
-  .top-controls {
+  .top-bar {
     box-sizing: border-box;
-    width: 100%;
-    padding: 5px;
+    height: 30px;
+    margin: 5px 5px 0;
     display: flex;
-    justify-content: space-between;
-    background: transparent;
-    border: 0;
-    box-shadow: none;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
+    align-items: stretch;
     pointer-events: none;
   }
 
-  .glass-control {
-    width: 48px;
-    height: 32px;
-    padding: 0;
+  .expand-button {
+    box-sizing: border-box;
+    height: 30px;
+    min-width: 48px;
+    padding: 0 16px;
     border-radius: 10px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     pointer-events: auto;
+    color: var(--chewie-icon);
+    background: var(--chewie-background);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
     --media-button-padding: 0;
-    --media-control-height: 20px;
-    --media-button-icon-width: 20px;
-    --media-button-icon-height: 20px;
-    transition:
-      transform 100ms ease-out,
-      background-color 140ms ease-out,
-      box-shadow 140ms ease-out;
+    --media-control-height: 30px;
   }
 
-  .glass-control:active,
-  .bottom-controls media-play-button:active,
-  .bottom-controls media-seek-backward-button:active,
-  .bottom-controls media-seek-forward-button:active,
-  .center-play:active {
-    transform: scale(0.89);
-    background-color: var(--glass-fill-pressed);
+  .cupertino-glyph {
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "RacingDaily Cupertino Icons";
+    font-size: 16px;
+    line-height: 1;
+    font-style: normal;
+    font-weight: normal;
+    -webkit-font-smoothing: antialiased;
   }
+
+  .expand-exit { display: none; }
+  media-fullscreen-button[mediaisfullscreen] .expand-enter { display: none; }
+  media-fullscreen-button[mediaisfullscreen] .expand-exit { display: inline-flex; }
 
   .center-play {
-    width: 60px;
-    height: 60px;
-    padding: 0;
+    width: 56px;
+    height: 56px;
+    padding: 12px;
     border-radius: 50%;
+    color: var(--chewie-icon);
+    background: var(--chewie-background);
     --media-button-padding: 0;
-    --media-control-height: 26px;
-    --media-button-icon-width: 22px;
-    --media-button-icon-height: 26px;
-    transition:
-      opacity 250ms ease,
-      transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
-      background-color 140ms ease-out;
+    --media-control-height: 32px;
+    --media-button-icon-width: 32px;
+    --media-button-icon-height: 32px;
+    transition: opacity 300ms linear;
   }
 
   media-controller:not([mediapaused]) .center-play {
     opacity: 0;
     pointer-events: none;
-    transform: scale(0.86);
   }
 
-  .bottom-controls {
+  .bottom-bar {
     box-sizing: border-box;
-    height: 48px;
+    height: 30px;
     min-width: 0;
-    margin: 5px;
-    padding: 0 8px;
+    margin: 0 5px 5px;
     border-radius: 10px;
     display: flex;
     align-items: center;
-    gap: 1px;
-    line-height: normal;
+    overflow: hidden;
+    color: var(--chewie-icon);
+    background: var(--chewie-background);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
     pointer-events: auto;
   }
 
-  .bottom-controls media-play-button,
-  .bottom-controls media-seek-backward-button,
-  .bottom-controls media-seek-forward-button {
-    flex: 0 0 var(--control-size);
-    width: var(--control-size);
-    height: var(--control-size);
-    padding: 0;
-    border-radius: 50%;
-    --media-button-padding: 0;
-    --media-control-height: 19px;
-    --media-button-icon-width: 19px;
-    --media-button-icon-height: 19px;
-    transition: transform 100ms ease-out, background-color 140ms ease-out;
-  }
-
-  .bottom-controls media-play-button {
-    --media-button-icon-width: 17px;
-    --media-button-icon-height: 20px;
-  }
-
-  .bottom-controls media-time-display {
+  .bottom-bar media-seek-backward-button,
+  .bottom-bar media-seek-forward-button,
+  .bottom-bar media-play-button {
+    box-sizing: border-box;
     flex: 0 0 auto;
-    min-width: 41px;
-    padding: 0 5px;
-    color: #fff;
-    font-size: 11px;
-    font-variant-numeric: tabular-nums;
-    text-align: center;
-    --media-control-background: transparent;
-    --media-control-padding: 0;
-    --media-control-height: 20px;
+    height: 30px;
+    min-width: 0;
+    padding: 0;
+    color: var(--chewie-icon);
+    --media-button-padding: 0;
+    --media-control-height: 30px;
   }
 
-  .bottom-controls media-time-range {
-    flex: 1 1 80px;
-    min-width: 54px;
-    height: 32px;
-    padding: 0 7px;
-    --media-range-track-height: 5px;
-    --media-range-track-border-radius: 3px;
-    --media-range-track-background: rgba(255, 255, 255, 0.20);
-    --media-time-range-buffered-color: rgba(255, 255, 255, 0.32);
-    --media-range-bar-color: rgba(255, 255, 255, 0.78);
-    --media-range-thumb-background: #fff;
-    --media-range-thumb-width: 9px;
-    --media-range-thumb-height: 9px;
-    --media-range-thumb-border-radius: 50%;
-    --media-range-thumb-box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  .bottom-bar media-seek-backward-button {
+    margin-left: 10px;
+    padding: 0 6px;
   }
 
-  .icon-stack {
+  .bottom-bar media-play-button { padding: 0 6px; }
+
+  .bottom-bar media-seek-forward-button {
+    margin-right: 8px;
+    padding: 0 8px 0 6px;
+  }
+
+  .bottom-bar .seek-glyph { font-size: 18px; width: 18px; height: 18px; }
+
+  .play-pause-icon {
     position: relative;
-    width: 22px;
-    height: 20px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .icon-stack svg {
-    position: absolute;
+    width: 18px;
+    height: 18px;
     display: block;
+  }
+
+  .play-pause-icon svg {
+    position: absolute;
+    inset: 0;
+    width: 18px;
+    height: 18px;
     fill: currentColor;
+    transition: opacity 400ms linear, transform 400ms ease;
   }
 
-  media-mute-button .volume-off,
-  media-fullscreen-button .fullscreen-exit {
-    opacity: 0;
+  media-play-button .pause-shape { opacity: 0; transform: rotate(-90deg) scale(.7); }
+  media-play-button[mediapaused] .play-shape { opacity: 1; transform: rotate(0) scale(1); }
+  media-play-button:not([mediapaused]) .play-shape { opacity: 0; transform: rotate(90deg) scale(.7); }
+  media-play-button:not([mediapaused]) .pause-shape { opacity: 1; transform: rotate(0) scale(1); }
+  .center-play .replay-shape { display: none; }
+  .center-play[mediaended] .play-shape,
+  .center-play[mediaended] .pause-shape { display: none; }
+  .center-play[mediaended] .replay-shape { display: block; opacity: 1; transform: none; }
+
+  .bottom-bar media-time-display {
+    flex: 0 0 auto;
+    padding: 0 12px 0 0;
+    color: var(--chewie-icon);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    --media-control-padding: 0;
+    --media-control-height: 30px;
   }
 
-  media-mute-button[mediavolumelevel="off"] .volume-on,
-  media-fullscreen-button[mediaisfullscreen] .fullscreen-enter {
-    opacity: 0;
-  }
-
-  media-mute-button[mediavolumelevel="off"] .volume-off,
-  media-fullscreen-button[mediaisfullscreen] .fullscreen-exit {
-    opacity: 1;
+  .bottom-bar media-time-range {
+    flex: 1 1 auto;
+    min-width: 16px;
+    height: 30px;
+    padding: 0 12px 0 0;
+    --media-range-track-height: 5px;
+    --media-range-track-border-radius: 0;
+    --media-range-track-background: rgba(255, 255, 255, .08);
+    --media-time-range-buffered-color: rgba(255, 255, 255, .24);
+    --media-range-bar-color: rgba(255, 255, 255, .47);
+    --media-range-thumb-background: #fff;
+    --media-range-thumb-width: 6px;
+    --media-range-thumb-height: 6px;
+    --media-range-thumb-border-radius: 50%;
+    --media-range-thumb-box-shadow: 0 1px 4px rgba(0, 0, 0, .45);
   }
 
   media-loading-indicator {
-    --media-loading-indicator-icon-width: 28px;
-    --media-loading-indicator-icon-height: 28px;
     color: #fff;
-    filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.35));
+    --media-loading-indicator-icon-width: 32px;
+    --media-loading-indicator-icon-height: 32px;
   }
 
-  media-controller:not([medialoading]) media-loading-indicator {
-    display: none;
-  }
+  media-controller:not([medialoading]) media-loading-indicator { display: none; }
 
-  @media (max-width: 390px) {
-    :host { --control-size: 31px; }
-    .bottom-controls { padding: 0 5px; }
-    .bottom-controls media-time-display { min-width: 37px; padding: 0 3px; font-size: 10px; }
-    .bottom-controls media-time-range { padding: 0 4px; min-width: 40px; }
+  @media (orientation: landscape) {
+    .top-bar { height: 47px; }
+    .expand-button { height: 47px; min-width: 64px; padding: 0 24px; }
+    .bottom-bar { height: 47px; }
+    .bottom-bar media-seek-backward-button,
+    .bottom-bar media-seek-forward-button,
+    .bottom-bar media-play-button,
+    .bottom-bar media-time-display,
+    .bottom-bar media-time-range { height: 47px; --media-control-height: 47px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
-  }
-
-  @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-    :host { --glass-fill: rgba(15, 15, 17, 0.91); --glass-edge: rgba(255, 255, 255, 0.42); }
-    .top-controls, .bottom-controls, .glass-control, .center-play {
-      -webkit-backdrop-filter: none;
-      backdrop-filter: none;
-    }
+    *, *::before, *::after { transition-duration: 1ms !important; }
   }
 </style>
 
@@ -237,52 +218,50 @@
   autohide="3"
   autohideovercontrols
   defaultstreamtype="on-demand"
-  keyboardbackwardseekoffset="10"
-  keyboardforwardseekoffset="10"
+  keyboardbackwardseekoffset="15"
+  keyboardforwardseekoffset="15"
 >
   <slot name="media" slot="media"></slot>
   <slot name="poster" slot="poster"></slot>
   <media-error-dialog slot="dialog"></media-error-dialog>
 
-  <div class="top-controls" slot="top-chrome">
-    <media-fullscreen-button class="glass-control" notooltip aria-label="全屏">
-      <span class="icon-stack" slot="icon">
-        <svg class="fullscreen-enter" width="15" height="15" viewBox="0 0 15 15" aria-hidden="true"><path d="M0.791840426,6.36849468 C1.20478723,6.36849468 1.50087766,6.05682979 1.50087766,5.64386702 L1.50087766,4.98935638 L1.34505319,2.27004787 L3.3942766,4.42835638 L5.79411702,6.84378723 C5.92657979,6.98403723 6.09799468,7.04638298 6.285,7.04638298 C6.72912766,7.04638298 7.05638298,6.75807979 7.05638298,6.32173936 C7.05638298,6.11137234 6.98625,5.92436702 6.846,5.78411702 L4.43835638,3.38426064 L2.28004787,1.33503723 L5.00715957,1.49087766 L5.65386702,1.49087766 C6.06682979,1.49087766 6.38629787,1.20259043 6.38629787,0.781824468 C6.38629787,0.361074468 6.07461702,0.065 5.65386702,0.065 L1.32946277,0.065 C0.534702128,0.065 0.075,0.524702128 0.075,1.31946277 L0.075,5.64386702 C0.075,6.04904255 0.37887766,6.36849468 0.791840426,6.36849468 Z M9.33935106,14.9315957 L13.6637553,14.9315957 C14.4585319,14.9315957 14.9260851,14.4718888 14.9260851,13.677133 L14.9260851,9.35272872 C14.9260851,8.94755319 14.6220957,8.62810106 14.2014574,8.62810106 C13.7962181,8.62810106 13.4923404,8.93976596 13.4923404,9.35272872 L13.4923404,10.0072394 L13.6559681,12.7265431 L11.5989574,10.5682394 L9.2068883,8.15280851 C9.07444149,8.01255851 8.8952234,7.95021277 8.70821809,7.95021277 C8.27189362,7.95021277 7.93685106,8.23851596 7.93685106,8.67484043 C7.93685106,8.8852234 8.01475532,9.07222872 8.15500532,9.21247872 L10.5548617,11.6123255 L12.7209574,13.6615489 L9.9938617,13.5057149 L9.33935106,13.5057149 C8.9263883,13.5057149 8.60693617,13.7940085 8.60693617,14.2147617 C8.60693617,14.6355149 8.9263883,14.9315957 9.33935106,14.9315957 Z"/></svg>
-        <svg class="fullscreen-exit" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.66493878,7.19582449 L6.08936327,7.19582449 C6.90250612,7.19582449 7.37285714,6.71750612 7.37285714,5.90436327 L7.37285714,1.48792245 C7.37285714,1.07337551 7.06195102,0.746518367 6.63943673,0.746518367 C6.21692245,0.746518367 5.91398367,1.06540816 5.91398367,1.48792245 L5.91398367,2.1575551 L6.08139592,4.93975918 L3.97680816,2.73153061 L1.52942857,0.260232653 C1.39390204,0.116738776 1.21053878,0.045 1.01922449,0.045 C0.56482449,0.045 0.23,0.347922449 0.23,0.794355102 C0.23,1.00162041 0.309722449,1.20091837 0.453216327,1.34442857 L2.90856327,3.79977551 L5.11679184,5.89639592 L2.33458776,5.73695102 L1.66493878,5.73695102 C1.24242449,5.73695102 0.915583673,6.03192245 0.915583673,6.46240408 C0.915583673,6.88491837 1.23445714,7.19582449 1.66493878,7.19582449 Z M9.31003265,15.2873412 C9.73254694,15.2873412 10.0354857,14.9764351 10.0354857,14.5459502 L10.0354857,13.7886168 L9.86807347,11.0143878 L11.9726612,13.2226098 L14.4758449,15.7417347 C14.6113551,15.8852286 14.786702,15.9569837 14.986049,15.9569837 C15.4324163,15.9569837 15.7672735,15.6540449 15.7672735,15.207622 C15.7672735,15.0003518 15.6956,14.8010522 15.5520898,14.6575584 L13.0409061,12.1463976 L10.8247102,10.0497837 L13.6148816,10.2092122 L14.3722204,10.2092122 C14.794702,10.2092122 15.1215592,9.91425714 15.1215592,9.49174286 C15.1215592,9.06126122 14.802702,8.75832245 14.3722204,8.75832245 L9.8600898,8.75832245 C9.04696327,8.75832245 8.57661224,9.22867347 8.57661224,10.0418 L8.57661224,14.5459502 C8.57661224,14.9684645 8.87955102,15.2873412 9.31003265,15.2873412 Z"/></svg>
+  <div class="top-bar" slot="top-chrome">
+    <media-fullscreen-button class="expand-button" notooltip aria-label="全屏">
+      <span slot="icon">
+        <i class="cupertino-glyph expand-enter" aria-hidden="true">&#xF386;</i>
+        <i class="cupertino-glyph expand-exit" aria-hidden="true">&#xF37D;</i>
       </span>
     </media-fullscreen-button>
-
-    <media-mute-button class="glass-control" notooltip aria-label="静音">
-      <span class="icon-stack" slot="icon">
-        <svg class="volume-on" width="22" height="15" viewBox="0 0 22 15" aria-hidden="true"><path d="M8.6330051,14.361725 C9.14121429,14.361725 9.50742857,13.9880413 9.50742857,13.487303 L9.50742857,1.56676935 C9.50742857,1.06602955 9.14121429,0.654968325 8.61806633,0.654968325 C8.25185204,0.654968325 8.00522449,0.811917305 7.60911735,1.18560098 L4.29826531,4.30214179 C4.24594898,4.34697343 4.18616327,4.3693969 4.11142347,4.3693969 L1.87679082,4.3693969 C0.822994898,4.3693969 0.255,4.94487649 0.255,6.0733969 L0.255,8.96571833 C0.255,10.0867693 0.822994898,10.6622489 1.87679082,10.6622489 L4.11142347,10.6622489 C4.18616327,10.6622489 4.24594898,10.6846724 4.29826531,10.729504 L7.60911735,13.8759347 C7.96784694,14.2122515 8.26680612,14.361725 8.6330051,14.361725 Z M12.7285867,10.7818204 C12.982699,10.9611928 13.3489133,10.9088765 13.565648,10.6099326 C14.1485204,9.82518771 14.4997959,8.67424384 14.4997959,7.50087649 C14.4997959,6.32750914 14.1485204,5.18403465 13.565648,4.39182037 C13.3489133,4.09287649 12.9901684,4.04056016 12.7285867,4.21244792 C12.4072194,4.4366673 12.3623878,4.81782037 12.6015459,5.13918771 C13.0350153,5.72213669 13.2965969,6.61149894 13.2965969,7.50087649 C13.2965969,8.39023873 13.0200612,9.27961628 12.5940612,9.87003465 C12.3698571,10.191402 12.4072194,10.5576163 12.7285867,10.7818204 Z M15.7106633,12.7997235 C16.0020918,12.9940397 16.3608673,12.9193026 16.570102,12.6203551 C17.5565816,11.2451979 18.1320918,9.41414179 18.1320918,7.50087649 C18.1320918,5.58014179 17.5715816,3.74160098 16.570102,2.37392241 C16.3533673,2.08244792 16.0020918,2.00770812 15.7106633,2.20203465 C15.4265816,2.39634588 15.3817347,2.76256016 15.6059694,3.08392751 C16.4205612,4.27971833 16.9288776,5.84919282 16.9288776,7.50087649 C16.9288776,9.15256016 16.4280612,10.7369887 15.6059694,11.9178285 C15.3892347,12.2391959 15.4265816,12.6054071 15.7106633,12.7997235 Z M18.722449,14.8400398 C18.9990306,15.0268816 19.3653061,14.9521418 19.5820408,14.6457285 C20.9646429,12.6950918 21.7493878,10.1689785 21.7493878,7.50087649 C21.7493878,4.83277445 20.9421429,2.31413669 19.5820408,0.356024448 C19.3653061,0.0421264886 18.9990306,-0.0326133073 18.722449,0.161713223 C18.4385204,0.363493836 18.3936735,0.729708121 18.6104082,1.04360608 C19.8136224,2.81487649 20.5610204,5.08687139 20.5610204,7.50087649 C20.5610204,9.91488159 19.8436224,12.2242494 18.6104082,13.9581454 C18.3936735,14.2720418 18.4385204,14.6382591 18.722449,14.8400398 Z"/></svg>
-        <svg class="volume-off" width="22" height="15" viewBox="0 0 22 15" aria-hidden="true"><path d="M14.7046,1.01559474 C14.7046,0.499042105 14.3191158,0.075 13.7794316,0.075 C13.4016526,0.075 13.1472368,0.236905263 12.7386211,0.622389474 L9.56992632,3.61375263 C9.52367895,3.66001579 9.47741579,3.69085263 9.42344737,3.70627895 L9.10734211,3.72168947 L14.7046,9.31894737 L14.7046,1.01559474 Z M17.1794105,14.7542842 C17.4184158,14.9855684 17.7961789,14.9855684 18.0196947,14.7542842 C18.2510105,14.5152789 18.2587474,14.1452147 18.0196947,13.9139242 L4.82075263,0.714915789 C4.58946842,0.483615789 4.20398421,0.483615789 3.97268421,0.714915789 C3.74910526,0.938494737 3.74910526,1.33168421 3.97268421,1.55526316 L17.1794105,14.7542842 Z M6.83297895,10.3983 L9.13047368,10.3983 C9.20757368,10.3983 9.27696842,10.4214316 9.32321579,10.4676789 L12.7386211,13.7134705 C13.1086789,14.0604079 13.4170789,14.2146016 13.7948421,14.2146016 C14.1494895,14.2146016 14.4347579,14.0295695 14.5735316,13.7597289 C14.6043684,13.6903421 14.6352053,13.6132453 14.6583368,13.5284384 L5.54545789,4.41557368 C5.29104211,4.69312105 5.15997368,5.11714737 5.15997368,5.66453684 L5.15997368,8.64819474 C5.15997368,9.80464737 5.74592105,10.3983 6.83297895,10.3983 Z"/></svg>
-      </span>
-    </media-mute-button>
   </div>
 
   <media-play-button class="center-play" slot="centered-chrome" notooltip aria-label="播放">
-    <svg slot="play" width="11" height="13" viewBox="0 0 11 13" aria-hidden="true"><path d="M0.967370794,12.5643525 C1.25384013,12.5643525 1.49732146,12.4497692 1.78379079,12.2850567 L10.1340375,7.45823467 C10.7284481,7.10732 10.9361281,6.87815333 10.9361281,6.49859467 C10.9361281,6.119036 10.7284481,5.88986933 10.1340375,5.54612667 L1.78379079,0.71214 C1.49732146,0.547433333 1.25384013,0.44 0.967370794,0.44 C0.437434794,0.44 0.108006794,0.841045333 0.108006794,1.4641 L0.108006794,11.5331031 C0.108006794,12.1561499 0.437434794,12.5643525 0.967370794,12.5643525 Z"/></svg>
-    <svg slot="pause" width="11" height="13" viewBox="0 0 11 13" aria-hidden="true"><path d="M1.71529125,12.9604158 L3.52437125,12.9604158 C4.2146875,12.9604158 4.57967875,12.5954245 4.57967875,11.8971831 L4.57967875,1.09029125 C4.57967875,0.368255 4.2146875,0.035 3.52437125,0.035 L1.71529125,0.035 C1.02499125,0.035 0.66,0.39999125 0.66,1.09029125 L0.66,11.8971831 C0.66,12.5954245 1.02499125,12.9604158 1.71529125,12.9604158 Z M7.4837325,12.9604158 L9.28486625,12.9604158 C9.9831125,12.9604158 10.3401738,12.5954245 10.3401738,11.8971831 L10.3401738,1.09029125 C10.3401738,0.368255 9.9831125,0.035 9.28486625,0.035 L7.4837325,0.035 C6.78548625,0.035 6.420495,0.39999125 6.420495,1.09029125 L6.420495,11.8971831 C6.420495,12.5954245 6.78548625,12.9604158 7.4837325,12.9604158 Z"/></svg>
+    <span class="play-pause-icon" slot="icon">
+      <svg class="play-shape" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+      <svg class="pause-shape" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19h4V5H6zm8-14v14h4V5z"/></svg>
+      <svg class="replay-shape" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+    </span>
   </media-play-button>
 
   <media-loading-indicator slot="centered-chrome" noautohide></media-loading-indicator>
 
-  <div class="bottom-controls">
-    <media-seek-backward-button seekoffset="10" notooltip aria-label="后退 10 秒">
-      <svg slot="icon" width="13" height="15" viewBox="0 0 13 15" aria-hidden="true"><path d="M0.0055458,7.76906 C0.0055458,8.65215867 0.175019867,9.484202 0.513968,10.26519 C0.852921333,11.0461737 1.32023667,11.7356094 1.915914,12.3334971 C2.51159133,12.9313849 3.19968133,13.3984552 3.980184,13.734708 C4.760678,14.0709573 5.59247,14.239082 6.47556,14.239082 C7.36404933,14.239082 8.19829833,14.0709573 8.978307,13.734708 C9.758307,13.3984552 10.4463927,12.9313849 11.042564,12.3334971 C11.6387613,11.7356094 12.1063367,11.0461737 12.44529,10.26519 C12.7842433,9.484202 12.95372,8.65215867 12.95372,7.76906 C12.95372,6.99101867 12.8210333,6.24991467 12.55566,5.545748 C12.2903733,4.84158133 11.9189113,4.20576867 11.441274,3.63831 C10.9636453,3.07086 10.406617,2.595203 9.770189,2.211339 C9.133761,1.82746633 8.44493,1.56190233 7.703696,1.414647 L7.703696,0.511121 C7.703696,0.288292333 7.637929,0.148533667 7.506395,0.091845 C7.374861,0.0351563333 7.22246633,0.0684103333 7.049211,0.191607 L5.022875,1.611207 C4.879069,1.71035367 4.806061,1.828151 4.803851,1.964599 C4.801641,2.10103833 4.874649,2.221531 5.022875,2.326077 L7.042581,3.744208 C7.21583633,3.868384 7.369336,3.90298567 7.50308,3.848013 C7.636824,3.793049 7.703696,3.649737 7.703696,3.418077 L7.703696,2.515942 C8.50388067,2.69659 9.21729467,3.03862 9.843938,3.542032 C10.4705813,4.04545267 10.9641913,4.661657 11.324768,5.390645 C11.685336,6.119633 11.86562,6.912438 11.86562,7.76906 C11.86562,8.51964533 11.726572,9.22052733 11.448476,9.871706 C11.17038,10.522876 10.785515,11.09563 10.293881,11.589968 C9.802247,12.0843019 9.230845,12.4702706 8.579675,12.7478741 C7.92849633,13.025477 7.22712467,13.1642784 6.47556,13.1642784 C5.72939467,13.1642784 5.029622,13.025477 4.376242,12.7478741 C3.72285333,12.4702706 3.14899433,12.0843019 2.654665,11.589968 C2.160327,11.09563 1.774357,10.522876 1.496755,9.871706 C1.219153,9.22052733 1.082068,8.51964533 1.0855,7.76906 C1.0855,6.867744 1.28874633,6.03613833 1.695239,5.274243 C2.10174033,4.51234767 2.64471567,3.888651 3.324165,3.403153 C3.45127033,3.30548833 3.53261567,3.18819367 3.568201,3.051269 C3.60377767,2.91434433 3.58156933,2.77962533 3.501576,2.647112 C3.422562,2.51558667 3.30661933,2.436694 3.153748,2.410434 C3.000868,2.38418267 2.85375567,2.42479467 2.712411,2.53227 C2.167503,2.92938533 1.69291633,3.399279 1.288651,3.941951 C0.884394333,4.484623 0.569478,5.08019633 0.343902,5.728671 C0.1183312,6.377137 0.0055458,7.05726667 0.0055458,7.76906 Z M4.734847,10.360168 C4.857541,10.360168 4.95655767,10.3205353 5.031897,10.24127 C5.10723633,10.1620047 5.144906,10.055136 5.144906,9.920664 L5.144906,5.933252 C5.144906,5.77570933 5.10502633,5.651542 5.025267,5.56075 C4.94551633,5.46994933 4.833491,5.424549 4.689191,5.424549 C4.605263,5.424549 4.52587633,5.44013167 4.451031,5.471297 C4.37618567,5.50246233 4.283058,5.55681967 4.171648,5.634369 L3.29017,6.22349 C3.15029,6.323122 3.08035,6.44729367 3.08035,6.596005 C3.08035,6.69759567 3.116178,6.78777667 3.187834,6.866548 C3.25949,6.94531933 3.34611333,6.984705 3.447704,6.984705 C3.542916,6.984705 3.64475367,6.945198 3.753217,6.866184 L4.363788,6.419881 L4.344665,6.419881 L4.344665,9.920664 C4.344665,10.055136 4.379635,10.1620047 4.449575,10.24127 C4.51950633,10.3205353 4.614597,10.360168 4.734847,10.360168 Z M8.04544,10.435282 C8.57166267,10.435282 8.99271533,10.2055503 9.308598,9.746087 C9.62448067,9.286615 9.782422,8.67619567 9.782422,7.914829 C9.782422,7.150039 9.62448067,6.536556 9.308598,6.07438 C8.99271533,5.61221267 8.57166267,5.381129 8.04544,5.381129 C7.51920867,5.381129 7.096804,5.61221267 6.778226,6.07438 C6.45963933,6.536556 6.300346,7.150039 6.300346,7.914829 C6.300346,8.67619567 6.45963933,9.286615 6.778226,9.746087 C7.096804,10.2055503 7.51920867,10.435282 8.04544,10.435282 Z M8.04544,9.671116 C7.763132,9.671116 7.53949733,9.514141 7.374536,9.200191 C7.209566,8.886241 7.127081,8.457787 7.127081,7.914829 C7.127081,7.36206033 7.208461,6.928701 7.371221,6.614751 C7.533981,6.300801 7.75872067,6.143826 8.04544,6.143826 C8.32675133,6.143826 8.549034,6.300801 8.712288,6.614751 C8.87553333,6.928701 8.957156,7.36206033 8.957156,7.914829 C8.957156,8.457787 8.87442833,8.886241 8.708973,9.200191 C8.54351767,9.514141 8.32234,9.671116 8.04544,9.671116 Z"/></svg>
+  <div class="bottom-bar">
+    <media-seek-backward-button seekoffset="15" notooltip aria-label="后退 15 秒">
+      <i class="cupertino-glyph seek-glyph" slot="icon" aria-hidden="true">&#xF690;</i>
     </media-seek-backward-button>
 
     <media-play-button notooltip aria-label="播放或暂停">
-      <svg slot="play" width="11" height="13" viewBox="0 0 11 13" aria-hidden="true"><path d="M0.967370794,12.5643525 C1.25384013,12.5643525 1.49732146,12.4497692 1.78379079,12.2850567 L10.1340375,7.45823467 C10.7284481,7.10732 10.9361281,6.87815333 10.9361281,6.49859467 C10.9361281,6.119036 10.7284481,5.88986933 10.1340375,5.54612667 L1.78379079,0.71214 C1.49732146,0.547433333 1.25384013,0.44 0.967370794,0.44 C0.437434794,0.44 0.108006794,0.841045333 0.108006794,1.4641 L0.108006794,11.5331031 C0.108006794,12.1561499 0.437434794,12.5643525 0.967370794,12.5643525 Z"/></svg>
-      <svg slot="pause" width="11" height="13" viewBox="0 0 11 13" aria-hidden="true"><path d="M1.71529125,12.9604158 L3.52437125,12.9604158 C4.2146875,12.9604158 4.57967875,12.5954245 4.57967875,11.8971831 L4.57967875,1.09029125 C4.57967875,0.368255 4.2146875,0.035 3.52437125,0.035 L1.71529125,0.035 C1.02499125,0.035 0.66,0.39999125 0.66,1.09029125 L0.66,11.8971831 C0.66,12.5954245 1.02499125,12.9604158 1.71529125,12.9604158 Z M7.4837325,12.9604158 L9.28486625,12.9604158 C9.9831125,12.9604158 10.3401738,12.5954245 10.3401738,11.8971831 L10.3401738,1.09029125 C10.3401738,0.368255 9.9831125,0.035 9.28486625,0.035 L7.4837325,0.035 C6.78548625,0.035 6.420495,0.39999125 6.420495,1.09029125 L6.420495,11.8971831 C6.420495,12.5954245 6.78548625,12.9604158 7.4837325,12.9604158 Z"/></svg>
+      <span class="play-pause-icon" slot="icon">
+        <svg class="play-shape" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        <svg class="pause-shape" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19h4V5H6zm8-14v14h4V5z"/></svg>
+      </span>
     </media-play-button>
 
-    <media-seek-forward-button seekoffset="10" notooltip aria-label="前进 10 秒">
-      <svg slot="icon" width="13" height="15" viewBox="0 0 13 15" aria-hidden="true"><path d="M0.0055458,7.76906 C0.0055458,8.65215867 0.175019867,9.484202 0.513968,10.26519 C0.852921333,11.0461737 1.32023667,11.7356094 1.915914,12.3334971 C2.51159133,12.9313849 3.19968133,13.3984552 3.980184,13.734708 C4.760678,14.0709573 5.59247,14.239082 6.47556,14.239082 C7.36404933,14.239082 8.19829833,14.0709573 8.978307,13.734708 C9.758307,13.3984552 10.4463927,12.9313849 11.042564,12.3334971 C11.6387613,11.7356094 12.1063367,11.0461737 12.44529,10.26519 C12.7842433,9.484202 12.95372,8.65215867 12.95372,7.76906 C12.95372,7.05726667 12.8406633,6.377137 12.61455,5.728671 C12.3885233,5.08019633 12.0722637,4.484623 11.665771,3.941951 C11.2593043,3.399279 10.7841067,2.92938533 10.240178,2.53227 C10.102274,2.42479467 9.957129,2.38418267 9.804743,2.410434 C9.652357,2.436694 9.536163,2.51558667 9.456161,2.647112 C9.37715567,2.77962533 9.35544133,2.91434433 9.391018,3.051269 C9.42660333,3.18819367 9.50794867,3.30548833 9.635054,3.403153 C10.310092,3.888651 10.8506147,4.51234767 11.256622,5.274243 C11.6626207,6.03613833 11.86783,6.867744 11.87225,7.76906 C11.87225,8.51964533 11.733449,9.22052733 11.455847,9.871706 C11.178245,10.522876 10.79338,11.09563 10.301252,11.589968 C9.809124,12.0843019 9.23636567,12.4702706 8.582977,12.7478741 C7.929597,13.025477 7.22712467,13.1642784 6.47556,13.1642784 C5.72939467,13.1642784 5.03072267,13.025477 4.379544,12.7478741 C3.728374,12.4702706 3.156725,12.0843019 2.664597,11.589968 C2.172469,11.09563 1.787357,10.522876 1.509261,9.871706 C1.231165,9.22052733 1.092117,8.51964533 1.092117,7.76906 C1.092117,6.91145867 1.27240533,6.118164 1.632982,5.389176 C1.99355867,4.66017933 2.48741567,4.04421767 3.114553,3.541291 C3.74168167,3.038373 4.455828,2.69659 5.256992,2.515942 L5.256992,3.426176 C5.256992,3.653416 5.322759,3.79562733 5.454293,3.85281 C5.585827,3.90999267 5.737732,3.87649167 5.910008,3.752307 L7.937813,2.334176 C8.08063967,2.22963 8.153405,2.11024233 8.156109,1.976013 C8.15880433,1.841775 8.086039,1.72287267 7.937813,1.619306 L5.916638,0.199706 C5.739942,0.072098 5.585827,0.0366383333 5.454293,0.093327 C5.322759,0.150015667 5.256992,0.29198 5.256992,0.51922 L5.256992,1.414647 C4.51477867,1.560923 3.8246,1.82624 3.186456,2.210598 C2.548312,2.594956 1.99128367,3.07061733 1.515371,3.637582 C1.03945833,4.20454667 0.668841333,4.840355 0.40352,5.545007 C0.138203867,6.24966767 0.0055458,6.99101867 0.0055458,7.76906 Z M4.704622,10.360168 C4.827316,10.360168 4.92633267,10.3205353 5.001672,10.24127 C5.07701133,10.1620047 5.114681,10.055136 5.114681,9.920664 L5.114681,5.933252 C5.114681,5.77570933 5.07480133,5.651542 4.995042,5.56075 C4.91529133,5.46994933 4.80327033,5.424549 4.658979,5.424549 C4.57504233,5.424549 4.49565133,5.44013167 4.420806,5.471297 C4.34596067,5.50246233 4.252833,5.55681967 4.141423,5.634369 L3.259945,6.22349 C3.120065,6.323122 3.050125,6.44729367 3.050125,6.596005 C3.050125,6.69759567 3.085953,6.78777667 3.157609,6.866548 C3.229265,6.94531933 3.31588833,6.984705 3.417479,6.984705 C3.512691,6.984705 3.61452867,6.945198 3.722992,6.866184 L4.333563,6.419881 L4.31444,6.419881 L4.31444,9.920664 C4.31444,10.055136 4.34941,10.1620047 4.41935,10.24127 C4.48929,10.3205353 4.58438067,10.360168 4.704622,10.360168 Z M8.015215,10.435282 C8.54143767,10.435282 8.96249033,10.2055503 9.278373,9.746087 C9.59425567,9.286615 9.752197,8.67619567 9.752197,7.914829 C9.752197,7.150039 9.59425567,6.536556 9.278373,6.07438 C8.96249033,5.61221267 8.54143767,5.381129 8.015215,5.381129 C7.48898367,5.381129 7.066579,5.61221267 6.748001,6.07438 C6.42941433,6.536556 6.270121,7.150039 6.270121,7.914829 C6.270121,8.67619567 6.42941433,9.286615 6.748001,9.746087 C7.066579,10.2055503 7.48898367,10.435282 8.015215,10.435282 Z M8.015215,9.671116 C7.732907,9.671116 7.50927233,9.514141 7.344311,9.200191 C7.179341,8.886241 7.096856,8.457787 7.096856,7.914829 C7.096856,7.36206033 7.178236,6.928701 7.340996,6.614751 C7.503756,6.300801 7.72849567,6.143826 8.015215,6.143826 C8.296535,6.143826 8.51881767,6.300801 8.682063,6.614751 C8.845317,6.928701 8.926944,7.36206033 8.926944,7.914829 C8.926944,8.457787 8.844212,8.886241 8.678748,9.200191 C8.51329267,9.514141 8.292115,9.671116 8.015215,9.671116 Z"/></svg>
+    <media-seek-forward-button seekoffset="15" notooltip aria-label="前进 15 秒">
+      <i class="cupertino-glyph seek-glyph" slot="icon" aria-hidden="true">&#xF699;</i>
     </media-seek-forward-button>
 
-    <media-time-display aria-label="已播放时间"></media-time-display>
+    <media-time-display notoggle aria-label="已播放时间"></media-time-display>
     <media-time-range aria-label="播放进度"></media-time-range>
-    <media-time-display showduration aria-label="总时长"></media-time-display>
+    <media-time-display remaining notoggle aria-label="剩余时间"></media-time-display>
   </div>
 </media-controller>

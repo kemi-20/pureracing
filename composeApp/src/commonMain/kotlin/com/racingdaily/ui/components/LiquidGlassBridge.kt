@@ -12,6 +12,7 @@ expect fun OriginalLiquidButton(
     backdrop: Backdrop,
     modifier: Modifier = Modifier,
     selected: Boolean = false,
+    isInteractive: Boolean = true,
     hasShadow: Boolean = true,
     tint: Color = Color.Unspecified,
     surfaceColor: Color = Color.Unspecified,

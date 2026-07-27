@@ -23,6 +23,7 @@ actual fun OriginalLiquidButton(
     backdrop: Backdrop,
     modifier: Modifier,
     selected: Boolean,
+    isInteractive: Boolean,
     hasShadow: Boolean,
     tint: Color,
     surfaceColor: Color,
@@ -32,7 +33,7 @@ actual fun OriginalLiquidButton(
         onClick = onClick,
         backdrop = backdrop,
         modifier = modifier,
-        isInteractive = true,
+        isInteractive = isInteractive,
         hasShadow = hasShadow,
         tint = when {
             tint != Color.Unspecified -> tint

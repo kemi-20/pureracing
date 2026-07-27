@@ -120,8 +120,10 @@ half4 main(float2 coord) {
                 },
                 onDragCancel = {
                     animationScope.launch {
-                        launch { pressProgressAnimation.animateTo(0f, pressProgressAnimationSpec) }
-                        launch { positionAnimation.animateTo(startPosition, positionAnimationSpec) }
+                        // A parent scroll consumed the gesture. Reset immediately so a recycled
+                        // lazy-list layer cannot retain an in-flight translation from this item.
+                        launch { pressProgressAnimation.snapTo(0f) }
+                        launch { positionAnimation.snapTo(startPosition) }
                     }
                 }
             ) { change, _ ->

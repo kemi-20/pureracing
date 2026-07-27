@@ -684,6 +684,7 @@ private fun SessionCard(
                     session.statusText(),
                     selected = session.race_status == 1,
                     onClick = {},
+                    isInteractive = false,
                     hasShadow = false
                 )
             }

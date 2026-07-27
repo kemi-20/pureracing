@@ -32,6 +32,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Article
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
@@ -787,25 +788,39 @@ private fun LapStrategyRow(item: StationStrategyItem, totalLaps: Int) {
                 overflow = TextOverflow.Ellipsis
             )
         }
-        Row(
+        val completedLaps = item.history.maxOfOrNull { it.end }
+            ?.coerceIn(0, totalLaps)
+            ?: 0
+        Box(
             Modifier
                 .fillMaxWidth()
                 .height(8.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
         ) {
-            item.history.forEach { stint ->
-                val duration = (stint.end - stint.start).coerceAtLeast(1)
-                Box(
+            if (completedLaps > 0 && totalLaps > 0) {
+                Row(
                     Modifier
-                        .weight(duration.toFloat())
+                        .fillMaxWidth(completedLaps.toFloat() / totalLaps.toFloat())
                         .fillMaxHeight()
-                        .background(stint.color.toTyreColor())
-                )
-            }
-            val unaccounted = totalLaps - item.history.sumOf { (it.end - it.start).coerceAtLeast(0) }
-            if (unaccounted > 0) {
-                Spacer(Modifier.weight(unaccounted.toFloat()).fillMaxHeight())
+                        .clip(CircleShape)
+                ) {
+                    item.history.forEachIndexed { index, stint ->
+                        val duration = (stint.end - stint.start).coerceAtLeast(1)
+                        val segmentShape = RoundedCornerShape(
+                            topStart = if (index == 0) 999.dp else 0.dp,
+                            bottomStart = if (index == 0) 999.dp else 0.dp,
+                            topEnd = if (index == item.history.lastIndex) 999.dp else 0.dp,
+                            bottomEnd = if (index == item.history.lastIndex) 999.dp else 0.dp
+                        )
+                        Box(
+                            Modifier
+                                .weight(duration.toFloat())
+                                .fillMaxHeight()
+                                .background(stint.color.toTyreColor(), segmentShape)
+                        )
+                    }
+                }
             }
         }
     }

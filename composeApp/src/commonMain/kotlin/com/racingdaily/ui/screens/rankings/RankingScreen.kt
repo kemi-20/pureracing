@@ -536,8 +536,7 @@ private fun RankingRow(
     GlassSurface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 1.dp)
-            .newsCardReveal("$isDriver|$driverId|$teamId|$pos"),
+            .padding(vertical = 1.dp),
         shape = RoundedCornerShape(16.dp),
         material = GlassMaterial.THIN,
         selected = false,
@@ -551,7 +550,12 @@ private fun RankingRow(
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
         isLazyListItem = true
     ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .newsCardReveal("$isDriver|$driverId|$teamId|$pos"),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
                 "$pos",
                 style = MaterialTheme.typography.titleMedium,

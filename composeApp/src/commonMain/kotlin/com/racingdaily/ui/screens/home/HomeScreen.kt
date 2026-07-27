@@ -220,8 +220,7 @@ private fun NewsGlassCard(
     GlassSurface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(bottom = 14.dp)
-            .newsCardReveal(item.id),
+            .padding(bottom = 14.dp),
         shape = RoundedCornerShape(if (featured) 24.dp else 18.dp),
         material = if (featured) GlassMaterial.FLOATING else GlassMaterial.THIN,
         onClick = { onArticleClick(item) },
@@ -229,79 +228,81 @@ private fun NewsGlassCard(
         isLazyListItem = true
     ) {
         val cover = item.covers.firstOrNull()?.path_url.orEmpty()
-        if (featured && cover.isNotBlank()) {
-            Box(Modifier.fillMaxWidth().aspectRatio(1.36f)) {
-                AsyncImage(
-                    cover,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                0f to Color.Transparent,
-                                0.48f to Color.Black.copy(alpha = 0.08f),
-                                1f to Color.Black.copy(alpha = 0.84f)
-                            )
-                        )
-                )
-                NewsBadges(
-                    item = item,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(14.dp)
-                )
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 17.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Text(
-                        item.title,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = Color.White,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                        fontWeight = FontWeight.Bold
-                    )
-                    NewsMetadata(item = item, onImage = true)
-                }
-            }
-        } else if (featured) {
-            Column {
-                NewsCardContent(
-                    item = item,
-                    titleLines = 3,
-                    featured = true,
-                    showBadges = true,
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 17.dp)
-                )
-            }
-        } else {
-            Row(
-                Modifier.fillMaxWidth().height(132.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (cover.isNotBlank()) {
+        Box(Modifier.fillMaxWidth().newsCardReveal(item.id)) {
+            if (featured && cover.isNotBlank()) {
+                Box(Modifier.fillMaxWidth().aspectRatio(1.36f)) {
                     AsyncImage(
                         cover,
                         contentDescription = null,
-                        modifier = Modifier.width(138.dp).fillMaxHeight(),
+                        modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    0f to Color.Transparent,
+                                    0.48f to Color.Black.copy(alpha = 0.08f),
+                                    1f to Color.Black.copy(alpha = 0.84f)
+                                )
+                            )
+                    )
+                    NewsBadges(
+                        item = item,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(14.dp)
+                    )
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 17.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            item.title,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = Color.White,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                            fontWeight = FontWeight.Bold
+                        )
+                        NewsMetadata(item = item, onImage = true)
+                    }
                 }
-                NewsCardContent(
-                    item = item,
-                    titleLines = 2,
-                    featured = false,
-                    showBadges = true,
-                    modifier = Modifier.weight(1f).padding(horizontal = 15.dp, vertical = 13.dp)
-                )
+            } else if (featured) {
+                Column {
+                    NewsCardContent(
+                        item = item,
+                        titleLines = 3,
+                        featured = true,
+                        showBadges = true,
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 17.dp)
+                    )
+                }
+            } else {
+                Row(
+                    Modifier.fillMaxWidth().height(132.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (cover.isNotBlank()) {
+                        AsyncImage(
+                            cover,
+                            contentDescription = null,
+                            modifier = Modifier.width(138.dp).fillMaxHeight(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                    NewsCardContent(
+                        item = item,
+                        titleLines = 2,
+                        featured = false,
+                        showBadges = true,
+                        modifier = Modifier.weight(1f).padding(horizontal = 15.dp, vertical = 13.dp)
+                    )
+                }
             }
         }
     }

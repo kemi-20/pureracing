@@ -1041,8 +1041,7 @@ private fun RaceGlassCard(
     GlassSurface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 12.dp)
-            .newsCardReveal("${gp.gp_id}|${gp.race_time}|${gp.gp_name}"),
+            .padding(bottom = 12.dp),
         shape = RoundedCornerShape(if (focused) 22.dp else 18.dp),
         material = GlassMaterial.THIN,
         selected = isLive,
@@ -1050,7 +1049,10 @@ private fun RaceGlassCard(
         onClick = { onRaceClick(gp) },
         isLazyListItem = true
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
+        Column(
+            modifier = Modifier.newsCardReveal("${gp.gp_id}|${gp.race_time}|${gp.gp_name}"),
+            verticalArrangement = Arrangement.spacedBy(13.dp)
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RaceFlag(gp)
                 Spacer(Modifier.width(12.dp))

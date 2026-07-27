@@ -2,7 +2,6 @@ package com.racingdaily
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.spring
@@ -689,7 +688,6 @@ private fun SessionCard(
 
     GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
         Column(
-            modifier = Modifier.animateContentSize(),
             verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

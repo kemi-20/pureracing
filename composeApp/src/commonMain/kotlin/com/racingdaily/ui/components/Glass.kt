@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -518,7 +519,8 @@ private fun FallbackGlassChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     leadingIcon: ImageVector? = null,
-    isLazyListItem: Boolean = false
+    isLazyListItem: Boolean = false,
+    contentVerticalOffset: androidx.compose.ui.unit.Dp = 0.dp
 ) {
     GlassSurface(
         modifier = modifier.heightIn(min = 38.dp),
@@ -543,6 +545,7 @@ private fun FallbackGlassChip(
             }
             Text(
                 label,
+                modifier = Modifier.offset(y = contentVerticalOffset),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -600,7 +603,8 @@ fun GlassChip(
             onClick = onClick,
             modifier = modifier,
             leadingIcon = leadingIcon,
-            isLazyListItem = isLazyListItem
+            isLazyListItem = isLazyListItem,
+            contentVerticalOffset = if (isInteractive) 0.dp else 1.dp
         )
     }
 }

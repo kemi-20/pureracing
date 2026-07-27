@@ -74,14 +74,26 @@
     align-items: center;
     justify-content: center;
     color: var(--secondary-glyph-color);
+    line-height: 0;
     --media-button-padding: 0;
     --media-control-height: 31px;
+  }
+
+  .expand-button > [slot="icon"] {
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
   }
 
   .webkit-icon {
     width: 16px;
     height: 16px;
-    display: inline-flex;
+    display: block;
+    flex: none;
     fill: currentColor;
   }
 

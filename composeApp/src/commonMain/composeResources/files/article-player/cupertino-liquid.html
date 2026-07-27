@@ -1,6 +1,7 @@
 <!--
-  Port of Chewie 1.7.5 CupertinoControls, used by the original RacingDaily app.
-  CupertinoIcons is the tree-shaken font shipped in the original APK.
+  Safari-style controls adapted from WebKit's modern-media-controls.
+  See WEBKIT-LICENSE.txt in this directory for the upstream Apple BSD license.
+  Playback state is supplied by Media Chrome so the UI also works in Android WebView and WebView2.
 -->
 <style>
   @font-face {
@@ -11,51 +12,77 @@
   }
 
   :host {
-    --chewie-background: rgba(41, 41, 41, .7);
-    --chewie-icon: rgb(200, 200, 200);
+    --primary-glyph-color: #fff;
+    --secondary-glyph-color: rgba(255, 255, 255, .75);
     --media-primary-color: #fff;
     --media-secondary-color: transparent;
     --media-control-background: transparent;
     --media-control-hover-background: transparent;
-    --media-control-transition-in: opacity 300ms linear;
-    --media-control-transition-out: opacity 300ms linear;
-    color: var(--chewie-icon);
+    --media-control-transition-in: opacity 100ms linear;
+    --media-control-transition-out: opacity 250ms linear;
+    color: var(--secondary-glyph-color);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    -webkit-touch-callout: none;
   }
 
   media-controller {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    color: var(--chewie-icon);
+    color: var(--secondary-glyph-color);
     background: #000;
   }
 
-  .top-bar {
-    box-sizing: border-box;
-    height: 30px;
-    margin: 5px 5px 0;
-    display: flex;
-    align-items: stretch;
+  .safari-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
     pointer-events: none;
+    background: rgba(0, 0, 0, .55);
+    transition: opacity 250ms linear;
+  }
+
+  .safari-chrome {
+    z-index: 1;
+    transition: opacity 100ms linear;
+  }
+
+  media-controller[userinactive] .safari-scrim,
+  media-controller[userinactive] .safari-chrome {
+    opacity: 0;
+    pointer-events: none;
+    transition-duration: 250ms;
+  }
+
+  .safari-glass {
+    background:
+      linear-gradient(rgba(255, 255, 255, .14), rgba(255, 255, 255, .14)),
+      rgba(0, 0, 0, .55);
+    -webkit-backdrop-filter: saturate(180%) blur(17.5px);
+    backdrop-filter: saturate(180%) blur(17.5px);
+  }
+
+  .top-bar {
+    position: absolute;
+    left: 6px;
+    top: 6px;
+    height: 31px;
+    display: flex;
+    align-items: center;
   }
 
   .expand-button {
     box-sizing: border-box;
-    height: 30px;
-    min-width: 48px;
-    padding: 0 16px;
-    border-radius: 10px;
+    width: 44px;
+    height: 31px;
+    padding: 0;
+    border-radius: 8px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    pointer-events: auto;
-    color: var(--chewie-icon);
-    background: var(--chewie-background);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
+    color: var(--secondary-glyph-color);
     --media-button-padding: 0;
-    --media-control-height: 30px;
+    --media-control-height: 31px;
   }
 
   .cupertino-glyph {
@@ -76,67 +103,79 @@
   media-fullscreen-button[mediaisfullscreen] .expand-enter { display: none; }
   media-fullscreen-button[mediaisfullscreen] .expand-exit { display: inline-flex; }
 
-  .center-play {
-    width: 56px;
-    height: 56px;
-    padding: 12px;
-    border-radius: 50%;
-    color: var(--chewie-icon);
-    background: var(--chewie-background);
-    --media-button-padding: 0;
-    --media-control-height: 32px;
-    --media-button-icon-width: 32px;
-    --media-button-icon-height: 32px;
-    transition: opacity 300ms linear;
+  .center-controls {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    pointer-events: auto;
   }
 
-  media-controller:not([mediapaused]) .center-play {
+  .center-controls > media-seek-backward-button,
+  .center-controls > media-seek-forward-button,
+  .center-controls > media-play-button {
+    box-sizing: border-box;
+    width: 52px;
+    height: 52px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-glyph-color);
+    --media-button-padding: 0;
+    --media-control-height: 52px;
+  }
+
+  .center-controls > media-play-button { width: 60px; height: 60px; }
+  .center-controls .seek-glyph { width: 26px; height: 30px; font-size: 26px; }
+
+  .center-controls > * > [slot="icon"],
+  .expand-button > [slot="icon"] {
+    transition: transform 150ms;
+    will-change: transform;
+  }
+
+  .center-controls > *:active > [slot="icon"],
+  .expand-button:active > [slot="icon"] { transform: scale(.89); }
+
+  media-controller:not([mediahasplayed]) .top-bar,
+  media-controller:not([mediahasplayed]) .bottom-bar,
+  media-controller:not([mediahasplayed]) .center-controls > media-seek-backward-button,
+  media-controller:not([mediahasplayed]) .center-controls > media-seek-forward-button {
     opacity: 0;
     pointer-events: none;
   }
 
+  media-controller:not([mediahasplayed]) .safari-scrim { opacity: 0; }
+  media-controller:not([mediahasplayed]) .center-controls { gap: 0; }
+  media-controller:not([mediahasplayed]) .center-controls > media-play-button {
+    border-radius: 50%;
+    background:
+      linear-gradient(rgba(255, 255, 255, .14), rgba(255, 255, 255, .14)),
+      rgba(0, 0, 0, .55);
+    -webkit-backdrop-filter: saturate(180%) blur(17.5px);
+    backdrop-filter: saturate(180%) blur(17.5px);
+  }
+
   .bottom-bar {
     box-sizing: border-box;
-    height: 30px;
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    bottom: 6px;
+    height: 31px;
     min-width: 0;
-    margin: 0 5px 5px;
-    border-radius: 10px;
+    padding: 0 9px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
+    gap: 5px;
     overflow: hidden;
-    color: var(--chewie-icon);
-    background: var(--chewie-background);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
     pointer-events: auto;
   }
-
-  .bottom-bar media-seek-backward-button,
-  .bottom-bar media-seek-forward-button,
-  .bottom-bar media-play-button {
-    box-sizing: border-box;
-    flex: 0 0 auto;
-    height: 30px;
-    min-width: 0;
-    padding: 0;
-    color: var(--chewie-icon);
-    --media-button-padding: 0;
-    --media-control-height: 30px;
-  }
-
-  .bottom-bar media-seek-backward-button {
-    margin-left: 10px;
-    padding: 0 6px;
-  }
-
-  .bottom-bar media-play-button { padding: 0 6px; }
-
-  .bottom-bar media-seek-forward-button {
-    margin-right: 8px;
-    padding: 0 8px 0 6px;
-  }
-
-  .bottom-bar .seek-glyph { font-size: 18px; width: 18px; height: 18px; }
 
   .play-pause-icon {
     position: relative;
@@ -154,40 +193,48 @@
     transition: opacity 400ms linear, transform 400ms ease;
   }
 
+  .center-controls > media-play-button .play-pause-icon,
+  .center-controls > media-play-button .play-pause-icon svg {
+    width: 33px;
+    height: 39px;
+  }
+
   media-play-button .pause-shape { opacity: 0; transform: rotate(-90deg) scale(.7); }
   media-play-button[mediapaused] .play-shape { opacity: 1; transform: rotate(0) scale(1); }
   media-play-button:not([mediapaused]) .play-shape { opacity: 0; transform: rotate(90deg) scale(.7); }
   media-play-button:not([mediapaused]) .pause-shape { opacity: 1; transform: rotate(0) scale(1); }
-  .center-play .replay-shape { display: none; }
-  .center-play[mediaended] .play-shape,
-  .center-play[mediaended] .pause-shape { display: none; }
-  .center-play[mediaended] .replay-shape { display: block; opacity: 1; transform: none; }
+  .center-controls media-play-button .replay-shape { display: none; }
+  .center-controls media-play-button[mediaended] .play-shape,
+  .center-controls media-play-button[mediaended] .pause-shape { display: none; }
+  .center-controls media-play-button[mediaended] .replay-shape { display: block; opacity: 1; transform: none; }
 
   .bottom-bar media-time-display {
     flex: 0 0 auto;
-    padding: 0 12px 0 0;
-    color: var(--chewie-icon);
+    min-width: 38px;
+    padding: 0;
+    color: var(--secondary-glyph-color);
     font-size: 12px;
     font-variant-numeric: tabular-nums;
+    font-feature-settings: "case";
     --media-control-padding: 0;
-    --media-control-height: 30px;
+    --media-control-height: 31px;
   }
 
   .bottom-bar media-time-range {
     flex: 1 1 auto;
     min-width: 16px;
-    height: 30px;
-    padding: 0 12px 0 0;
+    height: 31px;
+    padding: 0;
     --media-range-track-height: 5px;
-    --media-range-track-border-radius: 0;
-    --media-range-track-background: rgba(255, 255, 255, .08);
-    --media-time-range-buffered-color: rgba(255, 255, 255, .24);
-    --media-range-bar-color: rgba(255, 255, 255, .47);
+    --media-range-track-border-radius: 4.5px;
+    --media-range-track-background: rgba(255, 255, 255, .10);
+    --media-time-range-buffered-color: rgba(255, 255, 255, .08);
+    --media-range-bar-color: rgba(255, 255, 255, .45);
     --media-range-thumb-background: #fff;
-    --media-range-thumb-width: 6px;
-    --media-range-thumb-height: 6px;
+    --media-range-thumb-width: 9px;
+    --media-range-thumb-height: 9px;
     --media-range-thumb-border-radius: 50%;
-    --media-range-thumb-box-shadow: 0 1px 4px rgba(0, 0, 0, .45);
+    --media-range-thumb-box-shadow: none;
   }
 
   media-loading-indicator {
@@ -198,15 +245,9 @@
 
   media-controller:not([medialoading]) media-loading-indicator { display: none; }
 
-  @media (orientation: landscape) {
-    .top-bar { height: 47px; }
-    .expand-button { height: 47px; min-width: 64px; padding: 0 24px; }
-    .bottom-bar { height: 47px; }
-    .bottom-bar media-seek-backward-button,
-    .bottom-bar media-seek-forward-button,
-    .bottom-bar media-play-button,
-    .bottom-bar media-time-display,
-    .bottom-bar media-time-range { height: 47px; --media-control-height: 47px; }
+  @media (max-width: 360px) {
+    .center-controls { gap: 22px; }
+    .bottom-bar media-time-display:first-of-type { display: none; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -224,9 +265,10 @@
   <slot name="media" slot="media"></slot>
   <slot name="poster" slot="poster"></slot>
   <media-error-dialog slot="dialog"></media-error-dialog>
+  <div class="safari-scrim"></div>
 
-  <div class="top-bar" slot="top-chrome">
-    <media-fullscreen-button class="expand-button" notooltip aria-label="全屏">
+  <div class="top-bar safari-chrome" slot="top-chrome">
+    <media-fullscreen-button class="expand-button safari-glass" notooltip aria-label="全屏">
       <span slot="icon">
         <i class="cupertino-glyph expand-enter" aria-hidden="true">&#xF386;</i>
         <i class="cupertino-glyph expand-exit" aria-hidden="true">&#xF37D;</i>
@@ -234,32 +276,27 @@
     </media-fullscreen-button>
   </div>
 
-  <media-play-button class="center-play" slot="centered-chrome" notooltip aria-label="播放">
-    <span class="play-pause-icon" slot="icon">
-      <svg class="play-shape" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-      <svg class="pause-shape" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19h4V5H6zm8-14v14h4V5z"/></svg>
-      <svg class="replay-shape" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
-    </span>
-  </media-play-button>
-
-  <media-loading-indicator slot="centered-chrome" noautohide></media-loading-indicator>
-
-  <div class="bottom-bar">
+  <div class="center-controls safari-chrome" slot="centered-chrome">
     <media-seek-backward-button seekoffset="15" notooltip aria-label="后退 15 秒">
       <i class="cupertino-glyph seek-glyph" slot="icon" aria-hidden="true">&#xF690;</i>
     </media-seek-backward-button>
 
     <media-play-button notooltip aria-label="播放或暂停">
       <span class="play-pause-icon" slot="icon">
-        <svg class="play-shape" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-        <svg class="pause-shape" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19h4V5H6zm8-14v14h4V5z"/></svg>
+        <svg class="play-shape" viewBox="0 0 11 13" aria-hidden="true"><path d="M0.967370794,12.5643525 C1.25384013,12.5643525 1.49732146,12.4497692 1.78379079,12.2850567 L10.1340375,7.45823467 C10.7284481,7.10732 10.9361281,6.87815333 10.9361281,6.49859467 C10.9361281,6.119036 10.7284481,5.88986933 10.1340375,5.54612667 L1.78379079,0.71214 C1.49732146,0.547433333 1.25384013,0.44 0.967370794,0.44 C0.437434794,0.44 0.108006794,0.841045333 0.108006794,1.4641 L0.108006794,11.5331031 C0.108006794,12.1561499 0.437434794,12.5643525 0.967370794,12.5643525 Z"/></svg>
+        <svg class="pause-shape" viewBox="0 0 11 13" aria-hidden="true"><path d="M1.71529125,12.9604158 L3.52437125,12.9604158 C4.2146875,12.9604158 4.57967875,12.5954245 4.57967875,11.8971831 L4.57967875,1.09029125 C4.57967875,0.368255 4.2146875,0.035 3.52437125,0.035 L1.71529125,0.035 C1.02499125,0.035 0.66,0.39999125 0.66,1.09029125 L0.66,11.8971831 C0.66,12.5954245 1.02499125,12.9604158 1.71529125,12.9604158 Z M7.4837325,12.9604158 L9.28486625,12.9604158 C9.9831125,12.9604158 10.3401738,12.5954245 10.3401738,11.8971831 L10.3401738,1.09029125 C10.3401738,0.368255 9.9831125,0.035 9.28486625,0.035 L7.4837325,0.035 C6.78548625,0.035 6.420495,0.39999125 6.420495,1.09029125 L6.420495,11.8971831 C6.420495,12.5954245 6.78548625,12.9604158 7.4837325,12.9604158 Z"/></svg>
+        <svg class="replay-shape" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
       </span>
     </media-play-button>
 
     <media-seek-forward-button seekoffset="15" notooltip aria-label="前进 15 秒">
       <i class="cupertino-glyph seek-glyph" slot="icon" aria-hidden="true">&#xF699;</i>
     </media-seek-forward-button>
+  </div>
 
+  <media-loading-indicator slot="centered-chrome" noautohide></media-loading-indicator>
+
+  <div class="bottom-bar safari-glass safari-chrome">
     <media-time-display notoggle aria-label="已播放时间"></media-time-display>
     <media-time-range aria-label="播放进度"></media-time-range>
     <media-time-display remaining notoggle aria-label="剩余时间"></media-time-display>

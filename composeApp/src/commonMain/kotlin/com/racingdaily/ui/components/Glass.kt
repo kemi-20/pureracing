@@ -185,6 +185,7 @@ fun GlassSurface(
 ) {
     val backdrop = LocalGlassBackdrop.current
     val primary = MaterialTheme.colorScheme.primary
+    val onSurface = MaterialTheme.colorScheme.onSurface
     val isLightTheme = !LocalPureRacingDarkTheme.current
     val containerColor = when (material) {
         GlassMaterial.THIN -> if (isLightTheme) Color.White.copy(alpha = 0.16f) else Color(0xFF334149).copy(alpha = 0.22f)
@@ -303,7 +304,7 @@ fun GlassSurface(
                             Brush.verticalGradient(
                                 0f to Color.White.copy(alpha = if (isLightTheme) 0.13f else 0.1f),
                                 0.42f to Color.Transparent,
-                                1f to MaterialTheme.colorScheme.onSurface.copy(
+                                1f to onSurface.copy(
                                     alpha = if (isLightTheme) 0.025f else 0.04f
                                 )
                             )

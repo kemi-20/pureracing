@@ -142,6 +142,30 @@
     box-shadow: none;
   }
 
+  media-controller[mediahasplayed] .center-controls > media-play-button,
+  media-controller[mediahasplayed] .center-controls > media-play-button:hover,
+  media-controller[mediahasplayed] .center-controls > media-play-button:focus,
+  media-controller[mediahasplayed] .center-controls > media-play-button:focus-visible,
+  media-controller[mediahasplayed] .center-controls > media-play-button:active {
+    --media-control-background: transparent;
+    --media-control-hover-background: transparent;
+    --media-focus-box-shadow: none;
+    background: transparent !important;
+    border: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    filter: none !important;
+    -webkit-filter: none !important;
+  }
+
+  .center-controls > media-play-button > [slot="icon"] {
+    will-change: auto;
+  }
+
+  .center-controls > media-play-button:active > [slot="icon"] {
+    transform: none;
+  }
+
   .center-controls > media-play-button { width: 60px; height: 60px; }
   .center-controls .seek-glyph { width: 26px; height: 30px; }
 

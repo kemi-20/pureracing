@@ -88,6 +88,7 @@ fun DetailScreen(
         ScreenHeader(
             title = title,
             subtitle = article?.temotime?.ifBlank { "文章" } ?: "文章",
+            marqueeTitle = true,
             navigationIcon = {
                 GlassIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "返回", onBack)
             },

@@ -1,4 +1,7 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(
+    androidx.compose.foundation.ExperimentalFoundationApi::class,
+    androidx.compose.material3.ExperimentalMaterial3Api::class
+)
 
 package com.racingdaily.ui.components
 
@@ -8,6 +11,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -749,6 +753,7 @@ private fun <T> List<GlassNavTab<T>>.asAnyTabs(): List<GlassNavTab<Any?>> =
 fun ScreenHeader(
     title: String,
     subtitle: String? = null,
+    marqueeTitle: Boolean = false,
     modifier: Modifier = Modifier,
     navigationIcon: @Composable RowScope.() -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {}
@@ -765,11 +770,12 @@ fun ScreenHeader(
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Text(
                 title,
+                modifier = if (marqueeTitle) Modifier.basicMarquee() else Modifier,
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = if (marqueeTitle) TextOverflow.Clip else TextOverflow.Ellipsis
             )
             if (!subtitle.isNullOrBlank()) {
                 Row(

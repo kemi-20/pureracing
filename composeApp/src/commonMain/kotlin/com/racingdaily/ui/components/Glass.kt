@@ -62,6 +62,8 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -296,9 +298,39 @@ fun GlassSurface(
                 },
                 onDrawSurface = {
                     drawRect(containerColor)
+                    if (isLazyListItem) {
+                        drawRect(
+                            Brush.verticalGradient(
+                                0f to Color.White.copy(alpha = if (isLightTheme) 0.13f else 0.1f),
+                                0.42f to Color.Transparent,
+                                1f to MaterialTheme.colorScheme.onSurface.copy(
+                                    alpha = if (isLightTheme) 0.025f else 0.04f
+                                )
+                            )
+                        )
+                    }
                     if (selected) {
                         drawRect(primary.copy(alpha = 0.18f))
                     }
+                },
+                onDrawFront = if (isLazyListItem) {
+                    {
+                        drawOutline(
+                            outline = shape.createOutline(size, layoutDirection, this),
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = if (isLightTheme) 0.72f else 0.5f),
+                                    borderColor.copy(alpha = if (isLightTheme) 0.42f else 0.58f),
+                                    Color.White.copy(alpha = if (isLightTheme) 0.18f else 0.28f)
+                                ),
+                                start = Offset.Zero,
+                                end = Offset(size.width, size.height)
+                            ),
+                            style = Stroke(width = 1.5.dp.toPx())
+                        )
+                    }
+                } else {
+                    null
                 }
             )
         } else {
@@ -485,15 +517,17 @@ private fun FallbackGlassChip(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    leadingIcon: ImageVector? = null
+    leadingIcon: ImageVector? = null,
+    isLazyListItem: Boolean = false
 ) {
     GlassSurface(
         modifier = modifier.heightIn(min = 38.dp),
         shape = RoundedCornerShape(999.dp),
         selected = selected,
-        onClick = onClick,
+        onClick = if (isLazyListItem) null else onClick,
         role = Role.Button,
-        contentPadding = PaddingValues(horizontal = 13.dp, vertical = 8.dp)
+        contentPadding = PaddingValues(horizontal = 13.dp, vertical = 8.dp),
+        isLazyListItem = isLazyListItem
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(7.dp),
@@ -527,10 +561,11 @@ fun GlassChip(
     modifier: Modifier = Modifier,
     leadingIcon: ImageVector? = null,
     isInteractive: Boolean = true,
-    hasShadow: Boolean = true
+    hasShadow: Boolean = true,
+    isLazyListItem: Boolean = false
 ) {
     val backdrop = LocalGlassBackdrop.current
-    if (backdrop != null) {
+    if (backdrop != null && !isLazyListItem) {
         val contentColor = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
         OriginalLiquidButton(
             onClick = onClick,
@@ -564,7 +599,8 @@ fun GlassChip(
             selected = selected,
             onClick = onClick,
             modifier = modifier,
-            leadingIcon = leadingIcon
+            leadingIcon = leadingIcon,
+            isLazyListItem = isLazyListItem
         )
     }
 }
@@ -588,13 +624,28 @@ fun InfoPill(
                 blur(1.5.dp.toPx())
                 lens(12.dp.toPx(), 20.dp.toPx(), chromaticAberration = true)
             },
-            highlight = { Highlight.Default.copy(alpha = if (isLightTheme) 0.82f else 0.9f) },
-            shadow = { Shadow(radius = 10.dp, alpha = if (isLightTheme) 0.24f else 0.42f) },
-            innerShadow = { InnerShadow(radius = 6.dp, alpha = if (isLightTheme) 0.24f else 0.34f) },
+            highlight = null,
+            shadow = null,
+            innerShadow = null,
             onDrawSurface = {
                 drawRect(accent, blendMode = BlendMode.Hue)
                 drawRect(Color.White.copy(alpha = if (isLightTheme) 0.07f else 0.04f))
                 drawRect(accent.copy(alpha = if (isLightTheme) 0.04f else 0.07f))
+            },
+            onDrawFront = {
+                drawOutline(
+                    outline = shape.createOutline(size, layoutDirection, this),
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = if (isLightTheme) 0.82f else 0.62f),
+                            accent.copy(alpha = if (isLightTheme) 0.3f else 0.46f),
+                            Color.White.copy(alpha = if (isLightTheme) 0.2f else 0.32f)
+                        ),
+                        start = Offset.Zero,
+                        end = Offset(size.width, size.height)
+                    ),
+                    style = Stroke(width = 1.5.dp.toPx())
+                )
             }
         )
     } else {
@@ -606,7 +657,7 @@ fun InfoPill(
     Row(
         modifier
             .then(glassModifier)
-            .clip(shape)
+            .then(if (backdrop == null) Modifier.clip(shape) else Modifier)
             .padding(horizontal = 10.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically

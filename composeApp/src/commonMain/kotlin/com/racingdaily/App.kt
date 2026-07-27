@@ -712,7 +712,8 @@ private fun SessionCard(
                     selected = session.race_status == 1,
                     onClick = {},
                     isInteractive = false,
-                    hasShadow = false
+                    hasShadow = false,
+                    isLazyListItem = true
                 )
             }
             val displayedResults = if (showFullResults) availableResults else podium

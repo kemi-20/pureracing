@@ -225,8 +225,8 @@ private suspend fun ApiService.searchNewsLocally(query: String): List<NewsItem> 
 private fun SearchResultCard(item: NewsItem, onArticleClick: (NewsItem) -> Unit) {
     GlassSurface(
         modifier = Modifier
-            .fillMaxWidth()
-            .newsCardReveal("search|${item.id}"),
+            .fillMaxWidth(),
+        contentModifier = Modifier.newsCardReveal("search|${item.id}"),
         shape = RoundedCornerShape(16.dp),
         material = GlassMaterial.THIN,
         onClick = { onArticleClick(item) },

@@ -536,8 +536,8 @@ private fun RankingRow(
     GlassSurface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 1.dp)
-            .newsCardReveal("$isDriver|$driverId|$teamId|$pos"),
+            .padding(vertical = 1.dp),
+        contentModifier = Modifier.newsCardReveal("$isDriver|$driverId|$teamId|$pos"),
         shape = RoundedCornerShape(16.dp),
         material = GlassMaterial.THIN,
         selected = false,

@@ -158,7 +158,6 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
                     contentPadding = PaddingValues(top = 82.dp, bottom = 104.dp)
                 ) {
                     itemsIndexed(news, key = { _, item -> item.id }) { index, item ->
@@ -221,7 +220,8 @@ private fun NewsGlassCard(
     GlassSurface(
         modifier = modifier
             .fillMaxWidth()
-            .newsCardReveal(item.id),
+            .padding(bottom = 14.dp),
+        contentModifier = Modifier.newsCardReveal(item.id),
         shape = RoundedCornerShape(if (featured) 24.dp else 18.dp),
         material = if (featured) GlassMaterial.FLOATING else GlassMaterial.THIN,
         onClick = { onArticleClick(item) },

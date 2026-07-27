@@ -178,6 +178,7 @@ fun GlassSurface(
     onClick: (() -> Unit)? = null,
     role: Role? = null,
     contentPadding: PaddingValues = PaddingValues(0.dp),
+    contentModifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
     val backdrop = LocalGlassBackdrop.current
@@ -361,7 +362,12 @@ fun GlassSurface(
             )
             .then(if (onClick != null) interactiveHighlight.gestureModifier else Modifier)
             .padding(contentPadding),
-        content = content
+        content = {
+            Box(
+                modifier = contentModifier,
+                content = content
+            )
+        }
     )
 }
 

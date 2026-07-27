@@ -173,7 +173,6 @@ fun RaceScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 96.dp)
                 ) {
                 val focusedIndex = runCatching { races.nearestRaceIndex() }.getOrDefault(0)
@@ -1042,7 +1041,8 @@ private fun RaceGlassCard(
     GlassSurface(
         modifier = Modifier
             .fillMaxWidth()
-            .newsCardReveal("${gp.gp_id}|${gp.race_time}|${gp.gp_name}"),
+            .padding(bottom = 12.dp),
+        contentModifier = Modifier.newsCardReveal("${gp.gp_id}|${gp.race_time}|${gp.gp_name}"),
         shape = RoundedCornerShape(if (focused) 22.dp else 18.dp),
         material = GlassMaterial.THIN,
         selected = isLive,

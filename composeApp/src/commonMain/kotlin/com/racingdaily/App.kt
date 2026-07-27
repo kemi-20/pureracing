@@ -597,11 +597,13 @@ fun RaceDetailScreen(gp: RaceGp, onBack: () -> Unit, api: ApiService) {
         })
         LazyColumn(
             Modifier.fillMaxSize().padding(horizontal = 16.dp),
-            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
             item {
-                GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
+                GlassSurface(
+                    Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                    contentPadding = PaddingValues(16.dp)
+                ) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         RaceFlag(
                             gp = gp,
@@ -618,7 +620,13 @@ fun RaceDetailScreen(gp: RaceGp, onBack: () -> Unit, api: ApiService) {
                     }
                 }
             }
-            items(gp.session.size) { index ->
+            items(
+                count = gp.session.size,
+                key = { index ->
+                    val session = gp.session[index]
+                    "${gp.gp_id}:${session.result_type_id}:${session.session_id}:$index"
+                }
+            ) { index ->
                 SessionCard(
                     gpId = gp.gp_id.toIntOrNull(),
                     session = gp.session[index],
@@ -686,7 +694,10 @@ private fun SessionCard(
         strategyLoading = false
     }
 
-    GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
+    GlassSurface(
+        Modifier.fillMaxWidth().padding(bottom = 12.dp),
+        contentPadding = PaddingValues(16.dp)
+    ) {
         Column(
             verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)
         ) {

@@ -116,6 +116,7 @@ object FlexibleLongSerializer : KSerializer<Long> {
 @Serializable data class RaceGp(val race_time: String = "", val race_time_detail: String = "",
     @Serializable(with = FlexibleStringSerializer::class) val gp_id: String = "", val gp_name: String = "", val chp_name: String = "", val chp_logo: String = "",
     val gp_logo: String = "", val track_name: String = "", val track_id: Int = 0,
+    val track_slug: String = "", val track_english_name: String = "",
     val weather: WeatherInfo? = null, val session: List<RaceSession> = emptyList())
 @Serializable data class RaceListItem(
     val gp_name: String = "",
@@ -142,6 +143,12 @@ data class F1CalendarEvent(
     val location: String,
     val status: String
 )
+
+@Serializable data class Formula1RacePage(
+    val circuitMapImage: Formula1Image = Formula1Image()
+)
+
+@Serializable data class Formula1Image(val url: String = "")
 
 // Ranking
 @Serializable data class RankingNavData(val list: List<RankingNavItem> = emptyList())

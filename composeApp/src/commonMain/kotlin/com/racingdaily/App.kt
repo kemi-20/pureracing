@@ -120,13 +120,15 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
+import kotlinx.coroutines.async
+import kotlinx.coroutines.supervisorScope
 
 enum class Screen { HOME, RACE, RANKINGS, MORE }
 
 sealed interface AppPage {
     data object Search : AppPage
     data class Article(val id: Int, val title: String, val url: String) : AppPage
-    data class Track(val id: Int) : AppPage
+    data class Track(val id: Int, val slug: String, val seasonYear: Int) : AppPage
     data class Championship(val category: String, val id: Int) : AppPage
     data class RaceDetail(val gp: RaceGp) : AppPage
     data class DriverDetail(val chpId: Int, val seasonId: Int, val driverId: Int, val name: String, val avatar: String, val teamLogo: String, val stats: JsonObject) : AppPage
@@ -210,7 +212,9 @@ fun App(api: ApiService) {
                                 )
                                 Screen.RACE -> RaceScreen(
                                     onRaceClick = { pageStack += AppPage.RaceDetail(it) },
-                                    onTrackClick = { pageStack += AppPage.Track(it) },
+                                    onTrackClick = { trackId, slug, seasonYear ->
+                                        pageStack += AppPage.Track(trackId, slug, seasonYear)
+                                    },
                                     api = api
                                 )
                                 Screen.RANKINGS -> RankingScreen(
@@ -245,7 +249,7 @@ fun App(api: ApiService) {
                             api = api
                         )
                         is AppPage.Championship -> ChampScreen(page.category, page.id, goBack, api)
-                        is AppPage.Track -> TrackScreen(page.id, goBack, api)
+                        is AppPage.Track -> TrackScreen(page.id, page.slug, page.seasonYear, goBack, api)
                         is AppPage.Article -> DetailScreen(
                             articleId = page.id,
                             initialTitle = page.title,
@@ -368,21 +372,48 @@ private fun AppPageOverlay(
 }
 
 @Composable
-fun TrackScreen(trackId: Int, onBack: () -> Unit, api: ApiService) {
+fun TrackScreen(
+    trackId: Int,
+    trackSlug: String,
+    seasonYear: Int,
+    onBack: () -> Unit,
+    api: ApiService
+) {
     var track by remember { mutableStateOf<TrackInfo?>(null) }
     var history by remember { mutableStateOf<List<JsonObject>>(emptyList()) }
+    var officialMapImage by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var reloadKey by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(trackId, reloadKey) {
+    LaunchedEffect(trackId, trackSlug, seasonYear, reloadKey) {
         loading = true
         error = null
-        runCatching {
-            track = api.getTrackInfo(trackId).track
-            history = api.getTrackScore(trackId).history
+        val loaded = supervisorScope {
+            val mapImage = async {
+                if (trackSlug.isBlank()) "" else runCatching {
+                    api.getFormula1TrackImage(seasonYear, trackSlug, forceRefresh = reloadKey > 0)
+                }.getOrDefault("")
+            }
+            val originalData = async {
+                if (trackId <= 0) {
+                    Result.success<Pair<TrackInfo, List<JsonObject>>?>(null)
+                } else {
+                    runCatching<Pair<TrackInfo, List<JsonObject>>?> {
+                        api.getTrackInfo(trackId).track to api.getTrackScore(trackId).history
+                    }
+                }
+            }
+            mapImage.await() to originalData.await()
+        }
+        officialMapImage = loaded.first
+        loaded.second.onSuccess { original ->
+            track = original?.first
+            history = original?.second.orEmpty()
         }.onFailure {
-            error = it.userFacingLoadError("无法加载赛道信息")
+            if (officialMapImage.isBlank()) {
+                error = it.userFacingLoadError("无法加载赛道信息")
+            }
         }
         loading = false
     }
@@ -414,9 +445,14 @@ fun TrackScreen(trackId: Int, onBack: () -> Unit, api: ApiService) {
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
                 item {
-                    track?.map_img?.takeIf { it.isNotBlank() }?.let {
+                    officialMapImage.ifBlank { track?.map_img.orEmpty() }.takeIf { it.isNotBlank() }?.let {
                         GlassSurface(Modifier.fillMaxWidth()) {
-                            AsyncImage(it, null, Modifier.fillMaxWidth().height(220.dp))
+                            AsyncImage(
+                                model = it,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxWidth().height(220.dp),
+                                contentScale = ContentScale.Fit
+                            )
                         }
                         Spacer(Modifier.height(12.dp))
                     }

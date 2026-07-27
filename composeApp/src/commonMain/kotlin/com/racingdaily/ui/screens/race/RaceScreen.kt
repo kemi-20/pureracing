@@ -77,7 +77,11 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 
 @Composable
-fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: ApiService) {
+fun RaceScreen(
+    onRaceClick: (RaceGp) -> Unit,
+    onTrackClick: (trackId: Int, slug: String, seasonYear: Int) -> Unit,
+    api: ApiService
+) {
     var races by remember { mutableStateOf<List<RaceGp>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -95,6 +99,11 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
                 val calendar = async {
                     runCatching {
                         api.getF1Calendar(seasonId = currentYear, forceRefresh = forceRefresh)
+                    }.getOrDefault(emptyList())
+                }
+                val englishCalendar = async {
+                    runCatching {
+                        api.getF1EnglishCalendar(seasonId = currentYear, forceRefresh = forceRefresh)
                     }.getOrDefault(emptyList())
                 }
                 val legacySchedule = async {
@@ -119,6 +128,7 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
                 }
                 CalendarLoadResult(
                     events = calendar.await(),
+                    englishEvents = englishCalendar.await(),
                     legacySchedule = legacySchedule.await(),
                     stations = stations.await(),
                     season = season.await(),
@@ -135,24 +145,28 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
             val seasonList = loaded.season
             val ranking = loaded.ranking
             val seasonGpIds = resolveSeasonGpIds(loaded.legacySchedule, completedStations, seasonList)
-            val calendar = calendarEvents.toRaceSchedule(seasonList, seasonGpIds)
-            val schedule = calendar?.schedule ?: fallbackSchedule
-            val displayedSeason = calendar?.season ?: seasonList
-            val historicalSessions = api.loadHistoricalSessions(
-                schedule,
-                displayedSeason,
-                seasonGpIds,
-                forceRefresh
-            )
-            buildSeasonRaceSchedule(
-                schedule,
-                completedStations,
-                displayedSeason,
-                ranking,
-                currentYear,
-                historicalSessions,
-                seasonGpIds
-            )
+            calendarEvents.toRaceCards(
+                englishEvents = loaded.englishEvents,
+                seasonList = seasonList,
+                seasonGpIds = seasonGpIds,
+                ranking = ranking
+            ) ?: run {
+                val historicalSessions = api.loadHistoricalSessions(
+                    fallbackSchedule,
+                    seasonList,
+                    seasonGpIds,
+                    forceRefresh
+                )
+                buildSeasonRaceSchedule(
+                    fallbackSchedule,
+                    completedStations,
+                    seasonList,
+                    ranking,
+                    currentYear,
+                    historicalSessions,
+                    seasonGpIds
+                )
+            }
         }
             .onSuccess { payload ->
                 races = payload.filter { gp ->
@@ -224,15 +238,11 @@ fun RaceScreen(onRaceClick: (RaceGp) -> Unit, onTrackClick: (Int) -> Unit, api: 
 
 private data class CalendarLoadResult(
     val events: List<F1CalendarEvent>,
+    val englishEvents: List<F1CalendarEvent>,
     val legacySchedule: List<RaceGp>,
     val stations: List<StationItem>,
     val season: List<RaceListItem>,
     val ranking: RankingData?
-)
-
-private data class CalendarRaceSchedule(
-    val schedule: List<RaceGp>,
-    val season: List<RaceListItem>
 )
 
 private data class LocalCalendarSession(
@@ -241,13 +251,17 @@ private data class LocalCalendarSession(
     val end: LocalDateTimeParts
 )
 
-private fun List<F1CalendarEvent>.toRaceSchedule(
+private fun List<F1CalendarEvent>.toRaceCards(
+    englishEvents: List<F1CalendarEvent>,
     seasonList: List<RaceListItem>,
-    seasonGpIds: Map<String, String>
-): CalendarRaceSchedule? {
+    seasonGpIds: Map<String, String>,
+    ranking: RankingData?
+): List<RaceGp>? {
     if (isEmpty()) return null
     val now = currentLocalDateTimeParts()
     val activeSeason = seasonList.filter { it.status != 4 }
+    val englishByUid = englishEvents.associateBy { it.grandPrixUid() }
+    val historicalResults = ranking.historicalRaceResults()
     val grouped = groupBy { it.raceName() }
         .entries
         .sortedWith(
@@ -255,8 +269,7 @@ private fun List<F1CalendarEvent>.toRaceSchedule(
                 it.value.minOfOrNull { event -> event.calendarRound() } ?: Int.MAX_VALUE
             }.thenBy { entry -> entry.value.minOfOrNull { event -> event.startUtc }.orEmpty() }
         )
-    val schedule = mutableListOf<RaceGp>()
-    val season = mutableListOf<RaceListItem>()
+    val races = mutableListOf<RaceGp>()
 
     grouped.forEachIndexed { index, (raceName, events) ->
         val seasonItem = activeSeason.firstOrNull { it.gp_name == raceName }
@@ -268,7 +281,6 @@ private fun List<F1CalendarEvent>.toRaceSchedule(
         }.sortedBy { it.start.toSortableMinutes() }
         if (localSessions.isEmpty()) return@forEachIndexed
 
-        val displayName = seasonItem?.gp_name.orEmpty().ifBlank { raceName }
         val gpId = seasonItem?.let { seasonGpIds[it.gp_name.normalizedRaceName()] }.orEmpty()
         val raceStatus = when {
             localSessions.any { now.isBetween(it.start, it.end) } -> 2
@@ -278,37 +290,39 @@ private fun List<F1CalendarEvent>.toRaceSchedule(
         val first = localSessions.first().start
         val last = localSessions.last().start
         val range = first.toCalendarDateLabel() + " ~ " + last.toCalendarDateLabel()
-        season += (seasonItem ?: RaceListItem(
-            gp_name = displayName,
-            track_name = events.firstOrNull()?.location.orEmpty()
-        )).copy(
-            status = raceStatus,
-            status_name = when (raceStatus) {
-                1 -> "完赛"
-                2 -> "进行中"
-                else -> "未赛"
-            },
-            time = range
-        )
-
-        localSessions.groupBy { it.start.toIsoDate() }
-            .entries
-            .sortedBy { it.key }
-            .forEach { (date, daySessions) ->
-                schedule += RaceGp(
-                    race_time = date,
-                    race_time_detail = daySessions.first().start.toCalendarDateLabel(),
-                    gp_id = gpId,
-                    gp_name = displayName,
-                    chp_name = "F1",
-                    track_name = seasonItem?.track_name.orEmpty()
-                        .ifBlank { events.firstOrNull()?.location.orEmpty() },
-                    track_id = seasonItem?.track_id ?: 0,
-                    session = daySessions.map { it.toRaceSession(now) }
-                )
+        val statusLabel = when (raceStatus) {
+            1 -> "完赛"
+            2 -> "进行中"
+            else -> "未赛"
+        }
+        val grandPrixUid = events.first().grandPrixUid()
+        val englishEvent = englishByUid[grandPrixUid]
+        val englishName = englishEvent?.raceName().orEmpty()
+        val results = historicalResults[gpId].orEmpty().ifEmpty {
+            historicalResults.entries.firstOrNull { (key, _) -> key.sameRaceNameAs(raceName) }
+                ?.value.orEmpty()
+        }
+        val sessions = localSessions.map { it.toRaceSession(now) }.map { session ->
+            if (session.session_type == 5 && session.race_result.isEmpty() && results.isNotEmpty()) {
+                session.copy(race_result = results)
+            } else {
+                session
             }
+        }
+        races += RaceGp(
+            race_time = first.toIsoDate(),
+            race_time_detail = "$range · $statusLabel",
+            gp_id = gpId,
+            gp_name = raceName,
+            chp_name = "F1",
+            track_name = events.firstOrNull()?.location.orEmpty().unescapeCalendarText(),
+            track_id = seasonItem?.track_id ?: 0,
+            track_slug = englishName.toFormula1Slug(),
+            track_english_name = englishName,
+            session = sessions
+        )
     }
-    return CalendarRaceSchedule(schedule = schedule, season = season)
+    return races
 }
 
 private fun LocalCalendarSession.toRaceSession(now: LocalDateTimeParts): RaceSession {
@@ -324,7 +338,7 @@ private fun LocalCalendarSession.toRaceSession(now: LocalDateTimeParts): RaceSes
             "正赛" -> 5
             else -> 6
         },
-        hour = listOf(start.toClockLabel()),
+        hour = listOf("${start.toCalendarDateLabel()} ${start.toClockLabel()}"),
         race_status = when {
             now.isBetween(start, end) -> 2
             end.toSortableMinutes() <= now.toSortableMinutes() -> 1
@@ -351,6 +365,38 @@ private fun F1CalendarEvent.sessionName(): String =
 
 private fun F1CalendarEvent.calendarRound(): Int =
     uid.substringAfter("#GP", "").substringBefore('_').toIntOrNull() ?: Int.MAX_VALUE
+
+private fun F1CalendarEvent.grandPrixUid(): String =
+    uid.substringBeforeLast('_', uid) + "_gp"
+
+private fun String.toFormula1Slug(): String {
+    val name = removeSuffix(" Grand Prix").trim()
+    return when (name) {
+        "Australian" -> "australia"
+        "Chinese" -> "china"
+        "Japanese" -> "japan"
+        "Miami" -> "miami"
+        "Canadian" -> "canada"
+        "Monaco" -> "monaco"
+        "Barcelona-Catalunya" -> "barcelona-catalunya"
+        "Austrian" -> "austria"
+        "British" -> "great-britain"
+        "Belgian" -> "belgium"
+        "Hungarian" -> "hungary"
+        "Dutch" -> "netherlands"
+        "Italian" -> "italy"
+        "Spanish" -> "spain"
+        "Azerbaijan" -> "azerbaijan"
+        "Singapore" -> "singapore"
+        "United States" -> "united-states"
+        "Mexico City" -> "mexico"
+        "Brazilian", "São Paulo", "Sao Paulo" -> "brazil"
+        "Las Vegas" -> "las-vegas"
+        "Qatar" -> "qatar"
+        "Abu Dhabi" -> "united-arab-emirates"
+        else -> name.lowercase().replace(" ", "-")
+    }
+}
 
 private fun String.unescapeCalendarText(): String =
     replace("\\,", ",").replace("\\;", ";").replace("\\n", "\n").replace("\\\\", "\\")
@@ -948,7 +994,7 @@ private fun RaceGlassCard(
     round: Int,
     focused: Boolean,
     onRaceClick: (RaceGp) -> Unit,
-    onTrackClick: (Int) -> Unit
+    onTrackClick: (trackId: Int, slug: String, seasonYear: Int) -> Unit
 ) {
     val isLive = gp.session.any { it.race_status == 2 }
     val isFinished = gp.session.isNotEmpty() && gp.session.all { it.race_status == 1 || it.race_status == 4 }
@@ -1026,14 +1072,21 @@ private fun RaceGlassCard(
                 horizontalArrangement = Arrangement.spacedBy(9.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (gp.track_id > 0) {
+                if (gp.track_id > 0 || gp.track_slug.isNotBlank()) {
                     Row(
                         modifier = Modifier
                             .clickable(
                                 interactionSource = null,
                                 indication = null,
                                 role = Role.Button,
-                                onClick = { onTrackClick(gp.track_id) }
+                                onClick = {
+                                    onTrackClick(
+                                        gp.track_id,
+                                        gp.track_slug,
+                                        gp.race_time.take(4).toIntOrNull()
+                                            ?: currentLocalDateTimeParts().year
+                                    )
+                                }
                             )
                             .padding(horizontal = 4.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),

@@ -164,6 +164,26 @@ class ApiService(private val client: HttpClient) {
             }.bodyAsText().parseF1Calendar(seasonId)
         }
 
+    suspend fun getF1EnglishCalendar(seasonId: Int, forceRefresh: Boolean = false) =
+        cached("f1-calendar-english:$seasonId", forceRefresh) {
+            client.get(F1EnglishCalendarUrl) {
+                header("Accept", "text/calendar")
+                header("Referer", "https://motorsportcalendars.com/")
+            }.bodyAsText().parseF1Calendar(seasonId)
+        }
+
+    suspend fun getFormula1TrackImage(seasonId: Int, slug: String, forceRefresh: Boolean = false) =
+        cached("formula1-track-image:$seasonId:$slug", forceRefresh) {
+            client.get("$Formula1ApiBase/v1/editorial-assemblies/races") {
+                header("apikey", Formula1PublicApiKey)
+                header("locale", "en")
+                header("Origin", "https://www.formula1.com")
+                header("Referer", "https://www.formula1.com/en/racing/$seasonId/$slug")
+                parameter("season", seasonId)
+                parameter("identifier", slug)
+            }.body<Formula1RacePage>().circuitMapImage.url
+        }
+
     suspend fun getRaceList(chpId: Int, seasonId: Int, forceRefresh: Boolean = false) =
         cached("race-list:$chpId:$seasonId", forceRefresh) {
             client.get("race/list") {
@@ -271,6 +291,7 @@ class ApiService(private val client: HttpClient) {
 
         supervisorScope {
             launch { runCatching { getF1Calendar(seasonId) } }
+            launch { runCatching { getF1EnglishCalendar(seasonId) } }
             launch { runCatching { getRaceSchedule() } }
             launch { runCatching { getRaceList(chpId = 6, seasonId = seasonId) } }
             launch { runCatching { getStationList(chpId = 6, seasonId = seasonId) } }
@@ -294,6 +315,10 @@ class ApiService(private val client: HttpClient) {
         const val MaxCommentReplyPages = 50
         const val F1CalendarUrl =
             "https://files-f1.motorsportcalendars.com/zh/f1-calendar_p1_p2_p3_qualifying_sprint_gp.ics"
+        const val F1EnglishCalendarUrl =
+            "https://files-f1.motorsportcalendars.com/f1-calendar_gp.ics"
+        const val Formula1ApiBase = "https://api.formula1.com"
+        const val Formula1PublicApiKey = "BQ1SiSmLUOsp460VzXBlLrh689kGgYEZ"
     }
 }
 

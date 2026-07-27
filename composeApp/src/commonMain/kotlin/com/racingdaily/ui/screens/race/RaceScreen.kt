@@ -67,6 +67,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -76,105 +77,64 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 
+private object RaceScreenCache {
+    val racesByYear = mutableMapOf<Int, List<RaceGp>>()
+}
+
 @Composable
 fun RaceScreen(
     onRaceClick: (RaceGp) -> Unit,
     onTrackClick: (trackId: Int, slug: String, seasonYear: Int) -> Unit,
     api: ApiService
 ) {
-    var races by remember { mutableStateOf<List<RaceGp>>(emptyList()) }
-    var loading by remember { mutableStateOf(true) }
+    val currentYear = remember { currentLocalDateTimeParts().year }
+    val initialRaces = remember(currentYear) { RaceScreenCache.racesByYear[currentYear].orEmpty() }
+    var races by remember(currentYear) { mutableStateOf(initialRaces) }
+    var loading by remember(currentYear) { mutableStateOf(initialRaces.isEmpty()) }
     var error by remember { mutableStateOf<String?>(null) }
     var reloadKey by remember { mutableIntStateOf(0) }
     var didAutoScroll by remember(reloadKey) { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
-    LaunchedEffect(reloadKey) {
-        loading = true
+    LaunchedEffect(reloadKey, currentYear) {
+        val hasCachedContent = races.isNotEmpty()
+        loading = !hasCachedContent
         error = null
-        runCatching {
-            val forceRefresh = reloadKey > 0
-            val currentYear = currentLocalDateTimeParts().year
-            val loaded = supervisorScope {
-                val calendar = async {
-                    runCatching {
-                        api.getF1Calendar(seasonId = currentYear, forceRefresh = forceRefresh)
-                    }.getOrDefault(emptyList())
-                }
-                val englishCalendar = async {
-                    runCatching {
-                        api.getF1EnglishCalendar(seasonId = currentYear, forceRefresh = forceRefresh)
-                    }.getOrDefault(emptyList())
-                }
-                val legacySchedule = async {
-                    runCatching {
-                        api.getRaceSchedule(forceRefresh = forceRefresh)
-                    }.getOrDefault(emptyList())
-                }
-                val stations = async {
-                    runCatching {
-                        api.getStationList(chpId = 6, seasonId = currentYear, forceRefresh = forceRefresh).tmp
-                    }.getOrDefault(emptyList())
-                }
-                val season = async {
-                    runCatching {
-                        api.getRaceList(chpId = 6, seasonId = currentYear, forceRefresh = forceRefresh)
-                    }.getOrDefault(emptyList())
-                }
-                val ranking = async {
-                    runCatching {
-                        api.getDriverRanking(chpId = 6, seasonId = currentYear, forceRefresh = forceRefresh)
-                    }.getOrNull()
-                }
-                CalendarLoadResult(
-                    events = calendar.await(),
-                    englishEvents = englishCalendar.await(),
-                    legacySchedule = legacySchedule.await(),
-                    stations = stations.await(),
-                    season = season.await(),
-                    ranking = ranking.await()
-                )
-            }
-            val calendarEvents = loaded.events
-            val fallbackSchedule = if (calendarEvents.isEmpty()) {
-                loaded.legacySchedule
-            } else {
-                emptyList()
-            }
-            val completedStations = loaded.stations
-            val seasonList = loaded.season
-            val ranking = loaded.ranking
-            val seasonGpIds = resolveSeasonGpIds(loaded.legacySchedule, completedStations, seasonList)
-            calendarEvents.toRaceCards(
-                englishEvents = loaded.englishEvents,
-                seasonList = seasonList,
-                seasonGpIds = seasonGpIds,
-                ranking = ranking
-            ) ?: run {
-                val historicalSessions = api.loadHistoricalSessions(
-                    fallbackSchedule,
-                    seasonList,
-                    seasonGpIds,
-                    forceRefresh
-                )
-                buildSeasonRaceSchedule(
-                    fallbackSchedule,
-                    completedStations,
-                    seasonList,
-                    ranking,
-                    currentYear,
-                    historicalSessions,
-                    seasonGpIds
-                )
-            }
-        }
-            .onSuccess { payload ->
-                races = payload.filter { gp ->
+        supervisorScope {
+            var freshPayloadApplied = false
+
+            fun applyPayload(payload: List<RaceGp>, isFresh: Boolean) {
+                val visibleRaces = payload.filter { gp ->
                     gp.gp_id.isNotBlank() || gp.gp_name.isNotBlank() || gp.race_time.isNotBlank()
                 }
+                if (visibleRaces.isNotEmpty()) {
+                    if (!isFresh && freshPayloadApplied) return
+                    if (isFresh) freshPayloadApplied = true
+                    races = visibleRaces
+                    RaceScreenCache.racesByYear[currentYear] = visibleRaces
+                    error = null
+                }
+                loading = false
             }
-            .onFailure { error = it.message ?: "无法加载赛历" }
-        loading = false
+
+            fun handleFailure(cause: Throwable) {
+                if (races.isEmpty()) error = cause.message ?: "无法加载赛历"
+                loading = false
+            }
+
+            if (!hasCachedContent) {
+                launch {
+                    runCatching { api.loadRaceScreenData(currentYear, forceRefresh = false) }
+                        .onSuccess { applyPayload(it, isFresh = false) }
+                        .onFailure(::handleFailure)
+                }
+            }
+            launch {
+                runCatching { api.loadRaceScreenData(currentYear, forceRefresh = true) }
+                    .onSuccess { applyPayload(it, isFresh = true) }
+                    .onFailure(::handleFailure)
+            }
+        }
     }
 
     LaunchedEffect(loading, error, races) {
@@ -233,6 +193,69 @@ fun RaceScreen(
                 }
             }
         }
+    }
+}
+
+private suspend fun ApiService.loadRaceScreenData(
+    currentYear: Int,
+    forceRefresh: Boolean
+): List<RaceGp> {
+    val loaded = supervisorScope {
+        val calendar = async {
+            runCatching { getF1Calendar(seasonId = currentYear, forceRefresh = forceRefresh) }
+                .getOrDefault(emptyList())
+        }
+        val englishCalendar = async {
+            runCatching { getF1EnglishCalendar(seasonId = currentYear, forceRefresh = forceRefresh) }
+                .getOrDefault(emptyList())
+        }
+        val legacySchedule = async {
+            runCatching { getRaceSchedule(forceRefresh = forceRefresh) }.getOrDefault(emptyList())
+        }
+        val stations = async {
+            runCatching { getStationList(chpId = 6, seasonId = currentYear, forceRefresh = forceRefresh).tmp }
+                .getOrDefault(emptyList())
+        }
+        val season = async {
+            runCatching { getRaceList(chpId = 6, seasonId = currentYear, forceRefresh = forceRefresh) }
+                .getOrDefault(emptyList())
+        }
+        val ranking = async {
+            runCatching { getDriverRanking(chpId = 6, seasonId = currentYear, forceRefresh = forceRefresh) }
+                .getOrNull()
+        }
+        CalendarLoadResult(
+            events = calendar.await(),
+            englishEvents = englishCalendar.await(),
+            legacySchedule = legacySchedule.await(),
+            stations = stations.await(),
+            season = season.await(),
+            ranking = ranking.await()
+        )
+    }
+    val fallbackSchedule = if (loaded.events.isEmpty()) loaded.legacySchedule else emptyList()
+    val seasonGpIds = resolveSeasonGpIds(loaded.legacySchedule, loaded.stations, loaded.season)
+    return loaded.events.toRaceCards(
+        englishEvents = loaded.englishEvents,
+        seasonList = loaded.season,
+        seasonGpIds = seasonGpIds,
+        ranking = loaded.ranking
+    ) ?: run {
+        val historicalSessions = loadHistoricalSessions(
+            fallbackSchedule,
+            loaded.season,
+            seasonGpIds,
+            forceRefresh
+        )
+        buildSeasonRaceSchedule(
+            fallbackSchedule,
+            loaded.stations,
+            loaded.season,
+            loaded.ranking,
+            currentYear,
+            historicalSessions,
+            seasonGpIds
+        )
     }
 }
 

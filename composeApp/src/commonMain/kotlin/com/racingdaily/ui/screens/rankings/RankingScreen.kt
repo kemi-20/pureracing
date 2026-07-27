@@ -53,6 +53,7 @@ import coil3.compose.AsyncImage
 import com.racingdaily.data.model.RankingData
 import com.racingdaily.data.model.RankingOption
 import com.racingdaily.data.remote.ApiService
+import com.racingdaily.platform.currentLocalDateTimeParts
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassChip
 import com.racingdaily.ui.components.GlassMaterial
@@ -62,10 +63,26 @@ import com.racingdaily.ui.components.ScreenHeader
 import com.racingdaily.ui.components.SectionLabel
 import com.racingdaily.ui.components.TeamLogo
 import com.racingdaily.ui.components.newsCardReveal
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
+
+private data class RankingCacheKey(
+    val championshipId: Int,
+    val seasonId: Int,
+    val isDriver: Boolean
+)
+
+private object RankingScreenCache {
+    var seasons: List<RankingOption> = emptyList()
+    var selectedSeasonId: Int? = null
+    var isDriver: Boolean = true
+    val rankings = mutableMapOf<RankingCacheKey, RankingData>()
+    val selectedTabs = mutableMapOf<RankingCacheKey, String>()
+}
 
 @Composable
 fun RankingScreen(
@@ -73,12 +90,24 @@ fun RankingScreen(
     onDriverClick: (chpId: Int, seasonId: Int, driverId: Int, name: String, avatar: String, teamLogo: String, stats: JsonObject) -> Unit,
     onTeamClick: (chpId: Int, seasonId: Int, teamId: Int, name: String, logo: String, stats: JsonObject) -> Unit
 ) {
-    var seasons by remember { mutableStateOf<List<RankingOption>>(emptyList()) }
-    var selectedSeason by remember { mutableStateOf<RankingOption?>(null) }
-    var isDriver by remember { mutableStateOf(true) }
-    var data by remember { mutableStateOf<RankingData?>(null) }
-    var loading by remember { mutableStateOf(true) }
-    var selectedSubTab by remember { mutableStateOf("") }
+    val currentYear = remember { currentLocalDateTimeParts().year }
+    val initialSeasons = remember { RankingScreenCache.seasons }
+    val initialSeason = remember(initialSeasons, currentYear) {
+        initialSeasons.firstOrNull { it.id == RankingScreenCache.selectedSeasonId }
+            ?: initialSeasons.firstOrNull { it.id == currentYear }
+            ?: initialSeasons.firstOrNull()
+    }
+    var seasons by remember { mutableStateOf(initialSeasons) }
+    var selectedSeason by remember { mutableStateOf(initialSeason) }
+    var isDriver by remember { mutableStateOf(RankingScreenCache.isDriver) }
+    val initialKey = remember(initialSeason, isDriver) {
+        initialSeason?.let { RankingCacheKey(it.chp_id, it.id, isDriver) }
+    }
+    var data by remember { mutableStateOf(initialKey?.let { RankingScreenCache.rankings[it] }) }
+    var loading by remember { mutableStateOf(data == null) }
+    var selectedSubTab by remember {
+        mutableStateOf(initialKey?.let { RankingScreenCache.selectedTabs[it] }.orEmpty())
+    }
     var error by remember { mutableStateOf<String?>(null) }
     var reloadKey by remember { mutableIntStateOf(0) }
     var hasPlayedPodiumShine by rememberSaveable { mutableStateOf(false) }
@@ -87,34 +116,107 @@ fun RankingScreen(
     }
 
     LaunchedEffect(reloadKey) {
-        loading = true
-        error = null
-        runCatching { api.getRankingNav(forceRefresh = reloadKey > 0).list.firstOrNull()?.options.orEmpty() }
-            .onSuccess {
-                seasons = it
-                selectedSeason = it.firstOrNull { option -> option.id == 2026 } ?: it.firstOrNull()
+        val hasCachedSeasons = seasons.isNotEmpty()
+        if (!hasCachedSeasons && data == null) loading = true
+        supervisorScope {
+            fun applySeasons(loaded: List<RankingOption>) {
+                if (loaded.isEmpty()) return
+                val preferredSeasonId = selectedSeason?.id
+                    ?: RankingScreenCache.selectedSeasonId
+                    ?: currentYear
+                seasons = loaded
+                RankingScreenCache.seasons = loaded
+                selectedSeason = loaded.firstOrNull { it.id == preferredSeasonId }
+                    ?: loaded.firstOrNull { it.id == currentYear }
+                    ?: loaded.firstOrNull()
+                RankingScreenCache.selectedSeasonId = selectedSeason?.id
+                error = null
             }
-            .onFailure { error = it.message ?: "无法加载赛季" }
-        if (selectedSeason == null) loading = false
+
+            fun handleFailure(cause: Throwable) {
+                if (seasons.isEmpty() && data == null) {
+                    error = cause.message ?: "无法加载赛季"
+                    loading = false
+                }
+            }
+
+            if (!hasCachedSeasons) {
+                launch {
+                    runCatching { api.getRankingNav(forceRefresh = false).list.firstOrNull()?.options.orEmpty() }
+                        .onSuccess(::applySeasons)
+                        .onFailure(::handleFailure)
+                }
+            }
+            launch {
+                runCatching { api.getRankingNav(forceRefresh = true).list.firstOrNull()?.options.orEmpty() }
+                    .onSuccess(::applySeasons)
+                    .onFailure(::handleFailure)
+            }
+        }
     }
 
-    LaunchedEffect(selectedSeason, isDriver, reloadKey) {
+    LaunchedEffect(selectedSeason?.chp_id, selectedSeason?.id, isDriver, reloadKey) {
         val season = selectedSeason ?: return@LaunchedEffect
-        loading = true
-        error = null
-        runCatching {
-            if (isDriver) {
-                api.getDriverRanking(season.chp_id, season.id, forceRefresh = reloadKey > 0)
-            } else {
-                api.getTeamRanking(season.chp_id, season.id, forceRefresh = reloadKey > 0)
-            }
-        }.onSuccess {
-            data = it
-            selectedSubTab = it.visibleRankingTabs().firstOrNull()?.tab_key.orEmpty()
-        }.onFailure {
-            error = it.message ?: "无法加载排行榜"
+        val cacheKey = RankingCacheKey(season.chp_id, season.id, isDriver)
+        RankingScreenCache.selectedSeasonId = season.id
+        RankingScreenCache.isDriver = isDriver
+        val cachedRanking = RankingScreenCache.rankings[cacheKey]
+        if (cachedRanking != null) {
+            data = cachedRanking
+            selectedSubTab = RankingScreenCache.selectedTabs[cacheKey]
+                ?.takeIf { selected -> cachedRanking.visibleRankingTabs().any { it.tab_key == selected } }
+                ?: cachedRanking.visibleRankingTabs().firstOrNull()?.tab_key.orEmpty()
+            loading = false
+        } else {
+            data = null
+            selectedSubTab = ""
+            loading = true
         }
-        loading = false
+        error = null
+        supervisorScope {
+            var freshRankingApplied = false
+
+            suspend fun load(forceRefresh: Boolean): RankingData = if (isDriver) {
+                api.getDriverRanking(season.chp_id, season.id, forceRefresh = forceRefresh)
+            } else {
+                api.getTeamRanking(season.chp_id, season.id, forceRefresh = forceRefresh)
+            }
+
+            fun applyRanking(loaded: RankingData, isFresh: Boolean) {
+                if (!isFresh && freshRankingApplied) return
+                if (isFresh) freshRankingApplied = true
+                val tabs = loaded.visibleRankingTabs()
+                val preferredTab = selectedSubTab
+                    .takeIf { selected -> tabs.any { it.tab_key == selected } }
+                    ?: RankingScreenCache.selectedTabs[cacheKey]
+                        ?.takeIf { selected -> tabs.any { it.tab_key == selected } }
+                    ?: tabs.firstOrNull()?.tab_key.orEmpty()
+                data = loaded
+                selectedSubTab = preferredTab
+                RankingScreenCache.rankings[cacheKey] = loaded
+                RankingScreenCache.selectedTabs[cacheKey] = preferredTab
+                loading = false
+                error = null
+            }
+
+            fun handleFailure(cause: Throwable) {
+                if (data == null) error = cause.message ?: "无法加载排行榜"
+                loading = false
+            }
+
+            if (cachedRanking == null) {
+                launch {
+                    runCatching { load(forceRefresh = false) }
+                        .onSuccess { applyRanking(it, isFresh = false) }
+                        .onFailure(::handleFailure)
+                }
+            }
+            launch {
+                runCatching { load(forceRefresh = true) }
+                    .onSuccess { applyRanking(it, isFresh = true) }
+                    .onFailure(::handleFailure)
+            }
+        }
     }
 
     LaunchedEffect(data, selectedSubTab, hasPlayedPodiumShine) {
@@ -152,14 +254,20 @@ fun RankingScreen(
             GlassChip(
                 "车手",
                 selected = isDriver,
-                onClick = { isDriver = true },
+                onClick = {
+                    RankingScreenCache.isDriver = true
+                    isDriver = true
+                },
                 modifier = Modifier.weight(1f),
                 leadingIcon = Icons.Rounded.Person
             )
             GlassChip(
                 "车队",
                 selected = !isDriver,
-                onClick = { isDriver = false },
+                onClick = {
+                    RankingScreenCache.isDriver = false
+                    isDriver = false
+                },
                 modifier = Modifier.weight(1f),
                 leadingIcon = Icons.Rounded.Groups
             )
@@ -175,7 +283,10 @@ fun RankingScreen(
                 GlassChip(
                     label = season.name,
                     selected = season.id == (selectedSeason?.id ?: -1),
-                    onClick = { selectedSeason = season }
+                    onClick = {
+                        RankingScreenCache.selectedSeasonId = season.id
+                        selectedSeason = season
+                    }
                 )
             }
         }
@@ -189,7 +300,14 @@ fun RankingScreen(
                     GlassChip(
                         label = tab.tab_name.cleanRankingLabel(),
                         selected = tab.tab_key == selectedSubTab,
-                        onClick = { selectedSubTab = tab.tab_key }
+                        onClick = {
+                            selectedSeason?.let { season ->
+                                RankingScreenCache.selectedTabs[
+                                    RankingCacheKey(season.chp_id, season.id, isDriver)
+                                ] = tab.tab_key
+                            }
+                            selectedSubTab = tab.tab_key
+                        }
                     )
                 }
             }

@@ -1,61 +1,34 @@
 # PureRacing
 
-PureRacing 是一款面向 Android 与 Windows 桌面端的非官方赛车新闻与赛果客户端。它基于 Compose Multiplatform 构建，并使用 `origin/reverses` 中记录的公开 RacingDaily/PureRacing API 接口。
+PureRacing 是一款面向 Android 与 Windows 桌面端的非官方赛车新闻与赛果客户端，基于 Compose Multiplatform 构建。
 
-本应用专注于只读浏览。登录、注册、评论及用户聊天功能均为有意不予实现。
+应用无需登录即可使用，支持浏览公开评论与回复，但不提供登录、注册、发表评论或用户聊天功能。
 
 ## 功能特性
 
-- 新闻信息流，包含分类标签页、文章详情页、媒体渲染以及系统分享。
-- 赛历，包含大奖赛详情、分段（session）开始时间、分段赛果、天气以及赛道链接。
-- 车手与车队排名，并提供资料 / 详情入口。
-- 赛道页面，包含赛道信息与历史纪录。
-- “更多”板块，涵盖自定义锦标赛、MotoGP、TCR 以及应用信息。
-- 基于 Kyant0 AndroidLiquidGlass / Backdrop 的液态玻璃（Liquid Glass）界面。
-- 跨平台构建目标：
-  - Android APK
-  - Windows 桌面分发包
+- 分类新闻信息流、关键词搜索、阅读位置保留与后台预加载。
+- 原生文章阅读体验，支持图片、视频、完整标题滚动、系统分享，以及评论和回复浏览。
+- 基于 WebKit iOS 媒体控件资源打造的视频播放器，支持首帧预览、进度拖动、前后 15 秒跳转和全屏播放。
+- 当前赛季完整赛历，提供比赛与各赛段时间、天气、赛道资料、完整成绩和轮胎策略。
+- 车手与车队积分榜，支持赛季切换、历年成绩，以及车手和车队详情。
+- 内置高精度 SVG 国旗，并针对赛历、比赛详情和车手国籍统一展示。
+- MotoGP、TCR 与自定义锦标赛入口，以及跟随系统、浅色、深色三种主题模式。
+- 赛历和排名缓存优先显示，并在后台静默刷新最新数据。
+- 使用 Kyant0 Backdrop 2.0.0 的跨平台液态玻璃组件与动态交互。
+- 同一套共享界面支持 Android APK 与 Windows 桌面分发包。
 
 ## 技术栈
 
-- Kotlin Multiplatform
-- Compose Multiplatform
-- Ktor Client
-- kotlinx.serialization
-- Coil 3
-- Kyant Backdrop `2.0.0-alpha03`
-- Android Activity Compose
-- Windows 桌面端使用 SWT Browser 渲染文章 HTML
-
-## API
-
-基础地址（Base URL）：
-
-```text
-https://api.romielf.com
-```
-
-API 通常返回如下结构：
-
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": {}
-}
-```
-
-文章媒体资源需携带必需的 referer 进行加载：
-
-```text
-news.romielf.com
-```
-
-逆向工程笔记保存在：
-
-```text
-origin/reverses/
-```
+- Kotlin `2.3.10` 与 Kotlin Multiplatform
+- Compose Multiplatform `1.11.0`、Compose Material 3 与 Compose Resources
+- Ktor Client `3.x`，Android 使用 OkHttp，Desktop 使用 CIO
+- kotlinx.serialization 与 kotlinx.coroutines
+- Coil `3.4.0`，包含 Ktor 网络加载与 SVG 解码
+- Kyant0 Backdrop `2.0.0` 与 Kyant Shapes `1.2.0`
+- Android Activity Compose、Android WebView 与系统分享桥接
+- Windows Compose Desktop、SWT Browser 与 WebView2 文章渲染
+- Media Chrome 播放状态层与 WebKit modern-media-controls 开源视觉资源
+- Gradle Version Catalog、GitHub Actions、Android APK 签名与 Windows EXE 打包
 
 ## 项目结构
 

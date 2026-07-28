@@ -49,11 +49,11 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.racingdaily.data.model.RankingData
 import com.racingdaily.data.model.RankingOption
 import com.racingdaily.data.remote.ApiService
 import com.racingdaily.platform.currentLocalDateTimeParts
+import com.racingdaily.ui.components.DriverPortrait
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassChip
 import com.racingdaily.ui.components.GlassMaterial
@@ -472,10 +472,10 @@ private fun RankingPodiumEntry(
                     contentAlignment = Alignment.Center
                 ) {
                     if (avatar.isNotBlank()) {
-                        AsyncImage(
-                            avatar,
-                            null,
-                            Modifier.fillMaxSize().clip(CircleShape),
+                        DriverPortrait(
+                            url = avatar,
+                            contentDescription = name,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
                             contentScale = ContentScale.Fit
                         )
                     } else {
@@ -566,10 +566,10 @@ private fun RankingRow(
             if (isDriver) {
                 Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
                     if (avatar.isNotBlank()) {
-                        AsyncImage(
-                            avatar,
-                            null,
-                            Modifier.fillMaxSize().clip(CircleShape),
+                        DriverPortrait(
+                            url = avatar,
+                            contentDescription = name,
+                            modifier = Modifier.fillMaxSize().clip(CircleShape),
                             contentScale = ContentScale.Fit
                         )
                     } else {

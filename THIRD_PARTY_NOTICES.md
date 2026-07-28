@@ -23,14 +23,6 @@ Team logos are loaded from the official API response and are not bundled with Pu
 - License: MIT
 - Vendored file: `composeApp/src/commonMain/composeResources/files/article-player/media-chrome-4.19.2.iife.js`
 
-## Chewie
-
-- Project: Chewie
-- Authors: Christian Muehle and contributors
-- Source: https://github.com/fluttercommunity/chewie
-- License: MIT
-- Adapted component: `CupertinoControls`
-
 ## WebKit Modern Media Controls
 
 - Project: WebKit
@@ -38,6 +30,6 @@ Team logos are loaded from the official API response and are not bundled with Pu
 - License: BSD 2-Clause
 - Adapted resources: iOS play, pause, seek, volume, and fullscreen SVG paths
 
-The article player template combines Chewie's open-source Cupertino control layout with WebKit's
-official iOS control glyphs. Media Chrome binds those controls to the native HTML video element on
-Android WebView and Windows WebView2 while keeping the original media URLs unchanged.
+The article player template combines WebKit's official iOS control glyphs with Media Chrome,
+which binds those controls to the native HTML video element on Android WebView and Windows
+WebView2 while keeping the original media URLs unchanged.

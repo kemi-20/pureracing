@@ -124,14 +124,18 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 enum class Screen { HOME, RACE, RANKINGS, MORE }
 
 sealed interface AppPage {
     data object Search : AppPage
-    data class Article(val id: Int, val title: String, val url: String) : AppPage
+    data class Article(val id: Int, val title: String) : AppPage
     data class Track(val id: Int, val slug: String, val seasonYear: Int) : AppPage
     data class Championship(val category: String, val id: Int) : AppPage
     data class RaceDetail(val gp: RaceGp) : AppPage
@@ -152,7 +156,7 @@ fun App(api: ApiService) {
             val goBack = remember(pageStack) { { if (pageStack.isNotEmpty()) pageStack.removeAt(pageStack.lastIndex) } }
             val openArticle: (NewsItem) -> Unit = { item ->
                 readHistoryController.markRead(item.id)
-                pageStack += AppPage.Article(item.id, item.title, item.http_url)
+                pageStack += AppPage.Article(item.id, item.title)
             }
             val navigationBackdrop = rememberLayerBackdrop()
 
@@ -259,7 +263,6 @@ fun App(api: ApiService) {
                         is AppPage.Article -> DetailScreen(
                             articleId = page.id,
                             initialTitle = page.title,
-                            initialUrl = page.url,
                             onBack = goBack,
                             api = api,
                             pageVisible = pageVisible
@@ -656,14 +659,14 @@ private fun SessionCard(
     var strategyReloadKey by remember(stateKey) { mutableIntStateOf(0) }
     val canLoadResults = gpId != null && gpId > 0 && session.race_status == 1
     val availableResults = fullResults ?: session.race_result
-    val podium = availableResults.sortedBy { it.rank }.take(3)
+    val podium = remember(availableResults) { availableResults.sortedBy { it.rank }.take(3) }
     val awaitingInitialResults = canLoadResults && session.race_result.isEmpty() &&
         fullResults == null && fullResultsError == null
 
     LaunchedEffect(showFullResults, fullResultsReloadKey, stateKey) {
         val needsResults = showFullResults || session.race_result.isEmpty()
         if (!needsResults || !canLoadResults || fullResults != null) return@LaunchedEffect
-        val resolvedGpId = gpId ?: return@LaunchedEffect
+        val resolvedGpId = checkNotNull(gpId)
         fullResultsLoading = true
         fullResultsError = null
         runCatching {
@@ -964,6 +967,39 @@ private fun String.toTyreColor(): Color {
     }.getOrDefault(Color.Gray)
 }
 
+private suspend inline fun <T> runCatchingPreservingCancellation(
+    crossinline block: suspend () -> T
+): Result<T> = try {
+    Result.success(block())
+} catch (cancellation: CancellationException) {
+    throw cancellation
+} catch (failure: Throwable) {
+    Result.failure(failure)
+}
+
+private suspend fun <T : Any> ApiService.loadSeasonScores(
+    latestSeasonId: Int,
+    loadScore: suspend (seasonId: Int) -> T?
+): List<T> {
+    val seasons = getRankingNav()
+        .list
+        .flatMap { it.options }
+        .map { it.id }
+        .filter { it in 1950..latestSeasonId }
+        .distinct()
+        .sorted()
+    val requestLimit = Semaphore(6)
+    return supervisorScope {
+        seasons.map { seasonId ->
+            async {
+                requestLimit.withPermit {
+                    runCatchingPreservingCancellation { loadScore(seasonId) }.getOrNull()
+                }
+            }
+        }.awaitAll().filterNotNull()
+    }
+}
+
 @Composable
 fun DriverDetailScreen(
     page: AppPage.DriverDetail,
@@ -983,10 +1019,18 @@ fun DriverDetailScreen(
     LaunchedEffect(page.driverId, page.chpId, page.seasonId) {
         loading = true
         error = null
-        runCatching {
-            val info = api.getDriverInfo(page.chpId, page.driverId, page.seasonId)
-            val photoData = runCatching { api.getDriverPhoto(page.chpId, page.driverId) }.getOrNull()
-            info to photoData?.img.orEmpty()
+        runCatchingPreservingCancellation {
+            supervisorScope {
+                val infoRequest = async {
+                    api.getDriverInfo(page.chpId, page.driverId, page.seasonId)
+                }
+                val photoRequest = async {
+                    runCatchingPreservingCancellation {
+                        api.getDriverPhoto(page.chpId, page.driverId)
+                    }.getOrNull()
+                }
+                infoRequest.await() to photoRequest.await()?.img.orEmpty()
+            }
         }.onSuccess { (info, loadedPhotos) ->
             driverInfo = info
             photos = loadedPhotos
@@ -1002,18 +1046,9 @@ fun DriverDetailScreen(
     LaunchedEffect(page.driverId, page.chpId, page.seasonId) {
         scoreLoading = true
         scoreError = null
-        runCatching {
-            val seasons = api.getRankingNav()
-                .list
-                .flatMap { it.options }
-                .map { it.id }
-                .filter { it in 1950..page.seasonId }
-                .distinct()
-                .sorted()
-            seasons.mapNotNull { seasonId ->
-                runCatching {
+        runCatchingPreservingCancellation {
+            api.loadSeasonScores(page.seasonId) { seasonId ->
                     api.getDriverRanking(page.chpId, seasonId).toDriverSeasonScore(seasonId, page.driverId)
-                }.getOrNull()
             }.sortedByDescending { it.season }
         }.onSuccess {
             seasonScores = it
@@ -1135,15 +1170,28 @@ fun TeamDetailScreen(
     LaunchedEffect(page.chpId, page.seasonId, page.teamId) {
         loading = true
         error = null
-        runCatching {
-            val officialInfo = runCatching { api.getTeamInfo(page.chpId, page.teamId, page.seasonId) }
-            val info = officialInfo.getOrNull()
-                ?.takeIf { it.hasUsableOfficialTeamInfo() }
-                ?: page.cadillacFallbackTeamInfo()
-            val news = teamNewsTagIds[page.teamId]
-                ?.let { tagId -> runCatching { api.getNewsList(tagId) }.getOrNull()?.list }
-                .orEmpty()
-            info to (news to officialInfo.exceptionOrNull())
+        runCatchingPreservingCancellation {
+            supervisorScope {
+                val officialInfoRequest = async {
+                    runCatchingPreservingCancellation {
+                        api.getTeamInfo(page.chpId, page.teamId, page.seasonId)
+                    }
+                }
+                val newsRequest = async {
+                    teamNewsTagIds[page.teamId]
+                        ?.let { tagId ->
+                            runCatchingPreservingCancellation { api.getNewsList(tagId) }
+                                .getOrNull()
+                                ?.list
+                        }
+                        .orEmpty()
+                }
+                val officialInfo = officialInfoRequest.await()
+                val info = officialInfo.getOrNull()
+                    ?.takeIf { it.hasUsableOfficialTeamInfo() }
+                    ?: page.cadillacFallbackTeamInfo()
+                info to (newsRequest.await() to officialInfo.exceptionOrNull())
+            }
         }
             .onSuccess { (info, newsAndError) ->
                 val (news, officialError) = newsAndError
@@ -1164,18 +1212,9 @@ fun TeamDetailScreen(
     LaunchedEffect(page.chpId, page.seasonId, page.teamId) {
         scoreLoading = true
         scoreError = null
-        runCatching {
-            val seasons = api.getRankingNav()
-                .list
-                .flatMap { it.options }
-                .map { it.id }
-                .filter { it in 1950..page.seasonId }
-                .distinct()
-                .sorted()
-            seasons.mapNotNull { seasonId ->
-                runCatching {
+        runCatchingPreservingCancellation {
+            api.loadSeasonScores(page.seasonId) { seasonId ->
                     api.getTeamRanking(page.chpId, seasonId).toTeamSeasonScore(seasonId, page.teamId)
-                }.getOrNull()
             }.sortedByDescending { it.season }
         }.onSuccess {
             seasonScores = it
@@ -1565,27 +1604,6 @@ private fun DriverSeasonScoreRow(values: List<String>, isHeader: Boolean) {
                 fontWeight = if (isHeader) FontWeight.SemiBold else FontWeight.Bold,
                 modifier = Modifier.weight(if (index == 2) 1.25f else 1f)
             )
-        }
-    }
-}
-
-@Composable
-private fun RankingStatsCard(title: String, stats: JsonObject) {
-    val rows = stats.rankingStatRows()
-    GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
-        Column {
-            Text(title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(6.dp))
-            if (rows.isEmpty()) {
-                Text("暂无可展示数据", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            } else {
-                rows.forEach { (label, value) ->
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                        Text(value, color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            }
         }
     }
 }

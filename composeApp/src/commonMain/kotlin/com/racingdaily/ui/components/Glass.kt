@@ -5,10 +5,6 @@
 
 package com.racingdaily.ui.components
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -21,8 +17,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,9 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -41,16 +33,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarColors
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -61,9 +47,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -78,7 +61,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastCoerceAtMost
 import androidx.compose.ui.util.lerp
-import androidx.compose.ui.zIndex
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
@@ -835,115 +817,6 @@ fun <T> GlassBottomBar(
     }
 }
 
-/*
- * Adapted from ImageToolbox EnhancedTopAppBar by T8RIN, Apache-2.0.
- * The original component switches between Material top app bar variants with animated content.
- */
-@Composable
-fun EnhancedTopAppBar(
-    title: @Composable () -> Unit,
-    modifier: Modifier = Modifier,
-    navigationIcon: @Composable () -> Unit = {},
-    actions: @Composable RowScope.() -> Unit = {},
-    windowInsets: WindowInsets = EnhancedTopAppBarDefaults.windowInsets,
-    colors: TopAppBarColors = EnhancedTopAppBarDefaults.colors(),
-    scrollBehavior: TopAppBarScrollBehavior? = null,
-    type: EnhancedTopAppBarType = EnhancedTopAppBarType.Normal,
-    drawHorizontalStroke: Boolean = true
-) {
-    AnimatedContent(
-        targetState = type,
-        transitionSpec = { fadeIn() togetherWith fadeOut() }
-    ) {
-        when (it) {
-            EnhancedTopAppBarType.Center -> CenterAlignedTopAppBar(
-                title = title,
-                modifier = modifier.drawHorizontalStroke(drawHorizontalStroke),
-                navigationIcon = navigationIcon,
-                actions = actions,
-                windowInsets = windowInsets,
-                colors = colors,
-                scrollBehavior = scrollBehavior
-            )
-
-            EnhancedTopAppBarType.Normal -> TopAppBar(
-                title = title,
-                modifier = modifier.drawHorizontalStroke(drawHorizontalStroke),
-                navigationIcon = navigationIcon,
-                actions = actions,
-                windowInsets = windowInsets,
-                colors = colors,
-                scrollBehavior = scrollBehavior
-            )
-
-            EnhancedTopAppBarType.Large -> LargeTopAppBar(
-                title = title,
-                modifier = modifier.drawHorizontalStroke(drawHorizontalStroke),
-                navigationIcon = navigationIcon,
-                actions = actions,
-                windowInsets = windowInsets,
-                colors = colors,
-                scrollBehavior = scrollBehavior
-            )
-        }
-    }
-}
-
-enum class EnhancedTopAppBarType {
-    Center, Normal, Large
-}
-
-object EnhancedTopAppBarDefaults {
-    val windowInsets: WindowInsets
-        @Composable
-        get() = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
-
-    @Composable
-    fun colors(
-        containerColor: Color = Color.Transparent,
-        scrolledContainerColor: Color = Color.Transparent,
-        navigationIconContentColor: Color = MaterialTheme.colorScheme.onSurface,
-        titleContentColor: Color = MaterialTheme.colorScheme.onSurface,
-        actionIconContentColor: Color = MaterialTheme.colorScheme.onSurface,
-    ): TopAppBarColors = TopAppBarDefaults.topAppBarColors(
-        containerColor = containerColor,
-        scrolledContainerColor = scrolledContainerColor,
-        navigationIconContentColor = navigationIconContentColor,
-        titleContentColor = titleContentColor,
-        actionIconContentColor = actionIconContentColor
-    )
-}
-
-/*
- * Inspired by ImageToolbox EnhancedIconButton by T8RIN, Apache-2.0.
- * This keeps the animated shape/color behavior while routing the surface through Backdrop glass.
- */
-@Composable
-fun EnhancedIconButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    selected: Boolean = false,
-    icon: ImageVector,
-    contentDescription: String? = null
-) {
-    if (enabled) {
-        GlassIconButton(
-            icon = icon,
-            contentDescription = contentDescription,
-            onClick = onClick,
-            modifier = modifier,
-            selected = selected
-        )
-    } else {
-        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)) {
-            Box(modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription, modifier = Modifier.size(22.dp))
-            }
-        }
-    }
-}
-
 @Composable
 fun PreferenceGlassRow(
     title: String,
@@ -992,22 +865,5 @@ fun PreferenceGlassRow(
                 )
             }
         }
-    }
-}
-
-private fun Modifier.drawHorizontalStroke(enabled: Boolean) = composed {
-    if (!enabled) {
-        Modifier
-    } else {
-        Modifier
-            .zIndex(1f)
-            .drawWithContent {
-                drawContent()
-                drawRect(
-                    color = Color.White.copy(alpha = 0.08f),
-                    topLeft = Offset(0f, size.height - 1f),
-                    size = Size(size.width, 1f)
-                )
-            }
     }
 }

@@ -40,14 +40,14 @@ import com.racingdaily.ui.components.ScreenHeader
 import com.racingdaily.ui.theme.LocalPureRacingDarkTheme
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 
 @Composable
-@Suppress("UNUSED_PARAMETER")
 fun DetailScreen(
     articleId: Int,
     initialTitle: String,
-    initialUrl: String,
     onBack: () -> Unit,
     api: ApiService,
     pageVisible: Boolean
@@ -65,6 +65,9 @@ fun DetailScreen(
     val articleBackground = MaterialTheme.colorScheme.background
     val title = article?.title?.ifBlank { initialTitle } ?: initialTitle.ifBlank { "新闻" }
     val shareUrl = "https://news.romielf.com/news.html?id=$articleId"
+    val articleHtml = remember(article, comments, isChinese) {
+        article?.htmlContent().orEmpty() + comments.toCommentsHtml(isChinese)
+    }
 
     LaunchedEffect(articleId, reloadKey) {
         loading = true
@@ -112,7 +115,7 @@ fun DetailScreen(
                 article != null && pageVisible && playerAssets != null -> {
                     HtmlView(
                         articleId = articleId,
-                        html = article?.htmlContent().orEmpty() + comments.toCommentsHtml(isChinese),
+                        html = articleHtml,
                         darkTheme = darkTheme,
                         playerScript = playerAssets.mediaChromeScript,
                         playerTemplate = playerAssets.cupertinoTemplate,
@@ -533,10 +536,14 @@ private data class ArticlePlayerAssets(
 )
 
 @OptIn(ExperimentalResourceApi::class)
-@Composable
-private fun rememberArticlePlayerAssets(): ArticlePlayerAssets? {
-    val assets by produceState<ArticlePlayerAssets?>(initialValue = null) {
-        value = runCatching {
+private object ArticlePlayerAssetCache {
+    private val mutex = Mutex()
+    private var assets: ArticlePlayerAssets? = null
+
+    fun cached(): ArticlePlayerAssets? = assets
+
+    suspend fun load(): ArticlePlayerAssets? = mutex.withLock {
+        assets ?: runCatching {
             ArticlePlayerAssets(
                 mediaChromeScript = Res.readBytes(
                     "files/article-player/media-chrome-4.19.2.iife.js"
@@ -545,7 +552,15 @@ private fun rememberArticlePlayerAssets(): ArticlePlayerAssets? {
                     "files/article-player/cupertino-liquid.html"
                 ).decodeToString()
             )
-        }.getOrNull()
+        }.getOrNull()?.also { assets = it }
+    }
+}
+
+@OptIn(ExperimentalResourceApi::class)
+@Composable
+private fun rememberArticlePlayerAssets(): ArticlePlayerAssets? {
+    val assets by produceState(initialValue = ArticlePlayerAssetCache.cached()) {
+        if (value == null) value = ArticlePlayerAssetCache.load()
     }
     return assets
 }

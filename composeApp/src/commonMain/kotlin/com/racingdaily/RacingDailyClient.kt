@@ -11,30 +11,20 @@ import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.svg.SvgDecoder
 import com.racingdaily.data.remote.ApiService
 import com.racingdaily.data.remote.createHttpClient
-import com.racingdaily.data.remote.newsReferer
 import com.racingdaily.platform.currentLocalDateTimeParts
-import io.ktor.client.HttpClient
-import io.ktor.client.plugins.defaultRequest
-import io.ktor.client.request.header
 
 @Composable
 @OptIn(ExperimentalCoilApi::class)
 fun RacingDailyClient() {
+    val client = remember { createHttpClient() }
     setSingletonImageLoaderFactory { context ->
         ImageLoader.Builder(context)
             .components {
                 add(SvgDecoder.Factory())
-                add(KtorNetworkFetcherFactory(httpClient = HttpClient {
-                    defaultRequest {
-                        header("Referer", newsReferer)
-                        header("Origin", newsReferer.trimEnd('/'))
-                        header("User-Agent", "RacingDaily/1.4.0")
-                    }
-                }))
+                add(KtorNetworkFetcherFactory(httpClient = client))
             }
             .build()
     }
-    val client = remember { createHttpClient() }
     val api = remember(client) { ApiService(client) }
     val startupSeason = remember { currentLocalDateTimeParts().year }
     LaunchedEffect(api, startupSeason) {

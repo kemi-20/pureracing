@@ -95,6 +95,9 @@ fun RaceScreen(
     var reloadKey by remember { mutableIntStateOf(0) }
     var didAutoScroll by remember(reloadKey) { mutableStateOf(false) }
     val listState = rememberLazyListState()
+    val focusedIndex = remember(races) {
+        runCatching { races.nearestRaceIndex() }.getOrDefault(0)
+    }
 
     LaunchedEffect(reloadKey, currentYear) {
         val hasCachedContent = races.isNotEmpty()
@@ -139,8 +142,7 @@ fun RaceScreen(
 
     LaunchedEffect(loading, error, races) {
         if (!loading && error == null && races.isNotEmpty() && !didAutoScroll) {
-            val targetIndex = runCatching { races.nearestRaceIndex() }
-                .getOrDefault(0)
+            val targetIndex = focusedIndex
                 .coerceIn(0, races.lastIndex)
             snapshotFlow { listState.layoutInfo.totalItemsCount }
                 .first { itemCount -> itemCount > targetIndex }
@@ -175,7 +177,6 @@ fun RaceScreen(
                     .padding(horizontal = 16.dp),
                 contentPadding = PaddingValues(bottom = 96.dp)
                 ) {
-                val focusedIndex = runCatching { races.nearestRaceIndex() }.getOrDefault(0)
                 itemsIndexed(
                     races,
                     key = { index, gp ->

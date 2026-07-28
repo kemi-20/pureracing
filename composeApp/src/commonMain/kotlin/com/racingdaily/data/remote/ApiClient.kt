@@ -1,5 +1,6 @@
 package com.racingdaily.data.remote
 
+import com.racingdaily.platform.appVersionName
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.HttpTimeout
@@ -33,7 +34,8 @@ fun createHttpClient() = HttpClient {
     }
     defaultRequest {
         url("https://api.romielf.com/")
-        header("User-Agent", "RacingDaily/1.4.0")
+        header("User-Agent", "RacingDaily/$appVersionName")
         header("Referer", newsReferer)
+        header("Origin", newsReferer.trimEnd('/'))
     }
 }

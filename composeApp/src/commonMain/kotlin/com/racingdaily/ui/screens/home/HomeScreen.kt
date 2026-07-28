@@ -355,6 +355,7 @@ private fun readTitleColor(): Color = MaterialTheme.colorScheme.onSurfaceVariant
 @Composable
 private fun NewsMetadata(item: NewsItem, onImage: Boolean = false) {
     val contentColor = if (onImage) Color.White.copy(alpha = 0.84f) else MaterialTheme.colorScheme.onSurfaceVariant
+    val dateLabel = remember(item.publish_time) { item.publish_time.toNewsDateLabel() }
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -369,7 +370,7 @@ private fun NewsMetadata(item: NewsItem, onImage: Boolean = false) {
             )
         }
         Text(
-            item.publish_time.toNewsDateLabel(),
+            dateLabel,
             style = MaterialTheme.typography.labelSmall,
             color = contentColor
         )

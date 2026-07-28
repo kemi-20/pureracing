@@ -13,10 +13,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-val RacingRed = Color(0xFFFF453A)
-val RacingBlue = Color(0xFF0A84FF)
-val RacingGreen = Color(0xFF30D158)
-val RacingYellow = Color(0xFFFFD60A)
+private val RacingYellow = Color(0xFFFFD60A)
 
 val LocalPureRacingDarkTheme = staticCompositionLocalOf { false }
 

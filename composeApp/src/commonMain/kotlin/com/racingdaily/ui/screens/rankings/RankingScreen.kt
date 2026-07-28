@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -350,7 +349,8 @@ fun RankingScreen(
                             )
                         }
                     }
-                    itemsIndexed(tab.list.drop(3)) { index, row ->
+                    items(count = (tab.list.size - 3).coerceAtLeast(0)) { index ->
+                        val row = tab.list[index + 3]
                         RankingRow(
                             pos = index + 4,
                             row = row,
@@ -399,7 +399,7 @@ private fun RankingPodium(
         verticalAlignment = Alignment.Bottom,
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        listOf(1, 0, 2).forEach { sourceIndex ->
+        PodiumDisplayOrder.forEach { sourceIndex ->
             rows.getOrNull(sourceIndex)?.let { row ->
                 RankingPodiumEntry(
                     position = sourceIndex + 1,
@@ -617,11 +617,7 @@ private fun JsonObject.intText(key: String): Int {
 }
 
 private fun JsonObject.bestScoreText(): String {
-    val keys = listOf(
-        "total_score", "points", "gp_p1_cnt", "gp_pole_cnt", "gp_fastlap_cnt",
-        "gp_q_avg_rank_percent", "gp_race_avg_rank_percent", "use_time", "display_order"
-    )
-    keys.forEach { key ->
+    RankingScoreKeys.forEach { key ->
         val value = text(key)
         if (value.isNotBlank()) return value
     }
@@ -631,7 +627,7 @@ private fun JsonObject.bestScoreText(): String {
 private fun String.cleanRankingLabel(): String =
     replace("\\n", " ")
         .replace("\n", " ")
-        .replace(Regex("\\s+"), " ")
+        .replace(RankingWhitespaceRegex, " ")
         .trim()
 
 private fun String.cleanRankingRemark(): String =
@@ -700,12 +696,7 @@ private fun MetallicText(
 
 private fun RankingData.visibleRankingTabs() =
     list.filterNot {
-        it.tab_key in setOf(
-            "score_movements",
-            "t_score_movements",
-            "gp_q_avg_rank_percent",
-            "gp_race_avg_rank_percent"
-        ) ||
+        it.tab_key in HiddenRankingTabKeys ||
             it.tab_key.contains("score_trend") ||
             it.tab_name.cleanRankingLabel().let { name ->
                 name.contains("积分走势") ||
@@ -717,6 +708,25 @@ private fun RankingData.visibleRankingTabs() =
     }
 
 private val RacingBlue = Color(0xFF58A6FF)
+private val PodiumDisplayOrder = intArrayOf(1, 0, 2)
+private val RankingWhitespaceRegex = Regex("\\s+")
+private val RankingScoreKeys = listOf(
+    "total_score",
+    "points",
+    "gp_p1_cnt",
+    "gp_pole_cnt",
+    "gp_fastlap_cnt",
+    "gp_q_avg_rank_percent",
+    "gp_race_avg_rank_percent",
+    "use_time",
+    "display_order"
+)
+private val HiddenRankingTabKeys = setOf(
+    "score_movements",
+    "t_score_movements",
+    "gp_q_avg_rank_percent",
+    "gp_race_avg_rank_percent"
+)
 private const val InitialPodiumShine = -280f
 private const val StaticPodiumShine = 90f
 private const val PodiumShineDurationMillis = 2200

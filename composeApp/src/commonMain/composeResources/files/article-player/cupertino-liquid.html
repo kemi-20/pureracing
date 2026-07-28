@@ -70,6 +70,7 @@
 
   .expand-button {
     box-sizing: border-box;
+    position: relative;
     width: 44px;
     height: 31px;
     padding: 0;
@@ -85,12 +86,13 @@
 
   .expand-button > [slot="icon"] {
     box-sizing: border-box;
-    width: 100%;
-    height: 100%;
+    position: absolute;
+    inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     line-height: 0;
+    transform: translateY(.5px);
   }
 
   .webkit-icon {
@@ -175,8 +177,8 @@
     will-change: transform;
   }
 
-  .center-controls > *:active > [slot="icon"],
-  .expand-button:active > [slot="icon"] { transform: scale(.89); }
+  .center-controls > *:active > [slot="icon"] { transform: scale(.89); }
+  .expand-button:active > [slot="icon"] { transform: translateY(.5px) scale(.89); }
 
   media-controller:not([mediahasplayed]) .top-bar,
   media-controller:not([mediahasplayed]) .bottom-bar,

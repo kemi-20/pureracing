@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
+import com.racingdaily.data.model.Cover
 import com.racingdaily.data.model.NavTab
 import com.racingdaily.data.model.NewsItem
 import com.racingdaily.data.remote.ApiService
@@ -230,13 +231,13 @@ private fun NewsGlassCard(
         contentPadding = PaddingValues(0.dp),
         isLazyListItem = true
     ) {
-        val cover = item.covers.firstOrNull()?.path_url.orEmpty()
+        val cover = item.covers.firstOrNull()
+        val hasCover = cover?.hasImageSource() == true
         Box(Modifier.fillMaxWidth().newsCardReveal(item.id)) {
-            if (featured && cover.isNotBlank()) {
+            if (featured && hasCover) {
                 Box(Modifier.fillMaxWidth().aspectRatio(1.36f)) {
-                    AsyncImage(
-                        cover,
-                        contentDescription = null,
+                    NewsCoverImage(
+                        cover = checkNotNull(cover),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
@@ -291,10 +292,9 @@ private fun NewsGlassCard(
                     Modifier.fillMaxWidth().height(132.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (cover.isNotBlank()) {
-                        AsyncImage(
-                            cover,
-                            contentDescription = null,
+                    if (hasCover) {
+                        NewsCoverImage(
+                            cover = checkNotNull(cover),
                             modifier = Modifier.width(138.dp).fillMaxHeight(),
                             contentScale = ContentScale.Crop
                         )
@@ -311,6 +311,50 @@ private fun NewsGlassCard(
             }
         }
     }
+}
+
+@Composable
+private fun NewsCoverImage(
+    cover: Cover,
+    modifier: Modifier,
+    contentScale: ContentScale
+) {
+    val sources = remember(cover.path_url, cover.path) { cover.imageSources() }
+    var sourceIndex by remember(sources) { mutableIntStateOf(0) }
+    Box(
+        modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+    ) {
+        sources.getOrNull(sourceIndex)?.let { source ->
+            AsyncImage(
+                model = source,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = contentScale,
+                onError = {
+                    if (sourceIndex < sources.lastIndex) sourceIndex++
+                }
+            )
+        }
+    }
+}
+
+private fun Cover.hasImageSource(): Boolean = path_url.isNotBlank() || path.isNotBlank()
+
+private fun Cover.imageSources(): List<String> {
+    val primary = path_url.trim().toAbsoluteNewsImageUrl()
+    val alternate = path.trim().toAbsoluteNewsImageUrl()
+    val baseSources = listOf(primary, alternate).filter { it.isNotBlank() }.distinct()
+    val retrySource = baseSources.firstOrNull()?.let { source ->
+        source + if ('?' in source) "&pureracing_retry=1" else "?pureracing_retry=1"
+    }
+    return if (retrySource == null) baseSources else baseSources + retrySource
+}
+
+private fun String.toAbsoluteNewsImageUrl(): String = when {
+    isBlank() -> ""
+    startsWith("http://") || startsWith("https://") -> this
+    startsWith("/") -> "https://oss.static.romielf.com$this"
+    else -> "https://oss.static.romielf.com/$this"
 }
 
 @Composable

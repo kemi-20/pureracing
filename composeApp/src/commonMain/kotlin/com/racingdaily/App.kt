@@ -97,6 +97,7 @@ import com.racingdaily.data.model.TrackInfo
 import com.racingdaily.data.remote.ApiService
 import com.racingdaily.platform.BackHandler
 import com.racingdaily.ui.components.GlassBackdropHost
+import com.racingdaily.ui.components.DriverPortrait
 import com.racingdaily.ui.components.GlassBottomBar
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassChip
@@ -1043,10 +1044,10 @@ fun DriverDetailScreen(
             item {
                 GlassSurface(Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        AsyncImage(
-                            avatar,
-                            null,
-                            Modifier.size(96.dp).clip(CircleShape),
+                        DriverPortrait(
+                            url = avatar,
+                            contentDescription = displayName,
+                            modifier = Modifier.size(96.dp).clip(CircleShape),
                             contentScale = ContentScale.Fit
                         )
                         Spacer(Modifier.width(14.dp))
@@ -1400,10 +1401,10 @@ private fun DriverImageStrip(title: String, images: List<String>) {
             Text(title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(images.size) { index ->
-                    AsyncImage(
-                        images[index],
-                        null,
-                        Modifier.width(132.dp).height(92.dp).clip(MaterialTheme.shapes.medium),
+                    DriverPortrait(
+                        url = images[index],
+                        contentDescription = null,
+                        modifier = Modifier.width(132.dp).height(92.dp).clip(MaterialTheme.shapes.medium),
                         contentScale = ContentScale.Crop
                     )
                 }

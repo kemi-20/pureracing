@@ -709,7 +709,7 @@ private fun SessionCard(
                 }
                 GlassChip(
                     session.statusText(),
-                    selected = session.race_status == 1,
+                    selected = false,
                     onClick = {},
                     isInteractive = false,
                     hasShadow = false,

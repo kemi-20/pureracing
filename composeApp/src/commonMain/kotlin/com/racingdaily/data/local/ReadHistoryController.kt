@@ -16,7 +16,8 @@ class ReadHistoryController internal constructor(
 
     fun markRead(articleId: Int) {
         if (articleId <= 0 || articleId in articleIds) return
-        articleIds = (articleIds + articleId).takeLast(MAX_READ_ARTICLES).toSet()
+        val retainedIds = articleIds.toList().takeLast(MAX_READ_ARTICLES - 1)
+        articleIds = (retainedIds + articleId).toSet()
         persist(articleIds)
     }
 

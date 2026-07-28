@@ -68,6 +68,7 @@ fun HomeScreen(
     listState: LazyListState,
     selectedTabId: Int,
     onSelectedTabIdChange: (Int) -> Unit,
+    isArticleRead: (Int) -> Boolean,
     api: ApiService
 ) {
     var tabs by remember { mutableStateOf<List<NavTab>>(emptyList()) }
@@ -164,6 +165,7 @@ fun HomeScreen(
                         NewsGlassCard(
                             item = item,
                             featured = index == 0,
+                            isRead = isArticleRead(item.id),
                             onArticleClick = onArticleClick
                         )
                     }
@@ -214,6 +216,7 @@ fun HomeScreen(
 private fun NewsGlassCard(
     item: NewsItem,
     featured: Boolean,
+    isRead: Boolean,
     onArticleClick: (NewsItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -264,7 +267,7 @@ private fun NewsGlassCard(
                         Text(
                             item.title,
                             style = MaterialTheme.typography.titleLarge,
-                            color = Color.White,
+                            color = if (isRead) Color(0xFFB8BCC5) else Color.White,
                             maxLines = 3,
                             overflow = TextOverflow.Ellipsis,
                             fontWeight = FontWeight.Bold
@@ -278,6 +281,7 @@ private fun NewsGlassCard(
                         item = item,
                         titleLines = 3,
                         featured = true,
+                        isRead = isRead,
                         showBadges = true,
                         modifier = Modifier.padding(horizontal = 18.dp, vertical = 17.dp)
                     )
@@ -299,6 +303,7 @@ private fun NewsGlassCard(
                         item = item,
                         titleLines = 2,
                         featured = false,
+                        isRead = isRead,
                         showBadges = true,
                         modifier = Modifier.weight(1f).padding(horizontal = 15.dp, vertical = 13.dp)
                     )
@@ -313,6 +318,7 @@ private fun NewsCardContent(
     item: NewsItem,
     titleLines: Int,
     featured: Boolean,
+    isRead: Boolean,
     showBadges: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -324,7 +330,7 @@ private fun NewsCardContent(
             Text(
                 item.title,
                 style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = if (isRead) readTitleColor() else MaterialTheme.colorScheme.onSurface,
                 maxLines = titleLines,
                 overflow = TextOverflow.Ellipsis,
                 fontWeight = FontWeight.Bold
@@ -333,7 +339,7 @@ private fun NewsCardContent(
             Text(
                 item.title,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = if (isRead) readTitleColor() else MaterialTheme.colorScheme.onSurface,
                 maxLines = titleLines,
                 overflow = TextOverflow.Ellipsis,
                 fontWeight = FontWeight.SemiBold
@@ -342,6 +348,9 @@ private fun NewsCardContent(
         NewsMetadata(item = item)
     }
 }
+
+@Composable
+private fun readTitleColor(): Color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
 
 @Composable
 private fun NewsMetadata(item: NewsItem, onImage: Boolean = false) {

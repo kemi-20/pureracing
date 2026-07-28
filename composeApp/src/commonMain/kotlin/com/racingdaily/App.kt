@@ -94,6 +94,7 @@ import com.racingdaily.data.model.TeamNamedInfo
 import com.racingdaily.data.model.TeamPeopleData
 import com.racingdaily.data.model.TeamWorkerInfo
 import com.racingdaily.data.model.TrackInfo
+import com.racingdaily.data.local.rememberReadHistoryController
 import com.racingdaily.data.remote.ApiService
 import com.racingdaily.platform.BackHandler
 import com.racingdaily.ui.components.GlassBackdropHost
@@ -141,6 +142,7 @@ sealed interface AppPage {
 @Composable
 fun App(api: ApiService) {
     val themeController = rememberThemeController()
+    val readHistoryController = rememberReadHistoryController()
     RacingDailyTheme(themeMode = themeController.mode) {
         GlassBackdropHost {
             var currentScreen by rememberSaveable { mutableStateOf(Screen.HOME) }
@@ -148,6 +150,10 @@ fun App(api: ApiService) {
             val homeListState = rememberLazyListState()
             val pageStack = remember { mutableStateListOf<AppPage>() }
             val goBack = remember(pageStack) { { if (pageStack.isNotEmpty()) pageStack.removeAt(pageStack.lastIndex) } }
+            val openArticle: (NewsItem) -> Unit = { item ->
+                readHistoryController.markRead(item.id)
+                pageStack += AppPage.Article(item.id, item.title, item.http_url)
+            }
             val navigationBackdrop = rememberLayerBackdrop()
 
             BackHandler(enabled = pageStack.isNotEmpty(), onBack = goBack)
@@ -202,15 +208,14 @@ fun App(api: ApiService) {
                         ) { screen ->
                             when (screen) {
                                 Screen.HOME -> HomeScreen(
-                                    onArticleClick = { item ->
-                                        pageStack += AppPage.Article(item.id, item.title, item.http_url)
-                                    },
+                                    onArticleClick = openArticle,
                                     onSearchClick = {
                                         pageStack += AppPage.Search
                                     },
                                     listState = homeListState,
                                     selectedTabId = homeSelectedTabId,
                                     onSelectedTabIdChange = { homeSelectedTabId = it },
+                                    isArticleRead = readHistoryController::isRead,
                                     api = api
                                 )
                                 Screen.RACE -> RaceScreen(
@@ -246,9 +251,7 @@ fun App(api: ApiService) {
                         when (page) {
                         is AppPage.Search -> SearchScreen(
                             onBack = goBack,
-                            onArticleClick = { item ->
-                                pageStack += AppPage.Article(item.id, item.title, item.http_url)
-                            },
+                            onArticleClick = openArticle,
                             api = api
                         )
                         is AppPage.Championship -> ChampScreen(page.category, page.id, goBack, api)
@@ -262,12 +265,8 @@ fun App(api: ApiService) {
                             pageVisible = pageVisible
                         )
                         is AppPage.RaceDetail -> RaceDetailScreen(page.gp, goBack, api)
-                        is AppPage.DriverDetail -> DriverDetailScreen(page, goBack, api) { item ->
-                            pageStack += AppPage.Article(item.id, item.title, item.http_url)
-                        }
-                        is AppPage.TeamDetail -> TeamDetailScreen(page, goBack, api) { item ->
-                            pageStack += AppPage.Article(item.id, item.title, item.http_url)
-                        }
+                        is AppPage.DriverDetail -> DriverDetailScreen(page, goBack, api, openArticle)
+                        is AppPage.TeamDetail -> TeamDetailScreen(page, goBack, api, openArticle)
                         }
                     }
                 }

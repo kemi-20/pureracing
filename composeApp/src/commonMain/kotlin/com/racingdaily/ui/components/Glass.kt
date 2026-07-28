@@ -71,7 +71,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -550,9 +549,7 @@ private fun FallbackGlassChip(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelMedium.copy(
-                    platformStyle = PlatformTextStyle(includeFontPadding = false)
-                ),
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
             )
         }

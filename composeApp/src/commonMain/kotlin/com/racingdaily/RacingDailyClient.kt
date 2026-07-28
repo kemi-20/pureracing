@@ -28,7 +28,7 @@ fun RacingDailyClient() {
                     defaultRequest {
                         header("Referer", newsReferer)
                         header("Origin", newsReferer.trimEnd('/'))
-                        header("User-Agent", "RacingDaily/1.3.0")
+                        header("User-Agent", "RacingDaily/1.4.0")
                     }
                 }))
             }

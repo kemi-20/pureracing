@@ -39,6 +39,7 @@ import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.unit.dp
 import com.racingdaily.data.model.ChampSub
 import com.racingdaily.data.remote.ApiService
+import com.racingdaily.platform.appVersionLabel
 import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassSurface
 import com.racingdaily.ui.components.InfoPill
@@ -183,7 +184,7 @@ fun MoreScreen(
                     subtitle = appSubtitle,
                     icon = Icons.Rounded.Info,
                     endContent = {
-                        InfoPill("1.2", accent = MaterialTheme.colorScheme.primary)
+                        InfoPill(appVersionLabel, accent = MaterialTheme.colorScheme.primary)
                     }
                 )
             }

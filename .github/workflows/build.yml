@@ -28,7 +28,7 @@ jobs:
           cache-disabled: true
       - name: Build Desktop distributable
         shell: bash
-        run: bash ./gradlew :composeApp:createDistributable --stacktrace
+        run: bash ./gradlew :composeApp:desktopTest :composeApp:createDistributable --stacktrace
       - name: Sign Windows executable
         shell: pwsh
         env:
@@ -107,7 +107,7 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew :composeApp:assembleRelease --stacktrace
+        run: ./gradlew :composeApp:lintRelease :composeApp:assembleRelease --stacktrace
       - name: Upload Android APK
         uses: actions/upload-artifact@v7
         with:

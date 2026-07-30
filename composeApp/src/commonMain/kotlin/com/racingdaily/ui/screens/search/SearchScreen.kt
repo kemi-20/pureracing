@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -57,6 +57,7 @@ import com.racingdaily.ui.components.InfoPill
 import com.racingdaily.ui.components.SectionLabel
 import com.racingdaily.ui.components.ScreenHeader
 import com.racingdaily.ui.components.newsCardReveal
+import com.racingdaily.util.runSuspendCatching
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -84,7 +85,7 @@ fun SearchScreen(
 
         loading = true
         error = null
-        runCatching { api.searchNewsLocally(text) }
+        runSuspendCatching { api.searchNewsLocally(text) }
             .onSuccess { results = it }
             .onFailure { error = it.message ?: "无法搜索新闻" }
         loading = false
@@ -195,7 +196,7 @@ fun SearchScreen(
                 item {
                     SectionLabel("搜索结果", "共 ${results.size} 篇文章")
                 }
-                items(results, key = { it.id }) { item ->
+                itemsIndexed(results, key = { index, item -> "${item.id}:$index" }) { _, item ->
                     SearchResultCard(item, onArticleClick)
                 }
             }
@@ -207,7 +208,7 @@ private suspend fun ApiService.searchNewsLocally(query: String): List<NewsItem> 
     val normalizedQuery = query.trim().lowercase()
     val requests = tabs.flatMap { tab ->
         (1..3).map { page ->
-            async { runCatching { getNewsList(tab.id, page).list }.getOrDefault(emptyList()) }
+            async { runSuspendCatching { getNewsList(tab.id, page).list }.getOrDefault(emptyList()) }
         }
     }
     val candidates = requests.awaitAll().flatten()

@@ -16,6 +16,9 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import com.racingdaily.util.runSuspendCatching
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.TimeMark
@@ -31,7 +34,7 @@ class ApiService(private val client: HttpClient) {
 
     private fun <T> ApiResponse<T>.requireData(): T {
         if (code != 200) error(msg.ifBlank { "API request failed with code $code" })
-        return data
+        return requireNotNull(data) { msg.ifBlank { "API response did not contain data" } }
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -46,9 +49,8 @@ class ApiService(private val client: HttpClient) {
         lateinit var request: CompletableDeferred<Any>
 
         cacheMutex.withLock {
-            if (forceRefresh) cache.remove(key)
             val entry = cache[key]
-            if (entry != null && entry.storedAt.elapsedNow() < StartupCacheLifetime) {
+            if (!forceRefresh && entry != null && entry.storedAt.elapsedNow() < StartupCacheLifetime) {
                 cachedValue = entry.value
             } else {
                 staleValue = entry?.value
@@ -111,16 +113,19 @@ class ApiService(private val client: HttpClient) {
 
     suspend fun getArticleCommentsWithReplies(articleId: Int): CommentListData {
         val comments = getArticleComments(articleId, page = 0)
+        val requestLimit = Semaphore(MaxConcurrentCommentReplyRequests)
         val completeComments = supervisorScope {
             comments.comment_list.map { comment ->
                 async {
-                    if (comment.sub_count <= comment.sub_list.size) {
-                        comment
-                    } else {
-                        val replies = runCatching {
-                            getAllCommentReplies(comment.id, comment.sub_count)
-                        }.getOrDefault(comment.sub_list)
-                        comment.copy(sub_list = replies)
+                    requestLimit.withPermit {
+                        if (comment.sub_count <= comment.sub_list.size) {
+                            comment
+                        } else {
+                            val replies = runSuspendCatching {
+                                getAllCommentReplies(comment.id, comment.sub_count)
+                            }.getOrDefault(comment.sub_list)
+                            comment.copy(sub_list = replies)
+                        }
                     }
                 }
             }.awaitAll()
@@ -283,28 +288,28 @@ class ApiService(private val client: HttpClient) {
 
     suspend fun preloadHomeThenSecondary(seasonId: Int) {
         supervisorScope {
-            val navigation = async { runCatching { getNavTabs() } }
-            val headlines = async { runCatching { getNewsList(tagId = 1, page = 1) } }
+            val navigation = async { runSuspendCatching { getNavTabs() } }
+            val headlines = async { runSuspendCatching { getNewsList(tagId = 1, page = 1) } }
             navigation.await()
             headlines.await()
         }
 
         supervisorScope {
-            launch { runCatching { getF1Calendar(seasonId) } }
-            launch { runCatching { getF1EnglishCalendar(seasonId) } }
-            launch { runCatching { getRaceSchedule() } }
-            launch { runCatching { getRaceList(chpId = 6, seasonId = seasonId) } }
-            launch { runCatching { getStationList(chpId = 6, seasonId = seasonId) } }
+            launch { runSuspendCatching { getF1Calendar(seasonId) } }
+            launch { runSuspendCatching { getF1EnglishCalendar(seasonId) } }
+            launch { runSuspendCatching { getRaceSchedule() } }
+            launch { runSuspendCatching { getRaceList(chpId = 6, seasonId = seasonId) } }
+            launch { runSuspendCatching { getStationList(chpId = 6, seasonId = seasonId) } }
             launch {
-                val option = runCatching {
+                val option = runSuspendCatching {
                     getRankingNav().list
                         .flatMap { it.options }
                         .firstOrNull { it.id == seasonId }
                         ?: getRankingNav().list.flatMap { it.options }.firstOrNull()
                 }.getOrNull() ?: return@launch
                 supervisorScope {
-                    launch { runCatching { getDriverRanking(option.chp_id, option.id) } }
-                    launch { runCatching { getTeamRanking(option.chp_id, option.id) } }
+                    launch { runSuspendCatching { getDriverRanking(option.chp_id, option.id) } }
+                    launch { runSuspendCatching { getTeamRanking(option.chp_id, option.id) } }
                 }
             }
         }
@@ -313,6 +318,7 @@ class ApiService(private val client: HttpClient) {
     private companion object {
         val StartupCacheLifetime = 2.minutes
         const val MaxCommentReplyPages = 50
+        const val MaxConcurrentCommentReplyRequests = 6
         const val F1CalendarUrl =
             "https://files-f1.motorsportcalendars.com/zh/f1-calendar_p1_p2_p3_qualifying_sprint_gp.ics"
         const val F1EnglishCalendarUrl =
@@ -322,7 +328,7 @@ class ApiService(private val client: HttpClient) {
     }
 }
 
-private fun String.parseF1Calendar(seasonId: Int): List<F1CalendarEvent> {
+internal fun String.parseF1Calendar(seasonId: Int): List<F1CalendarEvent> {
     // RFC 5545 allows long property values to continue on a whitespace-prefixed line.
     val unfolded = mutableListOf<String>()
     lineSequence().forEach { rawLine ->
@@ -349,11 +355,11 @@ private fun String.parseF1Calendar(seasonId: Int): List<F1CalendarEvent> {
                         (status == "CONFIRMED" || status == "TENTATIVE")
                     ) {
                         events += F1CalendarEvent(
-                            uid = values["UID"].orEmpty(),
-                            summary = values["SUMMARY"].orEmpty(),
+                            uid = values["UID"].orEmpty().decodeIcsText(),
+                            summary = values["SUMMARY"].orEmpty().decodeIcsText(),
                             startUtc = start,
                             endUtc = values["DTEND"].orEmpty(),
-                            location = values["LOCATION"].orEmpty(),
+                            location = values["LOCATION"].orEmpty().decodeIcsText(),
                             status = status
                         )
                     }
@@ -363,11 +369,32 @@ private fun String.parseF1Calendar(seasonId: Int): List<F1CalendarEvent> {
             else -> {
                 val separator = line.indexOf(':')
                 if (separator > 0) {
-                    val key = line.substring(0, separator).substringBefore(';')
+                    val key = line.substring(0, separator).substringBefore(';').uppercase()
                     properties?.set(key, line.substring(separator + 1))
                 }
             }
         }
     }
     return events
+}
+
+private fun String.decodeIcsText(): String = buildString(length) {
+    var index = 0
+    while (index < this@decodeIcsText.length) {
+        val char = this@decodeIcsText[index]
+        if (char != '\\' || index == this@decodeIcsText.lastIndex) {
+            append(char)
+            index++
+            continue
+        }
+        when (val escaped = this@decodeIcsText[index + 1]) {
+            'n', 'N' -> append('\n')
+            '\\', ',', ';' -> append(escaped)
+            else -> {
+                append('\\')
+                append(escaped)
+            }
+        }
+        index += 2
+    }
 }

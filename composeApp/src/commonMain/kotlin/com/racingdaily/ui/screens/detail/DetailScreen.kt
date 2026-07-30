@@ -38,6 +38,7 @@ import com.racingdaily.ui.components.GlassButton
 import com.racingdaily.ui.components.GlassIconButton
 import com.racingdaily.ui.components.ScreenHeader
 import com.racingdaily.ui.theme.LocalPureRacingDarkTheme
+import com.racingdaily.util.runSuspendCatching
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
@@ -76,8 +77,8 @@ fun DetailScreen(
         article = null
         comments = null
         val (articleResult, commentsResult) = coroutineScope {
-            val articleRequest = async { runCatching { api.getNewsDetail(articleId).details } }
-            val commentsRequest = async { runCatching { api.getArticleCommentsWithReplies(articleId) } }
+            val articleRequest = async { runSuspendCatching { api.getNewsDetail(articleId).details } }
+            val commentsRequest = async { runSuspendCatching { api.getArticleCommentsWithReplies(articleId) } }
             articleRequest.await() to commentsRequest.await()
         }
         articleResult
@@ -543,7 +544,7 @@ private object ArticlePlayerAssetCache {
     fun cached(): ArticlePlayerAssets? = assets
 
     suspend fun load(): ArticlePlayerAssets? = mutex.withLock {
-        assets ?: runCatching {
+        assets ?: runSuspendCatching {
             ArticlePlayerAssets(
                 mediaChromeScript = Res.readBytes(
                     "files/article-player/media-chrome-4.19.2.iife.js"

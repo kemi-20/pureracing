@@ -70,7 +70,7 @@ object FlexibleLongSerializer : KSerializer<Long> {
     }
 }
 
-@Serializable data class ApiResponse<T>(val code: Int, val msg: String = "", val data: T)
+@Serializable data class ApiResponse<T>(val code: Int, val msg: String = "", val data: T? = null)
 
 // News
 @Serializable data class NewsItem(@Serializable(with = FlexibleIntSerializer::class) val id: Int = 0, val title: String = "", val istop: Int = 0, val total_read: Int = 0,

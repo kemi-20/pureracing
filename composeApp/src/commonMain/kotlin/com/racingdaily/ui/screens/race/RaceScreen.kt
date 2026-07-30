@@ -63,6 +63,7 @@ import com.racingdaily.ui.components.GlassSurface
 import com.racingdaily.ui.components.HighResolutionFlag
 import com.racingdaily.ui.components.ScreenHeader
 import com.racingdaily.ui.components.newsCardReveal
+import com.racingdaily.util.runSuspendCatching
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -105,6 +106,8 @@ fun RaceScreen(
         error = null
         supervisorScope {
             var freshPayloadApplied = false
+            var pendingRequests = if (hasCachedContent) 1 else 2
+            var lastFailure: Throwable? = null
 
             fun applyPayload(payload: List<RaceGp>, isFresh: Boolean) {
                 val visibleRaces = payload.filter { gp ->
@@ -116,26 +119,36 @@ fun RaceScreen(
                     races = visibleRaces
                     RaceScreenCache.racesByYear[currentYear] = visibleRaces
                     error = null
+                    loading = false
                 }
-                loading = false
             }
 
-            fun handleFailure(cause: Throwable) {
-                if (races.isEmpty()) error = cause.message ?: "无法加载赛历"
-                loading = false
+            fun handleResult(result: Result<List<RaceGp>>, isFresh: Boolean) {
+                result
+                    .onSuccess { applyPayload(it, isFresh) }
+                    .onFailure { lastFailure = it }
+                pendingRequests--
+                if (pendingRequests == 0) {
+                    if (races.isEmpty() && lastFailure != null) {
+                        error = lastFailure?.message ?: "无法加载赛历"
+                    }
+                    loading = false
+                }
             }
 
             if (!hasCachedContent) {
                 launch {
-                    runCatching { api.loadRaceScreenData(currentYear, forceRefresh = false) }
-                        .onSuccess { applyPayload(it, isFresh = false) }
-                        .onFailure(::handleFailure)
+                    handleResult(
+                        runSuspendCatching { api.loadRaceScreenData(currentYear, forceRefresh = false) },
+                        isFresh = false
+                    )
                 }
             }
             launch {
-                runCatching { api.loadRaceScreenData(currentYear, forceRefresh = true) }
-                    .onSuccess { applyPayload(it, isFresh = true) }
-                    .onFailure(::handleFailure)
+                handleResult(
+                    runSuspendCatching { api.loadRaceScreenData(currentYear, forceRefresh = true) },
+                    isFresh = true
+                )
             }
         }
     }
@@ -202,26 +215,26 @@ private suspend fun ApiService.loadRaceScreenData(
 ): List<RaceGp> {
     val loaded = supervisorScope {
         val calendar = async {
-            runCatching { getF1Calendar(seasonId = currentYear, forceRefresh = forceRefresh) }
+            runSuspendCatching { getF1Calendar(seasonId = currentYear, forceRefresh = forceRefresh) }
                 .getOrDefault(emptyList())
         }
         val englishCalendar = async {
-            runCatching { getF1EnglishCalendar(seasonId = currentYear, forceRefresh = forceRefresh) }
+            runSuspendCatching { getF1EnglishCalendar(seasonId = currentYear, forceRefresh = forceRefresh) }
                 .getOrDefault(emptyList())
         }
         val legacySchedule = async {
-            runCatching { getRaceSchedule(forceRefresh = forceRefresh) }.getOrDefault(emptyList())
+            runSuspendCatching { getRaceSchedule(forceRefresh = forceRefresh) }.getOrDefault(emptyList())
         }
         val stations = async {
-            runCatching { getStationList(chpId = 6, seasonId = currentYear, forceRefresh = forceRefresh).tmp }
+            runSuspendCatching { getStationList(chpId = 6, seasonId = currentYear, forceRefresh = forceRefresh).tmp }
                 .getOrDefault(emptyList())
         }
         val season = async {
-            runCatching { getRaceList(chpId = 6, seasonId = currentYear, forceRefresh = forceRefresh) }
+            runSuspendCatching { getRaceList(chpId = 6, seasonId = currentYear, forceRefresh = forceRefresh) }
                 .getOrDefault(emptyList())
         }
         val ranking = async {
-            runCatching { getDriverRanking(chpId = 6, seasonId = currentYear, forceRefresh = forceRefresh) }
+            runSuspendCatching { getDriverRanking(chpId = 6, seasonId = currentYear, forceRefresh = forceRefresh) }
                 .getOrNull()
         }
         CalendarLoadResult(

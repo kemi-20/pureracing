@@ -47,6 +47,7 @@ import com.racingdaily.ui.components.PreferenceGlassRow
 import com.racingdaily.ui.components.ScreenHeader
 import com.racingdaily.ui.components.SectionLabel
 import com.racingdaily.ui.theme.ThemeMode
+import com.racingdaily.util.runSuspendCatching
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.supervisorScope
@@ -296,7 +297,7 @@ private suspend fun loadSeriesHub(
     stationLoader: suspend () -> List<ChampSub>,
     idOf: (ChampSub) -> Int
 ): SeriesHub {
-    val result = runCatching { stationLoader() }
+    val result = runSuspendCatching { stationLoader() }
     val stations = result.getOrDefault(emptyList()).filter { idOf(it) > 0 }
     val latest = stations.firstOrNull()
     return SeriesHub(

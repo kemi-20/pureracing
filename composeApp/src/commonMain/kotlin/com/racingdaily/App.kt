@@ -120,11 +120,11 @@ import com.racingdaily.ui.screens.rankings.RankingScreen
 import com.racingdaily.ui.screens.search.SearchScreen
 import com.racingdaily.ui.theme.RacingDailyTheme
 import com.racingdaily.ui.theme.rememberThemeController
+import com.racingdaily.util.runSuspendCatching
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.supervisorScope
@@ -154,9 +154,14 @@ fun App(api: ApiService) {
             val homeListState = rememberLazyListState()
             val pageStack = remember { mutableStateListOf<AppPage>() }
             val goBack = remember(pageStack) { { if (pageStack.isNotEmpty()) pageStack.removeAt(pageStack.lastIndex) } }
+            val pushPage: (AppPage) -> Unit = remember(pageStack) {
+                { page ->
+                    if (pageStack.lastOrNull() != page) pageStack += page
+                }
+            }
             val openArticle: (NewsItem) -> Unit = { item ->
                 readHistoryController.markRead(item.id)
-                pageStack += AppPage.Article(item.id, item.title)
+                pushPage(AppPage.Article(item.id, item.title))
             }
             val navigationBackdrop = rememberLayerBackdrop()
 
@@ -214,7 +219,7 @@ fun App(api: ApiService) {
                                 Screen.HOME -> HomeScreen(
                                     onArticleClick = openArticle,
                                     onSearchClick = {
-                                        pageStack += AppPage.Search
+                                        pushPage(AppPage.Search)
                                     },
                                     listState = homeListState,
                                     selectedTabId = homeSelectedTabId,
@@ -223,24 +228,24 @@ fun App(api: ApiService) {
                                     api = api
                                 )
                                 Screen.RACE -> RaceScreen(
-                                    onRaceClick = { pageStack += AppPage.RaceDetail(it) },
+                                    onRaceClick = { pushPage(AppPage.RaceDetail(it)) },
                                     onTrackClick = { trackId, slug, seasonYear ->
-                                        pageStack += AppPage.Track(trackId, slug, seasonYear)
+                                        pushPage(AppPage.Track(trackId, slug, seasonYear))
                                     },
                                     api = api
                                 )
                                 Screen.RANKINGS -> RankingScreen(
                                     api = api,
                                     onDriverClick = { chpId, seasonId, driverId, name, avatar, teamLogo, stats ->
-                                        pageStack += AppPage.DriverDetail(chpId, seasonId, driverId, name, avatar, teamLogo, stats)
+                                        pushPage(AppPage.DriverDetail(chpId, seasonId, driverId, name, avatar, teamLogo, stats))
                                     },
                                     onTeamClick = { chpId, seasonId, teamId, name, logo, stats ->
-                                        pageStack += AppPage.TeamDetail(chpId, seasonId, teamId, name, logo, stats)
+                                        pushPage(AppPage.TeamDetail(chpId, seasonId, teamId, name, logo, stats))
                                     }
                                 )
                                 Screen.MORE -> MoreScreen(
                                     onChampClick = { cat, id ->
-                                        pageStack += AppPage.Championship(cat, id)
+                                        pushPage(AppPage.Championship(cat, id))
                                     },
                                     api = api,
                                     themeMode = themeController.mode,
@@ -410,7 +415,7 @@ fun TrackScreen(
         error = null
         val loaded = supervisorScope {
             val mapImage = async {
-                if (trackSlug.isBlank()) "" else runCatching {
+                if (trackSlug.isBlank()) "" else runSuspendCatching {
                     api.getFormula1TrackImage(seasonYear, trackSlug, forceRefresh = reloadKey > 0)
                 }.getOrDefault("")
             }
@@ -418,7 +423,7 @@ fun TrackScreen(
                 if (trackId <= 0) {
                     Result.success<Pair<TrackInfo, List<JsonObject>>?>(null)
                 } else {
-                    runCatching<Pair<TrackInfo, List<JsonObject>>?> {
+                    runSuspendCatching<Pair<TrackInfo, List<JsonObject>>?> {
                         api.getTrackInfo(trackId).track to api.getTrackScore(trackId).history
                     }
                 }
@@ -528,7 +533,7 @@ fun ChampScreen(category: String, id: Int, onBack: () -> Unit, api: ApiService) 
     LaunchedEffect(category, id, reloadKey) {
         loading = true
         error = null
-        runCatching {
+        runSuspendCatching {
             when (category) {
                 "motogp" -> api.getMotogpDriver(id)
                 "tcr" -> api.getTcrDriver(id)
@@ -669,7 +674,7 @@ private fun SessionCard(
         val resolvedGpId = checkNotNull(gpId)
         fullResultsLoading = true
         fullResultsError = null
-        runCatching {
+        runSuspendCatching {
             api.loadFullSessionResults(resolvedGpId, session)
         }.onSuccess { loaded ->
             fullResults = loaded
@@ -683,7 +688,7 @@ private fun SessionCard(
         if (!showLapStrategy || gpId == null || gpId <= 0 || strategy != null) return@LaunchedEffect
         strategyLoading = true
         strategyError = null
-        runCatching {
+        runSuspendCatching {
             val strategyTypeId = api.getStationRank(gpId).navbar
                 .firstOrNull { it.key_name == "zscl" }
                 ?.id
@@ -967,16 +972,6 @@ private fun String.toTyreColor(): Color {
     }.getOrDefault(Color.Gray)
 }
 
-private suspend inline fun <T> runCatchingPreservingCancellation(
-    crossinline block: suspend () -> T
-): Result<T> = try {
-    Result.success(block())
-} catch (cancellation: CancellationException) {
-    throw cancellation
-} catch (failure: Throwable) {
-    Result.failure(failure)
-}
-
 private suspend fun <T : Any> ApiService.loadSeasonScores(
     latestSeasonId: Int,
     loadScore: suspend (seasonId: Int) -> T?
@@ -993,7 +988,7 @@ private suspend fun <T : Any> ApiService.loadSeasonScores(
         seasons.map { seasonId ->
             async {
                 requestLimit.withPermit {
-                    runCatchingPreservingCancellation { loadScore(seasonId) }.getOrNull()
+                    runSuspendCatching { loadScore(seasonId) }.getOrNull()
                 }
             }
         }.awaitAll().filterNotNull()
@@ -1019,13 +1014,13 @@ fun DriverDetailScreen(
     LaunchedEffect(page.driverId, page.chpId, page.seasonId) {
         loading = true
         error = null
-        runCatchingPreservingCancellation {
+        runSuspendCatching {
             supervisorScope {
                 val infoRequest = async {
                     api.getDriverInfo(page.chpId, page.driverId, page.seasonId)
                 }
                 val photoRequest = async {
-                    runCatchingPreservingCancellation {
+                    runSuspendCatching {
                         api.getDriverPhoto(page.chpId, page.driverId)
                     }.getOrNull()
                 }
@@ -1046,7 +1041,7 @@ fun DriverDetailScreen(
     LaunchedEffect(page.driverId, page.chpId, page.seasonId) {
         scoreLoading = true
         scoreError = null
-        runCatchingPreservingCancellation {
+        runSuspendCatching {
             api.loadSeasonScores(page.seasonId) { seasonId ->
                     api.getDriverRanking(page.chpId, seasonId).toDriverSeasonScore(seasonId, page.driverId)
             }.sortedByDescending { it.season }
@@ -1170,17 +1165,17 @@ fun TeamDetailScreen(
     LaunchedEffect(page.chpId, page.seasonId, page.teamId) {
         loading = true
         error = null
-        runCatchingPreservingCancellation {
+        runSuspendCatching {
             supervisorScope {
                 val officialInfoRequest = async {
-                    runCatchingPreservingCancellation {
+                    runSuspendCatching {
                         api.getTeamInfo(page.chpId, page.teamId, page.seasonId)
                     }
                 }
                 val newsRequest = async {
                     teamNewsTagIds[page.teamId]
                         ?.let { tagId ->
-                            runCatchingPreservingCancellation { api.getNewsList(tagId) }
+                            runSuspendCatching { api.getNewsList(tagId) }
                                 .getOrNull()
                                 ?.list
                         }
@@ -1212,7 +1207,7 @@ fun TeamDetailScreen(
     LaunchedEffect(page.chpId, page.seasonId, page.teamId) {
         scoreLoading = true
         scoreError = null
-        runCatchingPreservingCancellation {
+        runSuspendCatching {
             api.loadSeasonScores(page.seasonId) { seasonId ->
                     api.getTeamRanking(page.chpId, seasonId).toTeamSeasonScore(seasonId, page.teamId)
             }.sortedByDescending { it.season }

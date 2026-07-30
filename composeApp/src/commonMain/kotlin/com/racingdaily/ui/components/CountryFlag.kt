@@ -27,6 +27,7 @@ import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.svg.SvgDecoder
 import com.racingdaily.resources.Res
+import com.racingdaily.util.runSuspendCatching
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 
 @Composable
@@ -78,7 +79,7 @@ fun HighResolutionFlag(
     val localFlagPath = remember(identity) { countryFlagPath(identity) }
     val localFlagBytes by produceState<ByteArray?>(initialValue = null, localFlagPath) {
         value = localFlagPath?.let { path ->
-            runCatching { Res.readBytes(path) }.getOrNull()
+            runSuspendCatching { Res.readBytes(path) }.getOrNull()
         }
     }
     val remoteLogo = remoteFallbackUrl.takeIf { it.isNotBlank() }

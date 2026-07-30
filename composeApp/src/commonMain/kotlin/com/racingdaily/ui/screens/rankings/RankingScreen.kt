@@ -62,6 +62,7 @@ import com.racingdaily.ui.components.ScreenHeader
 import com.racingdaily.ui.components.SectionLabel
 import com.racingdaily.ui.components.TeamLogo
 import com.racingdaily.ui.components.newsCardReveal
+import com.racingdaily.util.runSuspendCatching
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.serialization.json.JsonObject
@@ -118,6 +119,9 @@ fun RankingScreen(
         val hasCachedSeasons = seasons.isNotEmpty()
         if (!hasCachedSeasons && data == null) loading = true
         supervisorScope {
+            var pendingRequests = if (hasCachedSeasons) 1 else 2
+            var lastFailure: Throwable? = null
+
             fun applySeasons(loaded: List<RankingOption>) {
                 if (loaded.isEmpty()) return
                 val preferredSeasonId = selectedSeason?.id
@@ -132,24 +136,32 @@ fun RankingScreen(
                 error = null
             }
 
-            fun handleFailure(cause: Throwable) {
-                if (seasons.isEmpty() && data == null) {
-                    error = cause.message ?: "无法加载赛季"
+            fun handleResult(result: Result<List<RankingOption>>) {
+                result
+                    .onSuccess(::applySeasons)
+                    .onFailure { lastFailure = it }
+                pendingRequests--
+                if (pendingRequests == 0 && seasons.isEmpty() && data == null) {
+                    error = lastFailure?.message ?: "无法加载赛季"
                     loading = false
                 }
             }
 
             if (!hasCachedSeasons) {
                 launch {
-                    runCatching { api.getRankingNav(forceRefresh = false).list.firstOrNull()?.options.orEmpty() }
-                        .onSuccess(::applySeasons)
-                        .onFailure(::handleFailure)
+                    handleResult(
+                        runSuspendCatching {
+                            api.getRankingNav(forceRefresh = false).list.firstOrNull()?.options.orEmpty()
+                        }
+                    )
                 }
             }
             launch {
-                runCatching { api.getRankingNav(forceRefresh = true).list.firstOrNull()?.options.orEmpty() }
-                    .onSuccess(::applySeasons)
-                    .onFailure(::handleFailure)
+                handleResult(
+                    runSuspendCatching {
+                        api.getRankingNav(forceRefresh = true).list.firstOrNull()?.options.orEmpty()
+                    }
+                )
             }
         }
     }
@@ -174,6 +186,8 @@ fun RankingScreen(
         error = null
         supervisorScope {
             var freshRankingApplied = false
+            var pendingRequests = if (cachedRanking == null) 2 else 1
+            var lastFailure: Throwable? = null
 
             suspend fun load(forceRefresh: Boolean): RankingData = if (isDriver) {
                 api.getDriverRanking(season.chp_id, season.id, forceRefresh = forceRefresh)
@@ -198,22 +212,26 @@ fun RankingScreen(
                 error = null
             }
 
-            fun handleFailure(cause: Throwable) {
-                if (data == null) error = cause.message ?: "无法加载排行榜"
-                loading = false
+            fun handleResult(result: Result<RankingData>, isFresh: Boolean) {
+                result
+                    .onSuccess { applyRanking(it, isFresh) }
+                    .onFailure { lastFailure = it }
+                pendingRequests--
+                if (pendingRequests == 0) {
+                    if (data == null && lastFailure != null) {
+                        error = lastFailure?.message ?: "无法加载排行榜"
+                    }
+                    loading = false
+                }
             }
 
             if (cachedRanking == null) {
                 launch {
-                    runCatching { load(forceRefresh = false) }
-                        .onSuccess { applyRanking(it, isFresh = false) }
-                        .onFailure(::handleFailure)
+                    handleResult(runSuspendCatching { load(forceRefresh = false) }, isFresh = false)
                 }
             }
             launch {
-                runCatching { load(forceRefresh = true) }
-                    .onSuccess { applyRanking(it, isFresh = true) }
-                    .onFailure(::handleFailure)
+                handleResult(runSuspendCatching { load(forceRefresh = true) }, isFresh = true)
             }
         }
     }

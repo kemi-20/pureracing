@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -60,6 +59,7 @@ import com.racingdaily.ui.components.GlassSurface
 import com.racingdaily.ui.components.InfoPill
 import com.racingdaily.ui.components.ScreenHeader
 import com.racingdaily.ui.components.newsCardReveal
+import com.racingdaily.util.runSuspendCatching
 import kotlinx.coroutines.flow.collect
 
 @Composable
@@ -86,9 +86,11 @@ fun HomeScreen(
     val appSubtitle = if (isChinese) "每日 F1 新闻" else "Daily F1 News"
 
     LaunchedEffect(reloadKey) {
-        runCatching { api.getNavTabs(forceRefresh = reloadKey > 0).navbar }
+        runSuspendCatching { api.getNavTabs(forceRefresh = reloadKey > 0).navbar }
             .onSuccess { tabs = it }
-            .onFailure { error = it.message ?: "无法加载新闻分类" }
+            .onFailure {
+                if (news.isEmpty()) error = it.message ?: "无法加载新闻分类"
+            }
     }
 
     LaunchedEffect(selectedTabId, reloadKey) {
@@ -97,10 +99,11 @@ fun HomeScreen(
         loadMoreError = null
         loadMoreRetryKey = 0
         nextPage = 0
-        runCatching { api.getNewsList(selectedTabId, page = 1, forceRefresh = reloadKey > 0) }
+        runSuspendCatching { api.getNewsList(selectedTabId, page = 1, forceRefresh = reloadKey > 0) }
             .onSuccess {
                 news = it.list
                 nextPage = it.next_page
+                error = null
             }
             .onFailure { error = it.message ?: "无法加载新闻" }
         loading = false
@@ -121,7 +124,7 @@ fun HomeScreen(
             val pageToLoad = requestKey.substringAfter(':').substringBefore(':').toIntOrNull() ?: return@collect
             loadingMore = true
             loadMoreError = null
-            runCatching { api.getNewsList(selectedTabId, page = pageToLoad) }
+            runSuspendCatching { api.getNewsList(selectedTabId, page = pageToLoad) }
                 .onSuccess { data ->
                     val existingIds = news.mapTo(mutableSetOf()) { it.id }
                     news = news + data.list.filter { it.id !in existingIds }
@@ -162,7 +165,7 @@ fun HomeScreen(
                         .padding(horizontal = 16.dp),
                     contentPadding = PaddingValues(top = 82.dp, bottom = 104.dp)
                 ) {
-                    itemsIndexed(news, key = { _, item -> item.id }) { index, item ->
+                    itemsIndexed(news, key = { index, item -> "${item.id}:$index" }) { index, item ->
                         NewsGlassCard(
                             item = item,
                             featured = index == 0,
@@ -201,7 +204,7 @@ fun HomeScreen(
                 contentPadding = PaddingValues(horizontal = 18.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(tabs, key = { it.id }) { tab ->
+                itemsIndexed(tabs, key = { index, tab -> "${tab.id}:$index" }) { _, tab ->
                     GlassChip(
                         label = tab.name,
                         selected = tab.id == selectedTabId,

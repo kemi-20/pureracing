@@ -34,7 +34,9 @@ class ApiService(private val client: HttpClient) {
 
     private fun <T> ApiResponse<T>.requireData(): T {
         if (code != 200) error(msg.ifBlank { "API request failed with code $code" })
-        return requireNotNull(data) { msg.ifBlank { "API response did not contain data" } }
+        return requireNotNull(data) {
+            "${msg.ifBlank { "API response" }}: response did not contain data"
+        }
     }
 
     @Suppress("UNCHECKED_CAST")

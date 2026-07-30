@@ -130,7 +130,7 @@ fun RaceScreen(
                 pendingRequests--
                 if (pendingRequests == 0) {
                     if (races.isEmpty() && lastFailure != null) {
-                        error = lastFailure?.message ?: "无法加载赛历"
+                        error = lastFailure.message ?: "无法加载赛历"
                     }
                     loading = false
                 }

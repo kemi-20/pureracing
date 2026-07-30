@@ -219,7 +219,7 @@ fun RankingScreen(
                 pendingRequests--
                 if (pendingRequests == 0) {
                     if (data == null && lastFailure != null) {
-                        error = lastFailure?.message ?: "无法加载排行榜"
+                        error = lastFailure.message ?: "无法加载排行榜"
                     }
                     loading = false
                 }

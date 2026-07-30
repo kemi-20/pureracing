@@ -121,9 +121,12 @@ fun RankingScreen(
         supervisorScope {
             var pendingRequests = if (hasCachedSeasons) 1 else 2
             var lastFailure: Throwable? = null
+            var freshSeasonsApplied = false
 
-            fun applySeasons(loaded: List<RankingOption>) {
+            fun applySeasons(loaded: List<RankingOption>, isFresh: Boolean) {
                 if (loaded.isEmpty()) return
+                if (!isFresh && freshSeasonsApplied) return
+                if (isFresh) freshSeasonsApplied = true
                 val preferredSeasonId = selectedSeason?.id
                     ?: RankingScreenCache.selectedSeasonId
                     ?: currentYear
@@ -136,9 +139,9 @@ fun RankingScreen(
                 error = null
             }
 
-            fun handleResult(result: Result<List<RankingOption>>) {
+            fun handleResult(result: Result<List<RankingOption>>, isFresh: Boolean) {
                 result
-                    .onSuccess(::applySeasons)
+                    .onSuccess { applySeasons(it, isFresh) }
                     .onFailure { lastFailure = it }
                 pendingRequests--
                 if (pendingRequests == 0 && seasons.isEmpty() && data == null) {
@@ -152,7 +155,8 @@ fun RankingScreen(
                     handleResult(
                         runSuspendCatching {
                             api.getRankingNav(forceRefresh = false).list.firstOrNull()?.options.orEmpty()
-                        }
+                        },
+                        isFresh = false
                     )
                 }
             }
@@ -160,7 +164,8 @@ fun RankingScreen(
                 handleResult(
                     runSuspendCatching {
                         api.getRankingNav(forceRefresh = true).list.firstOrNull()?.options.orEmpty()
-                    }
+                    },
+                    isFresh = true
                 )
             }
         }

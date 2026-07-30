@@ -229,7 +229,11 @@ private suspend fun ApiService.searchNewsLocally(query: String): List<NewsItem> 
             }
         }
     }
-    val candidates = requests.awaitAll().flatten()
+    val batches = requests.awaitAll()
+    if (batches.isNotEmpty() && batches.all { it.isFailure }) {
+        throw batches.firstNotNullOf { it.exceptionOrNull() }
+    }
+    val candidates = batches.mapNotNull { it.getOrNull() }.flatten()
 
     candidates
         .distinctBy { item ->

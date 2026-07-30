@@ -215,34 +215,47 @@ private suspend fun ApiService.loadRaceScreenData(
     val loaded = supervisorScope {
         val calendar = async {
             runSuspendCatching { getF1Calendar(seasonId = currentYear, forceRefresh = forceRefresh) }
-                .getOrDefault(emptyList())
         }
         val englishCalendar = async {
             runSuspendCatching { getF1EnglishCalendar(seasonId = currentYear, forceRefresh = forceRefresh) }
-                .getOrDefault(emptyList())
         }
         val legacySchedule = async {
-            runSuspendCatching { getRaceSchedule(forceRefresh = forceRefresh) }.getOrDefault(emptyList())
+            runSuspendCatching { getRaceSchedule(forceRefresh = forceRefresh) }
         }
         val stations = async {
             runSuspendCatching { getStationList(chpId = 6, seasonId = currentYear, forceRefresh = forceRefresh).tmp }
-                .getOrDefault(emptyList())
         }
         val season = async {
             runSuspendCatching { getRaceList(chpId = 6, seasonId = currentYear, forceRefresh = forceRefresh) }
-                .getOrDefault(emptyList())
         }
         val ranking = async {
             runSuspendCatching { getDriverRanking(chpId = 6, seasonId = currentYear, forceRefresh = forceRefresh) }
-                .getOrNull()
+        }
+        val calendarResult = calendar.await()
+        val englishCalendarResult = englishCalendar.await()
+        val legacyScheduleResult = legacySchedule.await()
+        val stationsResult = stations.await()
+        val seasonResult = season.await()
+        val rankingResult = ranking.await()
+        if (
+            calendarResult.isFailure &&
+            englishCalendarResult.isFailure &&
+            legacyScheduleResult.isFailure &&
+            stationsResult.isFailure &&
+            seasonResult.isFailure &&
+            rankingResult.isFailure
+        ) {
+            throw calendarResult.exceptionOrNull()
+                ?: legacyScheduleResult.exceptionOrNull()
+                ?: IllegalStateException("All race data sources failed")
         }
         CalendarLoadResult(
-            events = calendar.await(),
-            englishEvents = englishCalendar.await(),
-            legacySchedule = legacySchedule.await(),
-            stations = stations.await(),
-            season = season.await(),
-            ranking = ranking.await()
+            events = calendarResult.getOrDefault(emptyList()),
+            englishEvents = englishCalendarResult.getOrDefault(emptyList()),
+            legacySchedule = legacyScheduleResult.getOrDefault(emptyList()),
+            stations = stationsResult.getOrDefault(emptyList()),
+            season = seasonResult.getOrDefault(emptyList()),
+            ranking = rankingResult.getOrNull()
         )
     }
     val fallbackSchedule = if (loaded.events.isEmpty()) loaded.legacySchedule else emptyList()

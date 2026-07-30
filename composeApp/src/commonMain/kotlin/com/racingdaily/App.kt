@@ -55,6 +55,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -297,13 +298,15 @@ private fun PageStackHost(
     }
 
     renderedPages.forEachIndexed { index, page ->
-        AppPageOverlay(
-            pageKey = page,
-            visible = page in pages,
-            modifier = Modifier.zIndex(index + 1f),
-            onHidden = { renderedPages.remove(page) }
-        ) {
-            content(page, page in pages)
+        key(page) {
+            AppPageOverlay(
+                pageKey = page,
+                visible = page in pages,
+                modifier = Modifier.zIndex(index + 1f),
+                onHidden = { renderedPages.remove(page) }
+            ) {
+                content(page, page in pages)
+            }
         }
     }
 }
@@ -434,6 +437,9 @@ fun TrackScreen(
         loaded.second.onSuccess { original ->
             track = original?.first
             history = original?.second.orEmpty()
+            if (original == null && officialMapImage.isBlank()) {
+                error = "无法加载赛道信息"
+            }
         }.onFailure {
             if (officialMapImage.isBlank()) {
                 error = it.userFacingLoadError("无法加载赛道信息")

@@ -8,6 +8,6 @@ suspend inline fun <T> runSuspendCatching(
     Result.success(block())
 } catch (cancellation: CancellationException) {
     throw cancellation
-} catch (failure: Throwable) {
+} catch (failure: Exception) {
     Result.failure(failure)
 }

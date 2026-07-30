@@ -13,6 +13,7 @@ private class AndroidDriverBackgroundTransformation : Transformation() {
     override suspend fun transform(input: Bitmap, size: Size): Bitmap {
         val width = input.width
         val height = input.height
+        if (width.toLong() * height.toLong() > MaxTransformPixels) return input
         val pixels = IntArray(width * height)
         return runCatching {
             input.getPixels(pixels, 0, width, 0, 0, width, height)
@@ -21,5 +22,9 @@ private class AndroidDriverBackgroundTransformation : Transformation() {
                 density = input.density
             }
         }.getOrDefault(input)
+    }
+
+    private companion object {
+        const val MaxTransformPixels = 4_000_000L
     }
 }

@@ -37,7 +37,8 @@ fun DriverPortrait(
 internal expect fun createDriverBackgroundTransformation(): Transformation
 
 internal fun removeConnectedWhiteBackground(pixels: IntArray, width: Int, height: Int): Boolean {
-    if (width < 8 || height < 8 || pixels.size < width * height) return false
+    val pixelCount = width.toLong() * height.toLong()
+    if (width < 8 || height < 8 || pixelCount > pixels.size.toLong()) return false
 
     var visibleCount = 0
     var whiteCount = 0

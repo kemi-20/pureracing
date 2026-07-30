@@ -74,9 +74,8 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
 
 private object RaceScreenCache {
     val racesByYear = mutableMapOf<Int, List<RaceGp>>()
@@ -764,7 +763,7 @@ private suspend fun ApiService.loadHistoricalSessions(
                                     .take(3)
                             } catch (error: CancellationException) {
                                 throw error
-                            } catch (_: Throwable) {
+                            } catch (_: Exception) {
                                 emptyList()
                             }
                         } else {
@@ -780,7 +779,7 @@ private suspend fun ApiService.loadHistoricalSessions(
                         if (sessions.isEmpty()) null else gpId.toString() to sessions
                     } catch (error: CancellationException) {
                         throw error
-                    } catch (_: Throwable) {
+                    } catch (_: Exception) {
                         null
                     }
                 }
@@ -890,8 +889,8 @@ private fun RankingData?.historicalRaceResults(): Map<String, List<SessionResult
 
     val drivers = trendTab.list.mapNotNull { row ->
         val ranks = linkedMapOf<String, Int>()
-        row["site_rank"]?.jsonArray?.forEach { item ->
-            val obj = item.jsonObject
+        (row["site_rank"] as? JsonArray)?.forEach { item ->
+            val obj = item as? JsonObject ?: return@forEach
             val gpId = obj.text("gp_id")
             val order = obj.intValue("display_order")
             if (gpId.isNotBlank() && order > 0) ranks[gpId] = order
@@ -916,8 +915,8 @@ private fun RankingData?.historicalRaceResults(): Map<String, List<SessionResult
         val name = row.text("driver_abbr_chinese_name").ifBlank { row.text("driver_name") }
         val points = linkedMapOf<String, Int>()
         var previous = 0
-        row["site_point"]?.jsonArray?.forEach { item ->
-            val obj = item.jsonObject
+        (row["site_point"] as? JsonArray)?.forEach { item ->
+            val obj = item as? JsonObject ?: return@forEach
             val gpId = obj.text("gp_id")
             val total = obj.intValue("total_point")
             val delta = (total - previous).coerceAtLeast(0)

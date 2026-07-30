@@ -170,6 +170,7 @@ fun HomeScreen(
                             item = item,
                             featured = index == 0,
                             isRead = isArticleRead(item.id),
+                            revealKey = "home|${item.id}|$index",
                             onArticleClick = onArticleClick
                         )
                     }
@@ -221,6 +222,7 @@ private fun NewsGlassCard(
     item: NewsItem,
     featured: Boolean,
     isRead: Boolean,
+    revealKey: String,
     onArticleClick: (NewsItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -236,7 +238,7 @@ private fun NewsGlassCard(
     ) {
         val cover = item.covers.firstOrNull()
         val hasCover = cover?.hasImageSource() == true
-        Box(Modifier.fillMaxWidth().newsCardReveal(item.id)) {
+        Box(Modifier.fillMaxWidth().newsCardReveal(revealKey)) {
             if (featured && hasCover) {
                 Box(Modifier.fillMaxWidth().aspectRatio(1.36f)) {
                     NewsCoverImage(
@@ -317,7 +319,7 @@ private fun NewsGlassCard(
 }
 
 @Composable
-private fun NewsCoverImage(
+internal fun NewsCoverImage(
     cover: Cover,
     modifier: Modifier,
     contentScale: ContentScale

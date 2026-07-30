@@ -17,6 +17,7 @@ private class DesktopDriverBackgroundTransformation : Transformation() {
     override suspend fun transform(input: Bitmap, size: Size): Bitmap {
         val width = input.width
         val height = input.height
+        if (width.toLong() * height.toLong() > MaxTransformPixels) return input
         val pixels = IntArray(width * height)
         for (y in 0 until height) {
             for (x in 0 until width) {
@@ -42,5 +43,9 @@ private class DesktopDriverBackgroundTransformation : Transformation() {
         return Bitmap().also { output ->
             check(output.installPixels(info, bytes, width * 4)) { "Unable to install portrait pixels" }
         }
+    }
+
+    private companion object {
+        const val MaxTransformPixels = 4_000_000L
     }
 }

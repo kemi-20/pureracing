@@ -69,11 +69,12 @@ class ApiService(private val client: HttpClient) {
             val value = loader()
             cacheMutex.withLock {
                 cache[key] = CacheEntry(value, TimeSource.Monotonic.markNow())
+                trimCache()
                 if (inFlight[key] === request) inFlight.remove(key)
             }
             request.complete(value)
             value
-        } catch (error: Throwable) {
+        } catch (error: Exception) {
             if (error is CancellationException) {
                 cacheMutex.withLock {
                     if (inFlight[key] === request) inFlight.remove(key)
@@ -90,6 +91,14 @@ class ApiService(private val client: HttpClient) {
             }
             request.completeExceptionally(error)
             throw error
+        }
+    }
+
+    private fun trimCache() {
+        while (cache.size > MaxCacheEntries) {
+            val oldestKey = cache.maxByOrNull { (_, entry) -> entry.storedAt.elapsedNow() }?.key
+                ?: return
+            cache.remove(oldestKey)
         }
     }
 
@@ -321,6 +330,7 @@ class ApiService(private val client: HttpClient) {
         val StartupCacheLifetime = 2.minutes
         const val MaxCommentReplyPages = 50
         const val MaxConcurrentCommentReplyRequests = 6
+        const val MaxCacheEntries = 512
         const val F1CalendarUrl =
             "https://files-f1.motorsportcalendars.com/zh/f1-calendar_p1_p2_p3_qualifying_sprint_gp.ics"
         const val F1EnglishCalendarUrl =

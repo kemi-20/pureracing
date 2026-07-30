@@ -41,7 +41,11 @@ object FlexibleIntSerializer : KSerializer<Int> {
         val element = input.decodeJsonElement()
         if (element is JsonNull) return 0
         return when (element) {
-            is JsonPrimitive -> element.intOrNull ?: element.longOrNull?.toInt() ?: element.content.toIntOrNull() ?: 0
+            is JsonPrimitive -> element.intOrNull
+                ?: element.longOrNull
+                    ?.takeIf { it in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong() }
+                    ?.toInt()
+                ?: 0
             else -> 0
         }
     }

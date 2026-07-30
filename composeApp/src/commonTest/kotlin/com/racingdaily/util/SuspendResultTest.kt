@@ -12,4 +12,11 @@ class SuspendResultTest {
             runSuspendCatching<Unit> { throw CancellationException("cancelled") }
         }
     }
+
+    @Test
+    fun fatalErrorsAreNeverConvertedToFailureResult() = runTest {
+        assertFailsWith<AssertionError> {
+            runSuspendCatching<Unit> { throw AssertionError("fatal") }
+        }
+    }
 }

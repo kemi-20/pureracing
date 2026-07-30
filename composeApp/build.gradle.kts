@@ -102,7 +102,10 @@ android {
     lint {
         checkReleaseBuilds = false
         // AGP 8.7's UAST is binary-incompatible with Compose 1.11's implementation of this detector.
-        disable += "FlowOperatorInvokedInComposition"
+        disable += setOf(
+            "FlowOperatorInvokedInComposition",
+            "NullSafeMutableLiveData"
+        )
     }
 
     compileOptions {

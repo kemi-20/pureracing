@@ -32,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -46,7 +47,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.racingdaily.data.model.NewsItem
 import com.racingdaily.data.remote.ApiService
 import com.racingdaily.ui.components.GlassButton
@@ -57,10 +57,13 @@ import com.racingdaily.ui.components.InfoPill
 import com.racingdaily.ui.components.SectionLabel
 import com.racingdaily.ui.components.ScreenHeader
 import com.racingdaily.ui.components.newsCardReveal
+import com.racingdaily.ui.screens.home.NewsCoverImage
 import com.racingdaily.util.runSuspendCatching
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 @Composable
 fun SearchScreen(
@@ -73,8 +76,18 @@ fun SearchScreen(
     var results by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var searchReloadKey by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(submittedQuery) {
+    fun submitSearch() {
+        val text = query.trim()
+        if (submittedQuery == text) {
+            searchReloadKey++
+        } else {
+            submittedQuery = text
+        }
+    }
+
+    LaunchedEffect(submittedQuery, searchReloadKey) {
         val text = submittedQuery.trim()
         if (text.isBlank()) {
             results = emptyList()
@@ -124,7 +137,7 @@ fun SearchScreen(
                             imeAction = ImeAction.Search
                         ),
                         keyboardActions = KeyboardActions(
-                            onSearch = { submittedQuery = query }
+                            onSearch = { submitSearch() }
                         ),
                         textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -156,7 +169,7 @@ fun SearchScreen(
                 GlassIconButton(
                     icon = Icons.Rounded.Search,
                     contentDescription = "搜索",
-                    onClick = { submittedQuery = query },
+                    onClick = { submitSearch() },
                     selected = true
                 )
             }
@@ -170,7 +183,7 @@ fun SearchScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(12.dp))
-                    GlassButton({ submittedQuery = query }) {
+                    GlassButton({ submitSearch() }) {
                         Icon(Icons.Rounded.Refresh, null, tint = Color.White)
                         Text("重试", color = Color.White)
                     }
@@ -196,8 +209,8 @@ fun SearchScreen(
                 item {
                     SectionLabel("搜索结果", "共 ${results.size} 篇文章")
                 }
-                itemsIndexed(results, key = { index, item -> "${item.id}:$index" }) { _, item ->
-                    SearchResultCard(item, onArticleClick)
+                itemsIndexed(results, key = { index, item -> "${item.id}:$index" }) { index, item ->
+                    SearchResultCard(item, "search|${item.id}|$index", onArticleClick)
                 }
             }
         }
@@ -206,15 +219,22 @@ fun SearchScreen(
 private suspend fun ApiService.searchNewsLocally(query: String): List<NewsItem> = coroutineScope {
     val tabs = getNavTabs().navbar.ifEmpty { return@coroutineScope emptyList() }
     val normalizedQuery = query.trim().lowercase()
+    val requestLimit = Semaphore(6)
     val requests = tabs.flatMap { tab ->
         (1..3).map { page ->
-            async { runSuspendCatching { getNewsList(tab.id, page).list }.getOrDefault(emptyList()) }
+            async {
+                requestLimit.withPermit {
+                    runSuspendCatching { getNewsList(tab.id, page).list }.getOrDefault(emptyList())
+                }
+            }
         }
     }
     val candidates = requests.awaitAll().flatten()
 
     candidates
-        .distinctBy { it.id }
+        .distinctBy { item ->
+            if (item.id > 0) "id:${item.id}" else "fallback:${item.title}:${item.publish_time}"
+        }
         .filter { item ->
             item.title.lowercase().contains(normalizedQuery) ||
                 item.tags.any { tag -> tag.name.lowercase().contains(normalizedQuery) }
@@ -223,7 +243,11 @@ private suspend fun ApiService.searchNewsLocally(query: String): List<NewsItem> 
 }
 
 @Composable
-private fun SearchResultCard(item: NewsItem, onArticleClick: (NewsItem) -> Unit) {
+private fun SearchResultCard(
+    item: NewsItem,
+    revealKey: String,
+    onArticleClick: (NewsItem) -> Unit
+) {
     GlassSurface(
         modifier = Modifier
             .fillMaxWidth(),
@@ -237,14 +261,13 @@ private fun SearchResultCard(item: NewsItem, onArticleClick: (NewsItem) -> Unit)
             Modifier
                 .fillMaxWidth()
                 .height(116.dp)
-                .newsCardReveal("search|${item.id}"),
+                .newsCardReveal(revealKey),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val cover = item.covers.firstOrNull()?.path_url.orEmpty()
-            if (cover.isNotBlank()) {
-                AsyncImage(
-                    cover,
-                    contentDescription = null,
+            val cover = item.covers.firstOrNull()
+            if (cover != null && (cover.path_url.isNotBlank() || cover.path.isNotBlank())) {
+                NewsCoverImage(
+                    cover = cover,
                     modifier = Modifier.width(132.dp).fillMaxHeight(),
                     contentScale = ContentScale.Crop
                 )

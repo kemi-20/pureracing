@@ -83,9 +83,9 @@ class RaceCalendarMatchingTest {
             )
         )
 
-        assertEquals("4155", ids["澳大利亚大奖赛"])
-        assertEquals("4160", ids["巴林大奖赛"])
-        assertNull(ids["未知大奖赛"])
+        assertEquals("4155", ids["澳大利亚"])
+        assertEquals("4160", ids["巴林"])
+        assertNull(ids["未知"])
     }
 
     private fun calendarEvent(uid: String) = F1CalendarEvent(

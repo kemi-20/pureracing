@@ -205,9 +205,9 @@ class ApiService(private val client: HttpClient) {
         cached("f1-calendar-ics:$seasonId", forceRefresh) {
             client.get(F1CalendarUrl) {
                 headers {
-                    append(HttpHeaders.Accept, "text/calendar")
-                    append(HttpHeaders.Origin, "https://motorsportcalendars.com")
-                    append(HttpHeaders.Referrer, "https://motorsportcalendars.com/")
+                    set(HttpHeaders.Accept, "text/calendar")
+                    set(HttpHeaders.Origin, "https://motorsportcalendars.com")
+                    set(HttpHeaders.Referrer, "https://motorsportcalendars.com/")
                 }
             }.bodyAsText().parseF1Calendar(seasonId)
         }
@@ -216,9 +216,9 @@ class ApiService(private val client: HttpClient) {
         cached("f1-calendar-english:$seasonId", forceRefresh) {
             client.get(F1EnglishCalendarUrl) {
                 headers {
-                    append(HttpHeaders.Accept, "text/calendar")
-                    append(HttpHeaders.Origin, "https://motorsportcalendars.com")
-                    append(HttpHeaders.Referrer, "https://motorsportcalendars.com/")
+                    set(HttpHeaders.Accept, "text/calendar")
+                    set(HttpHeaders.Origin, "https://motorsportcalendars.com")
+                    set(HttpHeaders.Referrer, "https://motorsportcalendars.com/")
                 }
             }.bodyAsText().parseF1Calendar(seasonId)
         }
@@ -227,10 +227,10 @@ class ApiService(private val client: HttpClient) {
         cached("formula1-track-image:$seasonId:$slug", forceRefresh) {
             client.get("$Formula1ApiBase/v1/editorial-assemblies/races") {
                 headers {
-                    append("apikey", Formula1PublicApiKey)
-                    append("locale", "en")
-                    append(HttpHeaders.Origin, "https://www.formula1.com")
-                    append(HttpHeaders.Referrer, "https://www.formula1.com/en/racing/$seasonId/$slug")
+                    set("apikey", Formula1PublicApiKey)
+                    set("locale", "en")
+                    set(HttpHeaders.Origin, "https://www.formula1.com")
+                    set(HttpHeaders.Referrer, "https://www.formula1.com/en/racing/$seasonId/$slug")
                 }
                 parameter("season", seasonId)
                 parameter("identifier", slug)

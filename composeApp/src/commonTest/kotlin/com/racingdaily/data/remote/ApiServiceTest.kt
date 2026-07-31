@@ -5,6 +5,7 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.request.HttpRequestData
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
@@ -92,10 +93,9 @@ class ApiServiceTest {
             )
         }
         val client = HttpClient(engine) {
+            install(NewsMediaHeadersPlugin)
             defaultRequest {
                 url("https://api.romielf.com/")
-                headers.append(HttpHeaders.Origin, newsReferer.trimEnd('/'))
-                headers.append(HttpHeaders.Referrer, newsReferer)
             }
         }
         try {
@@ -108,8 +108,34 @@ class ApiServiceTest {
         }
     }
 
-    private fun jsonClient(response: () -> String): HttpClient {
-        val engine = MockEngine {
+    @Test
+    fun apiRequestsReceiveNewsOriginAndReferer() = runTest {
+        var originHeaders = emptyList<String>()
+        var refererHeaders = emptyList<String>()
+        val client = jsonClient(
+            inspectRequest = { request ->
+                originHeaders = request.headers.getAll(HttpHeaders.Origin).orEmpty()
+                refererHeaders = request.headers.getAll(HttpHeaders.Referrer).orEmpty()
+            }
+        ) {
+            """{"code":200,"msg":"success","data":{"navbar":[]}}"""
+        }
+        try {
+            ApiService(client).getNavTabs()
+
+            assertEquals(listOf(newsReferer.trimEnd('/')), originHeaders)
+            assertEquals(listOf(newsReferer), refererHeaders)
+        } finally {
+            client.close()
+        }
+    }
+
+    private fun jsonClient(
+        inspectRequest: (HttpRequestData) -> Unit = {},
+        response: () -> String
+    ): HttpClient {
+        val engine = MockEngine { request ->
+            inspectRequest(request)
             respond(
                 content = response(),
                 status = HttpStatusCode.OK,
@@ -117,6 +143,7 @@ class ApiServiceTest {
             )
         }
         return HttpClient(engine) {
+            install(NewsMediaHeadersPlugin)
             defaultRequest {
                 url("https://api.romielf.com/")
             }

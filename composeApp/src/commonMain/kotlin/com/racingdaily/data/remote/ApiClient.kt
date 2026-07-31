@@ -4,16 +4,30 @@ import com.racingdaily.platform.appVersionName
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.header
+import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
 const val newsReferer = "https://news.romielf.com/"
 private val retryableHttpStatuses = setOf(408, 425, 429)
 
+internal val NewsMediaHeadersPlugin = createClientPlugin("NewsMediaHeaders") {
+    onRequest { request, _ ->
+        if (request.headers[HttpHeaders.Referrer] == null) {
+            request.headers.append(HttpHeaders.Referrer, newsReferer)
+        }
+        if (request.headers[HttpHeaders.Origin] == null) {
+            request.headers.append(HttpHeaders.Origin, newsReferer.trimEnd('/'))
+        }
+    }
+}
+
 fun createHttpClient() = HttpClient {
+    install(NewsMediaHeadersPlugin)
     install(HttpTimeout) {
         connectTimeoutMillis = 15_000
         requestTimeoutMillis = 30_000
@@ -38,7 +52,5 @@ fun createHttpClient() = HttpClient {
     defaultRequest {
         url("https://api.romielf.com/")
         header("User-Agent", "RacingDaily/$appVersionName")
-        header("Referer", newsReferer)
-        header("Origin", newsReferer.trimEnd('/'))
     }
 }

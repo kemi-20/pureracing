@@ -68,7 +68,7 @@ kotlin {
 
 android {
     namespace = "com.racingdaily"
-    compileSdk = 37
+    compileSdk = 36
     val androidKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
 
     defaultConfig {

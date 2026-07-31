@@ -3,14 +3,20 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidApplication)
+    alias(libs.plugins.androidKmpLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
-    androidTarget {
+    android {
+        namespace = "com.racingdaily.shared"
+        compileSdk = 37
+        minSdk = 24
+        androidResources {
+            enable = true
+        }
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
         }
@@ -63,49 +69,6 @@ kotlin {
                 implementation("org.eclipse.platform:org.eclipse.swt.win32.win32.x86_64:3.127.0") { isTransitive = false }
             }
         }
-    }
-}
-
-android {
-    namespace = "com.racingdaily"
-    compileSdk = 36
-    val androidKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
-
-    defaultConfig {
-        applicationId = "com.racingdaily.pureracing"
-        minSdk = 24
-        targetSdk = 36
-        versionCode = 5
-        versionName = "1.4"
-    }
-
-    signingConfigs {
-        create("release") {
-            if (!androidKeystorePath.isNullOrBlank()) {
-                storeFile = file(androidKeystorePath)
-                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("ANDROID_KEY_ALIAS")
-                keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
-            }
-        }
-    }
-
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            if (!androidKeystorePath.isNullOrBlank()) {
-                signingConfig = signingConfigs.getByName("release")
-            }
-        }
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    buildFeatures {
-        buildConfig = true
     }
 }
 

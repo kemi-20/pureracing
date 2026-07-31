@@ -106,7 +106,8 @@ android {
             "FlowOperatorInvokedInComposition",
             "FrequentlyChangingValue",
             "NullSafeMutableLiveData",
-            "RememberInComposition"
+            "RememberInComposition",
+            "UnrememberedMutableState"
         )
     }
 

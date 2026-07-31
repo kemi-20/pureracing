@@ -171,8 +171,9 @@ internal fun buildArticleHtmlDocument(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <meta name="referrer" content="origin">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri https://news.romielf.com; form-action 'none'; object-src 'none'; img-src https: data: blob:; media-src https: data: blob:; frame-src https:; connect-src https:; font-src https: data:; style-src 'unsafe-inline'; script-src 'nonce-pureracing'">
   <base href="https://news.romielf.com/">
-  <script>${playerScript.escapeClosingScriptTag()}</script>
+  <script nonce="pureracing">${playerScript.escapeClosingScriptTag()}</script>
   <style>
     html, body {
       margin: 0;
@@ -437,7 +438,7 @@ internal fun buildArticleHtmlDocument(
 $playerTemplate
 </template>
 $html
-<script>
+<script nonce="pureracing">
 (function () {
   function useCupertinoPlayer(video) {
     if (video.closest("media-theme.pureracing-video-player")) return;

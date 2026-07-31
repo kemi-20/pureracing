@@ -224,7 +224,7 @@ private suspend fun ApiService.searchNewsLocally(query: String): List<NewsItem> 
         (1..3).map { page ->
             async {
                 requestLimit.withPermit {
-                    runSuspendCatching { getNewsList(tab.id, page).list }.getOrDefault(emptyList())
+                    runSuspendCatching { getNewsList(tab.id, page).list }
                 }
             }
         }

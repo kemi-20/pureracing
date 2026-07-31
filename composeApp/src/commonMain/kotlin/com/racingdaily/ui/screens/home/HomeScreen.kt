@@ -345,7 +345,7 @@ internal fun NewsCoverImage(
 
 private fun Cover.hasImageSource(): Boolean = path_url.isNotBlank() || path.isNotBlank()
 
-private fun Cover.imageSources(): List<String> {
+internal fun Cover.imageSources(): List<String> {
     val primary = path_url.trim().toAbsoluteNewsImageUrl()
     val alternate = path.trim().toAbsoluteNewsImageUrl()
     val baseSources = listOf(primary, alternate).filter { it.isNotBlank() }.distinct()

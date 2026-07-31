@@ -21,7 +21,7 @@ class F1CalendarParserTest {
 
         val event = calendar.parseF1Calendar(2026).single()
 
-        assertEquals("巴林大奖赛 \\(马来西亚\\), 正赛", event.summary)
+        assertEquals("巴林大奖赛 (马来西亚), 正赛", event.summary)
         assertEquals("Sepang; Malaysia", event.location)
         assertEquals("TENTATIVE", event.status)
     }
@@ -61,5 +61,18 @@ class F1CalendarParserTest {
         """.trimIndent()
 
         assertEquals("Long GrandPrix", calendar.parseF1Calendar(2026).single().summary)
+    }
+
+    @Test
+    fun missingStatusDefaultsToConfirmed() {
+        val calendar = """
+            BEGIN:VEVENT
+            UID:without-status
+            DTSTART:20260401T120000Z
+            SUMMARY:F1: Grand Prix (Australian)
+            END:VEVENT
+        """.trimIndent()
+
+        assertEquals("CONFIRMED", calendar.parseF1Calendar(2026).single().status)
     }
 }

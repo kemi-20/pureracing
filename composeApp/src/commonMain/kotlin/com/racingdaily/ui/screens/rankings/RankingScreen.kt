@@ -49,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.racingdaily.data.model.RankingData
+import com.racingdaily.data.model.RankingNavData
 import com.racingdaily.data.model.RankingOption
 import com.racingdaily.data.remote.ApiService
 import com.racingdaily.platform.currentLocalDateTimeParts
@@ -154,7 +155,7 @@ fun RankingScreen(
                 launch {
                     handleResult(
                         runSuspendCatching {
-                            api.getRankingNav(forceRefresh = false).list.firstOrNull()?.options.orEmpty()
+                            api.getRankingNav(forceRefresh = false).f1Seasons()
                         },
                         isFresh = false
                     )
@@ -163,7 +164,7 @@ fun RankingScreen(
             launch {
                 handleResult(
                     runSuspendCatching {
-                        api.getRankingNav(forceRefresh = true).list.firstOrNull()?.options.orEmpty()
+                        api.getRankingNav(forceRefresh = true).f1Seasons()
                     },
                     isFresh = true
                 )
@@ -405,6 +406,11 @@ fun RankingScreen(
         }
     }
 }
+
+internal fun RankingNavData.f1Seasons(): List<RankingOption> =
+    list.flatMap { it.options }
+        .filter { it.chp_id == 6 }
+        .distinctBy { it.id }
 
 @Composable
 private fun RankingPodium(

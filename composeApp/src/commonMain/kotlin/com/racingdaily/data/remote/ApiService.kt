@@ -6,8 +6,9 @@ import io.ktor.client.call.body
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.request.get
 import io.ktor.client.request.forms.submitForm
-import io.ktor.client.request.header
+import io.ktor.client.request.headers
 import io.ktor.client.request.parameter
+import io.ktor.http.HttpHeaders
 import io.ktor.http.Parameters
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -123,7 +124,7 @@ class ApiService(private val client: HttpClient) {
         ).body<ApiResponse<CommentListData>>().requireData()
 
     suspend fun getArticleCommentsWithReplies(articleId: Int): CommentListData {
-        val comments = getArticleComments(articleId, page = 0)
+        val comments = getAllArticleComments(articleId)
         val requestLimit = Semaphore(MaxConcurrentCommentReplyRequests)
         val completeComments = supervisorScope {
             comments.comment_list.map { comment ->
@@ -142,6 +143,34 @@ class ApiService(private val client: HttpClient) {
             }.awaitAll()
         }
         return comments.copy(comment_list = completeComments)
+    }
+
+    private suspend fun getAllArticleComments(articleId: Int): CommentListData {
+        val firstPage = getArticleComments(articleId, page = 0)
+        if (firstPage.comment_list.isEmpty() || firstPage.comment_list.size >= firstPage.count) {
+            return firstPage
+        }
+
+        val commentsById = linkedMapOf<Int, ArticleComment>()
+        firstPage.comment_list.forEach { comment -> commentsById[comment.id] = comment }
+        val pageSize = firstPage.comment_list.size.coerceAtLeast(1)
+        val pageCount = ((firstPage.count.toLong() + pageSize - 1L) / pageSize)
+            .coerceIn(1L, MaxCommentPages.toLong())
+            .toInt()
+        val requestLimit = Semaphore(MaxConcurrentCommentPageRequests)
+        val remainingPages = supervisorScope {
+            (1 until pageCount).map { page ->
+                async {
+                    requestLimit.withPermit {
+                        runSuspendCatching { getArticleComments(articleId, page) }.getOrNull()
+                    }
+                }
+            }.awaitAll()
+        }
+        remainingPages.filterNotNull().forEach { page ->
+            page.comment_list.forEach { comment -> commentsById[comment.id] = comment }
+        }
+        return firstPage.copy(comment_list = commentsById.values.toList())
     }
 
     private suspend fun getAllCommentReplies(commentId: Int, expectedCount: Int): List<ArticleComment> {
@@ -175,26 +204,34 @@ class ApiService(private val client: HttpClient) {
     suspend fun getF1Calendar(seasonId: Int, forceRefresh: Boolean = false) =
         cached("f1-calendar-ics:$seasonId", forceRefresh) {
             client.get(F1CalendarUrl) {
-                header("Accept", "text/calendar")
-                header("Referer", "https://motorsportcalendars.com/")
+                headers {
+                    append(HttpHeaders.Accept, "text/calendar")
+                    append(HttpHeaders.Origin, "https://motorsportcalendars.com")
+                    append(HttpHeaders.Referrer, "https://motorsportcalendars.com/")
+                }
             }.bodyAsText().parseF1Calendar(seasonId)
         }
 
     suspend fun getF1EnglishCalendar(seasonId: Int, forceRefresh: Boolean = false) =
         cached("f1-calendar-english:$seasonId", forceRefresh) {
             client.get(F1EnglishCalendarUrl) {
-                header("Accept", "text/calendar")
-                header("Referer", "https://motorsportcalendars.com/")
+                headers {
+                    append(HttpHeaders.Accept, "text/calendar")
+                    append(HttpHeaders.Origin, "https://motorsportcalendars.com")
+                    append(HttpHeaders.Referrer, "https://motorsportcalendars.com/")
+                }
             }.bodyAsText().parseF1Calendar(seasonId)
         }
 
     suspend fun getFormula1TrackImage(seasonId: Int, slug: String, forceRefresh: Boolean = false) =
         cached("formula1-track-image:$seasonId:$slug", forceRefresh) {
             client.get("$Formula1ApiBase/v1/editorial-assemblies/races") {
-                header("apikey", Formula1PublicApiKey)
-                header("locale", "en")
-                header("Origin", "https://www.formula1.com")
-                header("Referer", "https://www.formula1.com/en/racing/$seasonId/$slug")
+                headers {
+                    append("apikey", Formula1PublicApiKey)
+                    append("locale", "en")
+                    append(HttpHeaders.Origin, "https://www.formula1.com")
+                    append(HttpHeaders.Referrer, "https://www.formula1.com/en/racing/$seasonId/$slug")
+                }
                 parameter("season", seasonId)
                 parameter("identifier", slug)
             }.body<Formula1RacePage>().circuitMapImage.url
@@ -313,10 +350,10 @@ class ApiService(private val client: HttpClient) {
             launch { runSuspendCatching { getStationList(chpId = 6, seasonId = seasonId) } }
             launch {
                 val option = runSuspendCatching {
-                    getRankingNav().list
+                    val f1Options = getRankingNav().list
                         .flatMap { it.options }
-                        .firstOrNull { it.id == seasonId }
-                        ?: getRankingNav().list.flatMap { it.options }.firstOrNull()
+                        .filter { it.chp_id == 6 }
+                    f1Options.firstOrNull { it.id == seasonId } ?: f1Options.firstOrNull()
                 }.getOrNull() ?: return@launch
                 supervisorScope {
                     launch { runSuspendCatching { getDriverRanking(option.chp_id, option.id) } }
@@ -328,6 +365,8 @@ class ApiService(private val client: HttpClient) {
 
     private companion object {
         val StartupCacheLifetime = 2.minutes
+        const val MaxCommentPages = 50
+        const val MaxConcurrentCommentPageRequests = 6
         const val MaxCommentReplyPages = 50
         const val MaxConcurrentCommentReplyRequests = 6
         const val MaxCacheEntries = 512
@@ -361,7 +400,7 @@ internal fun String.parseF1Calendar(seasonId: Int): List<F1CalendarEvent> {
                 val values = properties
                 if (values != null) {
                     val start = values["DTSTART"].orEmpty()
-                    val status = values["STATUS"].orEmpty().uppercase()
+                    val status = values["STATUS"].orEmpty().uppercase().ifBlank { "CONFIRMED" }
                     if (
                         start.take(4).toIntOrNull() == seasonId &&
                         (status == "CONFIRMED" || status == "TENTATIVE")
@@ -401,7 +440,7 @@ private fun String.decodeIcsText(): String = buildString(length) {
         }
         when (val escaped = this@decodeIcsText[index + 1]) {
             'n', 'N' -> append('\n')
-            '\\', ',', ';' -> append(escaped)
+            '\\', ',', ';', '(', ')' -> append(escaped)
             else -> {
                 append('\\')
                 append(escaped)

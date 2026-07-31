@@ -979,26 +979,33 @@ private fun String.toTyreColor(): Color {
 }
 
 private suspend fun <T : Any> ApiService.loadSeasonScores(
+    championshipId: Int,
     latestSeasonId: Int,
     loadScore: suspend (seasonId: Int) -> T?
 ): List<T> {
     val seasons = getRankingNav()
         .list
         .flatMap { it.options }
+        .filter { it.chp_id == championshipId }
         .map { it.id }
         .filter { it in 1950..latestSeasonId }
         .distinct()
         .sorted()
+        .ifEmpty { listOf(latestSeasonId) }
     val requestLimit = Semaphore(6)
-    return supervisorScope {
+    val results = supervisorScope {
         seasons.map { seasonId ->
             async {
                 requestLimit.withPermit {
-                    runSuspendCatching { loadScore(seasonId) }.getOrNull()
+                    runSuspendCatching { loadScore(seasonId) }
                 }
             }
-        }.awaitAll().filterNotNull()
+        }.awaitAll()
     }
+    if (results.all { it.isFailure }) {
+        throw results.firstNotNullOf { it.exceptionOrNull() }
+    }
+    return results.mapNotNull { it.getOrNull() }
 }
 
 @Composable
@@ -1048,7 +1055,7 @@ fun DriverDetailScreen(
         scoreLoading = true
         scoreError = null
         runSuspendCatching {
-            api.loadSeasonScores(page.seasonId) { seasonId ->
+            api.loadSeasonScores(page.chpId, page.seasonId) { seasonId ->
                     api.getDriverRanking(page.chpId, seasonId).toDriverSeasonScore(seasonId, page.driverId)
             }.sortedByDescending { it.season }
         }.onSuccess {
@@ -1214,7 +1221,7 @@ fun TeamDetailScreen(
         scoreLoading = true
         scoreError = null
         runSuspendCatching {
-            api.loadSeasonScores(page.seasonId) { seasonId ->
+            api.loadSeasonScores(page.chpId, page.seasonId) { seasonId ->
                     api.getTeamRanking(page.chpId, seasonId).toTeamSeasonScore(seasonId, page.teamId)
             }.sortedByDescending { it.season }
         }.onSuccess {

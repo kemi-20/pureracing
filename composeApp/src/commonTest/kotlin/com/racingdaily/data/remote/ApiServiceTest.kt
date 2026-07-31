@@ -51,6 +51,63 @@ class ApiServiceTest {
         }
     }
 
+    @Test
+    fun articleCommentsLoadEveryTopLevelPage() = runTest {
+        var requestCount = 0
+        val client = jsonClient {
+            requestCount++
+            if (requestCount == 1) {
+                """{"code":200,"msg":"success","data":{"comment_list":[{"id":1},{"id":2}],"page":0,"count":3}}"""
+            } else {
+                """{"code":200,"msg":"success","data":{"comment_list":[{"id":3}],"page":1,"count":3}}"""
+            }
+        }
+        try {
+            val comments = ApiService(client).getArticleCommentsWithReplies(articleId = 42)
+
+            assertEquals(listOf(1, 2, 3), comments.comment_list.map { it.id })
+            assertEquals(2, requestCount)
+        } finally {
+            client.close()
+        }
+    }
+
+    @Test
+    fun calendarRequestOverridesNewsOriginAndReferer() = runTest {
+        var originHeaders = emptyList<String>()
+        var refererHeaders = emptyList<String>()
+        val engine = MockEngine { request ->
+            originHeaders = request.headers.getAll(HttpHeaders.Origin).orEmpty()
+            refererHeaders = request.headers.getAll(HttpHeaders.Referrer).orEmpty()
+            respond(
+                content = """
+                    BEGIN:VEVENT
+                    UID:f1#GP1_gp
+                    DTSTART:20260301T000000Z
+                    SUMMARY:F1: Grand Prix (Australian)
+                    END:VEVENT
+                """.trimIndent(),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "text/calendar")
+            )
+        }
+        val client = HttpClient(engine) {
+            defaultRequest {
+                url("https://api.romielf.com/")
+                headers.append(HttpHeaders.Origin, newsReferer.trimEnd('/'))
+                headers.append(HttpHeaders.Referrer, newsReferer)
+            }
+        }
+        try {
+            ApiService(client).getF1Calendar(2026)
+
+            assertEquals(listOf("https://motorsportcalendars.com"), originHeaders)
+            assertEquals(listOf("https://motorsportcalendars.com/"), refererHeaders)
+        } finally {
+            client.close()
+        }
+    }
+
     private fun jsonClient(response: () -> String): HttpClient {
         val engine = MockEngine {
             respond(

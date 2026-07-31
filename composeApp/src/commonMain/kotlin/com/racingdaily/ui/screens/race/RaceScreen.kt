@@ -307,7 +307,6 @@ private fun List<F1CalendarEvent>.toRaceCards(
 ): List<RaceGp>? {
     if (isEmpty()) return null
     val now = currentLocalDateTimeParts()
-    val activeSeason = seasonList.filter { it.status != 4 }
     val englishByUid = englishEvents.associateBy { it.grandPrixUid() }
     val historicalResults = ranking.historicalRaceResults()
     val grouped = groupBy { it.raceName().localizedRaceName() }
@@ -319,17 +318,20 @@ private fun List<F1CalendarEvent>.toRaceCards(
         )
     val races = mutableListOf<RaceGp>()
 
-    grouped.forEachIndexed { index, (raceName, events) ->
+    grouped.forEach { (raceName, events) ->
         val apiRaceName = raceName.primaryCalendarRaceName()
-        val seasonItem = activeSeason.firstOrNull { it.gp_name == raceName }
-            ?: activeSeason.firstOrNull { it.gp_name.sameRaceNameAs(apiRaceName) }
-            ?: activeSeason.getOrNull(index)
+        val seasonItem = matchCalendarRaceToSeason(
+            raceName = raceName,
+            apiRaceName = apiRaceName,
+            events = events,
+            seasonList = seasonList
+        )
         val localSessions = events.mapNotNull { event ->
             val start = raceCalendarUtcToLocal(event.startUtc) ?: return@mapNotNull null
             val end = raceCalendarUtcToLocal(event.endUtc) ?: start
             LocalCalendarSession(event, start, end)
         }.sortedBy { it.start.toSortableMinutes() }
-        if (localSessions.isEmpty()) return@forEachIndexed
+        if (localSessions.isEmpty()) return@forEach
 
         val gpId = seasonItem?.let { seasonGpIds[it.gp_name.normalizedRaceName()] }.orEmpty()
         val raceStatus = when {
@@ -451,8 +453,30 @@ private fun String.alternateVenueNames(): Pair<String, String>? {
 private fun String.primaryCalendarRaceName(): String =
     alternateVenueNames()?.first ?: this
 
-private fun F1CalendarEvent.calendarRound(): Int =
-    uid.substringAfter("#GP", "").substringBefore('_').toIntOrNull() ?: Int.MAX_VALUE
+private val CalendarRoundRegex = Regex("#GP(\\d+)", RegexOption.IGNORE_CASE)
+
+internal fun F1CalendarEvent.calendarRound(): Int =
+    CalendarRoundRegex.find(uid)
+        ?.groupValues
+        ?.getOrNull(1)
+        ?.toIntOrNull()
+        ?.takeIf { it >= 0 }
+        ?.plus(1)
+        ?: Int.MAX_VALUE
+
+internal fun matchCalendarRaceToSeason(
+    raceName: String,
+    apiRaceName: String,
+    events: List<F1CalendarEvent>,
+    seasonList: List<RaceListItem>
+): RaceListItem? {
+    val activeSeason = seasonList.filter { it.status != 4 }
+    return activeSeason.firstOrNull { it.gp_name == raceName }
+        ?: activeSeason.firstOrNull { it.gp_name.sameRaceNameAs(apiRaceName) }
+        ?: events.minOfOrNull { it.calendarRound() }
+            ?.takeIf { it in 1..activeSeason.size }
+            ?.let { round -> activeSeason[round - 1] }
+}
 
 private fun F1CalendarEvent.grandPrixUid(): String =
     uid.substringBeforeLast('_', uid) + "_gp"
@@ -719,7 +743,7 @@ private val stationSessionKeys = setOf(
     "fp1cj", "fp2cj", "fp3cj", "ccpws", "ccpwscj", "ccscj", "pwscj", "zscj"
 )
 
-private fun resolveSeasonGpIds(
+internal fun resolveSeasonGpIds(
     schedule: List<RaceGp>,
     stations: List<StationItem>,
     seasonList: List<RaceListItem>
@@ -733,14 +757,9 @@ private fun resolveSeasonGpIds(
     stations.forEach { station ->
         if (station.gp_id > 0) known[station.chinese_name.normalizedRaceName()] = station.gp_id.toString()
     }
-    val baseGpId = stations.mapNotNull { station ->
-        val round = station.number.toIntOrNull() ?: return@mapNotNull null
-        station.gp_id.takeIf { it > 0 }?.minus(round - 1)
-    }.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key
-
-    return seasonList.mapIndexedNotNull { index, item ->
+    return seasonList.mapNotNull { item ->
         val key = item.gp_name.normalizedRaceName()
-        val gpId = known[key] ?: baseGpId?.plus(index)?.toString() ?: return@mapIndexedNotNull null
+        val gpId = known[key] ?: return@mapNotNull null
         key to gpId
     }.toMap()
 }

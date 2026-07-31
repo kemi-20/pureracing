@@ -14,6 +14,9 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
@@ -98,10 +101,6 @@ actual fun HtmlView(
                             return request.isForMainFrame && view.context.openExternalUrl(request.url)
                         }
 
-                        @Suppress("DEPRECATION")
-                        override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-                            return view.context.openExternalUrl(Uri.parse(url))
-                        }
                     }
                     webChromeClient = object : WebChromeClient() {
                         override fun getDefaultVideoPoster(): Bitmap =
@@ -153,6 +152,8 @@ private class FullscreenVideoController(
 ) {
     private var videoView: View? = null
     private var callback: WebChromeClient.CustomViewCallback? = null
+    private var systemBarsController: WindowInsetsControllerCompat? = null
+    private var previousSystemBarsBehavior: Int? = null
 
     fun show(view: View, customViewCallback: WebChromeClient.CustomViewCallback) {
         val host = activity ?: return customViewCallback.onCustomViewHidden()
@@ -162,10 +163,11 @@ private class FullscreenVideoController(
         }
         videoView = view
         callback = customViewCallback
-        host.window.decorView.systemUiVisibility =
-            View.SYSTEM_UI_FLAG_FULLSCREEN or
-                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+        systemBarsController = WindowCompat.getInsetsController(host.window, host.window.decorView).also {
+            previousSystemBarsBehavior = it.systemBarsBehavior
+            it.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            it.hide(WindowInsetsCompat.Type.systemBars())
+        }
         (host.window.decorView as ViewGroup).addView(
             view,
             ViewGroup.LayoutParams(
@@ -185,7 +187,12 @@ private class FullscreenVideoController(
         videoView = null
         callback?.onCustomViewHidden()
         callback = null
-        host?.window?.decorView?.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+        systemBarsController?.apply {
+            show(WindowInsetsCompat.Type.systemBars())
+            previousSystemBarsBehavior?.let { systemBarsBehavior = it }
+        }
+        systemBarsController = null
+        previousSystemBarsBehavior = null
         onVisibilityChanged(false)
     }
 }

@@ -20,10 +20,10 @@ PureRacing 是一款面向 Android 与 Windows 桌面端的非官方赛车新闻
 ## 技术栈
 
 - Kotlin `2.4.10` 与 Kotlin Multiplatform
-- Compose Multiplatform `1.11.0`、Compose Material 3 与 Compose Resources
+- Compose Multiplatform `1.11.1`、Compose Material 3 与 Compose Resources
 - Ktor Client `3.x`，Android 使用 OkHttp，Desktop 使用 CIO
 - kotlinx.serialization 与 kotlinx.coroutines
-- Coil `3.4.0`，包含 Ktor 网络加载与 SVG 解码
+- Coil `3.5.0`，包含 Ktor 网络加载与 SVG 解码
 - Kyant0 Backdrop `2.0.0` 与 Kyant Shapes `1.2.0`
 - Android Activity Compose、Android WebView 与系统分享桥接
 - Windows Compose Desktop、SWT Browser 与 WebView2 文章渲染

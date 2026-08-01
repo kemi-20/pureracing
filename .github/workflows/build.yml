@@ -29,14 +29,16 @@ jobs:
       - name: Build Desktop distributable
         shell: bash
         run: bash ./gradlew :composeApp:desktopTest :composeApp:createDistributable --stacktrace
-      - name: Sign Windows executable
+      - name: Sign Windows executable when configured
+        id: windows-signing
         shell: pwsh
         env:
           WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_BASE64)) {
-            Write-Host "WINDOWS_CERTIFICATE_BASE64 is not configured; publishing an unsigned Windows build."
+            "signed=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+            Write-Host "::notice title=Unsigned Windows build::WINDOWS_CERTIFICATE_BASE64 is not configured; publishing an unsigned Windows build."
             exit 0
           }
           if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_PASSWORD)) {
@@ -73,6 +75,26 @@ jobs:
 
           & $signTool verify /pa /v $executable
           if ($LASTEXITCODE -ne 0) { throw "Windows executable signature verification failed." }
+          "signed=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+      - name: Verify Windows executable status
+        shell: pwsh
+        run: |
+          $executable = "composeApp\build\compose\binaries\main\app\PureRacing\PureRacing.exe"
+          $signature = Get-AuthenticodeSignature -LiteralPath $executable
+          $expectedSigned = '${{ steps.windows-signing.outputs.signed }}' -eq 'true'
+
+          if ($expectedSigned -and $signature.Status -ne 'Valid') {
+            throw "Windows signing was requested, but the generated executable is $($signature.Status)."
+          }
+          if (-not $expectedSigned -and $signature.Status -ne 'NotSigned') {
+            throw "Unsigned Windows build has an unexpected signature status: $($signature.Status)."
+          }
+
+          $signatureState = if ($expectedSigned) { 'Valid Authenticode signature' } else { 'Unsigned (certificate secret not configured)' }
+          @(
+            '### Windows artifact'
+            "- Authenticode: **$signatureState**"
+          ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
       - name: Upload Desktop distributable
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
